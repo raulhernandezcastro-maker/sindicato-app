@@ -41,7 +41,7 @@ export function DocumentosPage() {
       console.log('DocumentosPage: Loading documentos');
 
       const { data, error } = await supabase
-        .from('documentos')
+        .from('documents')
         .select('*, profiles:subido_por(nombre)')
         .order('created_at', { ascending: false });
 
@@ -98,7 +98,7 @@ export function DocumentosPage() {
       console.log('DocumentosPage: Uploading file to storage:', fileName);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('documentos')
+        .from('documents')
         .upload(fileName, selectedFile);
 
       if (uploadError) {
@@ -110,14 +110,14 @@ export function DocumentosPage() {
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('documentos')
+        .from('documents')
         .getPublicUrl(fileName);
 
       console.log('DocumentosPage: File uploaded, creating document record');
 
       // Create document record
       const { data, error } = await supabase
-        .from('documentos')
+        .from('documents')
         .insert({
           titulo: formData.titulo,
           categoria: formData.categoria,
@@ -156,7 +156,7 @@ export function DocumentosPage() {
 
     try {
       const { error } = await supabase
-        .from('documentos')
+        .from('documents')
         .delete()
         .eq('id', documento.id);
 
