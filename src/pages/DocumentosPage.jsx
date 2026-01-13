@@ -117,7 +117,7 @@ export function DocumentosPage() {
 
       // Create document record
       const { data, error } = await supabase
-        .from('documents')
+        .from('documentos')
         .insert({
           titulo: formData.titulo,
           categoria: formData.categoria,
@@ -156,7 +156,7 @@ export function DocumentosPage() {
 
     try {
       const { error } = await supabase
-        .from('documents')
+        .from('documentos')
         .delete()
         .eq('id', documento.id);
 
