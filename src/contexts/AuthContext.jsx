@@ -18,35 +18,52 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        const { data, error } = await supabase.auth.getSession();
 
-      if (session?.user) {
-        setUser(session.user);
-        await loadUserProfile(session.user.id);
-      } else {
+        if (error) {
+          console.error('getSession error:', error);
+          clearAuth();
+        } else if (data?.session?.user) {
+          setUser(data.session.user);
+          await loadUserProfile(data.session.user.id);
+        } else {
+          clearAuth();
+        }
+      } catch (err) {
+        console.error('Auth init failed:', err);
         clearAuth();
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      setLoading(false);
     };
 
     init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-          await loadUserProfile(session.user.id);
-        } else {
+        try {
+          if (session?.user) {
+            setUser(session.user);
+            await loadUserProfile(session.user.id);
+          } else {
+            clearAuth();
+          }
+        } catch (err) {
+          console.error('onAuthStateChange error:', err);
           clearAuth();
+        } finally {
+          if (mounted) setLoading(false);
         }
-        setLoading(false);
       }
     );
 
     return () => {
-      listener?.subscription?.unsubscribe();
+      mounted = false;
+      authListener?.subscription?.unsubscribe();
     };
   }, []);
 
@@ -65,7 +82,7 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (profileError) {
-        console.error('Error loading profile:', profileError);
+        console.error('Profile error:', profileError);
         return;
       }
 
@@ -77,13 +94,13 @@ export const AuthProvider = ({ children }) => {
         .eq('user_id', userId);
 
       if (rolesError) {
-        console.error('Error loading roles:', rolesError);
+        console.error('Roles error:', rolesError);
         return;
       }
 
       setRoles(rolesData.map(r => r.role_name));
-    } catch (error) {
-      console.error('Error in loadUserProfile:', error);
+    } catch (err) {
+      console.error('loadUserProfile failed:', err);
     }
   };
 
