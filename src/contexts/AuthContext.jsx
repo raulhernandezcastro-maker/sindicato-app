@@ -1,12 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-const AuthContext = createContext({});
+const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };
@@ -18,57 +18,46 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 🔐 LOGIN TEMPORAL ADMIN (solo mientras no exista BD visible)
-    const tempAdmin = localStorage.getItem('tempAdmin');
-    if (tempAdmin) {
-      const parsed = JSON.parse(tempAdmin);
-      setUser(parsed);
-      setRoles(parsed.roles || ['socio', 'administrador']);
-      setLoading(false);
-      return;
-    }
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          setUser(session.user);
-          await loadUserProfile(session.user.id);
-        } else {
-          setUser(null);
-          setProfile(null);
-          setRoles([]);
-        }
-      } catch (error) {
-        console.error('AuthProvider: Error checking session', error);
-      } finally {
-        setLoading(false);
+      if (session?.user) {
+        setUser(session.user);
+        await loadUserProfile(session.user.id);
+      } else {
+        clearAuth();
       }
+
+      setLoading(false);
     };
 
-    checkSession();
+    init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
           setUser(session.user);
           await loadUserProfile(session.user.id);
         } else {
-          setUser(null);
-          setProfile(null);
-          setRoles([]);
+          clearAuth();
         }
         setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      listener?.subscription?.unsubscribe();
+    };
   }, []);
+
+  const clearAuth = () => {
+    setUser(null);
+    setProfile(null);
+    setRoles([]);
+  };
 
   const loadUserProfile = async (userId) => {
     try {
-      // 1️⃣ Perfil
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -82,7 +71,6 @@ export const AuthProvider = ({ children }) => {
 
       setProfile(profileData);
 
-      // 2️⃣ Roles
       const { data: rolesData, error: rolesError } = await supabase
         .from('roles')
         .select('role_name')
@@ -93,24 +81,9 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // 3️⃣ Si NO tiene roles → crearlos automáticamente
-      if (!rolesData || rolesData.length === 0) {
-        const newRoles = [{ user_id: userId, role_name: 'socio' }];
-
-        if (profileData.email === 'admin@sindicato.cl') {
-          newRoles.push({ user_id: userId, role_name: 'administrador' });
-        }
-
-        await supabase.from('roles').insert(newRoles);
-        setRoles(newRoles.map(r => r.role_name));
-        return;
-      }
-
-      // 4️⃣ Roles existentes
       setRoles(rolesData.map(r => r.role_name));
-
     } catch (error) {
-      console.error('AuthProvider: Error in loadUserProfile', error);
+      console.error('Error in loadUserProfile:', error);
     }
   };
 
@@ -119,31 +92,21 @@ export const AuthProvider = ({ children }) => {
       email,
       password,
     });
+
     if (error) throw error;
     return data;
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    setRoles([]);
-    localStorage.removeItem('tempAdmin');
+    clearAuth();
   };
 
   const resetPassword = async (email) => {
     return supabase.auth.resetPasswordForEmail(email);
   };
 
-  // ✅ ROLES CLAROS Y SIMPLES
-  const isAdministrador = roles.includes('administrador');
-  const isDirector = roles.includes('director');
-  const isSocio = roles.length > 0;
-
-  // ✅ Función auxiliar para verificar roles
-  const hasRole = (roleName) => {
-    return roles.includes(roleName);
-  };
+  const hasRole = (roleName) => roles.includes(roleName);
 
   const value = {
     user,
@@ -153,10 +116,10 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
     resetPassword,
-    isAdministrador,
-    isDirector,
-    isSocio,
     hasRole,
+    isAdministrador: roles.includes('administrador'),
+    isDirector: roles.includes('director'),
+    isSocio: roles.length > 0,
     refreshProfile: () => loadUserProfile(user?.id),
   };
 
