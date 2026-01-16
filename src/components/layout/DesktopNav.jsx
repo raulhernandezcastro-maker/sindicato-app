@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, FileText, FolderOpen, User, Users, DollarSign, LayoutDashboard, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
@@ -8,8 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 export function DesktopNav() {
   const location = useLocation();
-  const { isAdministrador, isDirector, signOut, profile, roles } = useAuth();
-  
+  const navigate = useNavigate();
+  const { isAdministrador, isDirector, signOut, profile } = useAuth();
+
   const socioLinks = [
     { to: '/', icon: Home, label: 'Inicio' },
     { to: '/avisos', icon: FileText, label: 'Avisos' },
@@ -41,6 +42,7 @@ export function DesktopNav() {
   const handleLogout = async () => {
     try {
       await signOut();
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error('DesktopNav: Error logging out:', error);
     }
@@ -60,7 +62,6 @@ export function DesktopNav() {
         <p className="text-xs text-muted-foreground">
           Rol actual: {isAdministrador ? 'Administrador' : isDirector ? 'Director' : 'Socio'}
         </p>
-       
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">
@@ -97,6 +98,7 @@ export function DesktopNav() {
             <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
           </div>
         </div>
+
         <Button
           variant="outline"
           className="w-full"
