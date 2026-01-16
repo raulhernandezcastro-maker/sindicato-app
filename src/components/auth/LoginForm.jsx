@@ -20,10 +20,9 @@ export function LoginForm({ onForgotPassword }) {
 
     try {
       await signIn(email, password);
-      // Supabase + AuthContext se encargan del redirect
-    } catch (error) {
-      console.error('Login error:', error);
-      setError('Credenciales incorrectas.');
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Correo o contraseña incorrectos');
       setLoading(false);
     }
   };
@@ -40,7 +39,11 @@ export function LoginForm({ onForgotPassword }) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <Alert variant="destructive">{error}</Alert>}
+          {error && (
+            <Alert variant="destructive">
+              {error}
+            </Alert>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="email">Correo</Label>
@@ -73,7 +76,6 @@ export function LoginForm({ onForgotPassword }) {
           </Button>
         </form>
       </CardContent>
-
       <CardFooter className="flex justify-center">
         <Button
           variant="link"
