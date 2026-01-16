@@ -98,7 +98,6 @@ export function DesktopNav() {
             <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
           </div>
         </div>
-
         <Button
           variant="outline"
           className="w-full"
