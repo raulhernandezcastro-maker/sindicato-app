@@ -17,50 +17,113 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const init = async () => {
-      console.log('AuthProvider: init start');
-
       try {
-        const { data, error } = await supabase.auth.getSession();
-        console.log('AuthProvider: getSession result:', data, error);
-
-        const session = data?.session;
+        const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
           setUser(session.user);
+          await loadUserProfile(session.user.id);
         } else {
-          setUser(null);
+          clearAuth();
         }
-      } catch (e) {
-        console.error('AuthProvider: init error', e);
-        setUser(null);
+      } catch (err) {
+        console.error('Auth init error:', err);
+        clearAuth();
       } finally {
-        console.log('AuthProvider: setting loading false');
         setLoading(false);
       }
     };
 
     init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('AuthProvider: auth state changed', session);
-
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        setUser(null);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          await loadUserProfile(session.user.id);
+        } else {
+          clearAuth();
+        }
+        setLoading(false);
       }
-
-      setLoading(false);
-    });
+    );
 
     return () => {
       listener?.subscription?.unsubscribe();
     };
   }, []);
 
+  const clearAuth = () => {
+    setUser(null);
+    setProfile(null);
+    setRoles([]);
+  };
+
+  const loadUserProfile = async (userId) => {
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('Error loading profile:', profileError);
+        return;
+      }
+
+      setProfile(profileData);
+
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('roles')
+        .select('role_name')
+        .eq('user_id', userId);
+
+      if (rolesError) {
+        console.error('Error loading roles:', rolesError);
+        return;
+      }
+
+      setRoles(rolesData.map(r => r.role_name));
+    } catch (error) {
+      console.error('Error in loadUserProfile:', error);
+    }
+  };
+
+  const signIn = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    clearAuth();
+  };
+
+  const resetPassword = async (email) => {
+    return supabase.auth.resetPasswordForEmail(email);
+  };
+
+  const hasRole = (roleName) => roles.includes(roleName);
+
   const value = {
     user,
+    profile,
+    roles,
     loading,
+    signIn,
+    signOut,
+    resetPassword,
+    hasRole,
+    isAdministrador: roles.includes('administrador'),
+    isDirector: roles.includes('director'),
+    isSocio: roles.length > 0,
+    refreshProfile: () => loadUserProfile(user?.id),
   };
 
   return (
