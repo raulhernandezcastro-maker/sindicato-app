@@ -13,43 +13,17 @@ export function LoginForm({ onForgotPassword }) {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
 
-  console.log('LoginForm: Component rendered');
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // 🔐 ACCESO TEMPORAL ADMIN (BORRAR DESPUÉS)
-if (email === 'admin@sindicato.cl' && password === 'admin123456') {
-  localStorage.setItem(
-    'tempAdmin',
-    JSON.stringify({
-      id: 'temp-admin',
-      email: email,
-      roles: ['socio', 'administrador'],
-    })
-  );
-
-  window.location.href = '/';
-  return;
-}
     setError('');
     setLoading(true);
 
-    console.log('LoginForm: Attempting login with email:', email);
-
     try {
-      const { data, error } = await signIn(email, password);
-
-      if (error) {
-        console.error('LoginForm: Login failed:', error);
-        setError('Credenciales incorrectas. Por favor, verifica tu correo y contraseña.');
-        setLoading(false);
-        return;
-      }
-
-      console.log('LoginForm: Login successful');
+      await signIn(email, password);
+      // Supabase + AuthContext se encargan del redirect
     } catch (error) {
-      console.error('LoginForm: Exception during login:', error);
-      setError('Error al iniciar sesión. Por favor, intenta nuevamente.');
+      console.error('Login error:', error);
+      setError('Credenciales incorrectas.');
       setLoading(false);
     }
   };
@@ -61,19 +35,15 @@ if (email === 'admin@sindicato.cl' && password === 'admin123456') {
           Sindicato de Trabajadores
         </CardTitle>
         <CardDescription className="text-center">
-          Ingresa tus credenciales para acceder
+          Ingresa tus credenciales
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              {error}
-            </Alert>
-          )}
+          {error && <Alert variant="destructive">{error}</Alert>}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Correo electrónico</Label>
+            <Label htmlFor="email">Correo</Label>
             <Input
               id="email"
               type="email"
@@ -103,6 +73,7 @@ if (email === 'admin@sindicato.cl' && password === 'admin123456') {
           </Button>
         </form>
       </CardContent>
+
       <CardFooter className="flex justify-center">
         <Button
           variant="link"
