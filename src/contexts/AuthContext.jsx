@@ -5,7 +5,7 @@ const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
   return ctx;
 };
 
@@ -17,35 +17,44 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const init = async () => {
-      const { data } = await supabase.auth.getSession();
+      try {
+        const { data } = await supabase.auth.getSession();
 
-      if (data?.session?.user) {
-        setUser(data.session.user);
-        await loadUserData(data.session.user.id);
-      } else {
+        if (data?.session?.user) {
+          setUser(data.session.user);
+          await loadUserData(data.session.user.id);
+        } else {
+          clearAuth();
+        }
+      } catch (err) {
+        console.error('Auth init error:', err);
         clearAuth();
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-          await loadUserData(session.user.id);
-        } else {
+        try {
+          if (session?.user) {
+            setUser(session.user);
+            await loadUserData(session.user.id);
+          } else {
+            clearAuth();
+          }
+        } catch (err) {
+          console.error('Auth change error:', err);
           clearAuth();
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
-    return () => {
-      listener?.subscription?.unsubscribe();
-    };
+    return () => listener?.subscription?.unsubscribe();
   }, []);
 
   const clearAuth = () => {
@@ -56,41 +65,36 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserData = async (userId) => {
     try {
-      // Perfil
-      const { data: profileData, error: profileError } = await supabase
+      // PERFIL
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        return;
-      }
+      if (profileData) setProfile(profileData);
 
-      setProfile(profileData);
-
-      // Roles
-      const { data: rolesData, error: rolesError } = await supabase
+      // ROLES
+      const { data: rolesData } = await supabase
         .from('roles')
         .select('role_name')
         .eq('user_id', userId);
 
-      if (rolesError) {
-        console.error('Roles error:', rolesError);
-        return;
+      if (rolesData && rolesData.length > 0) {
+        setRoles(rolesData.map(r => r.role_name));
+      } else {
+        setRoles(['socio']); // fallback
       }
-
-      setRoles(rolesData.map(r => r.role_name));
     } catch (err) {
-      console.error('loadUserData error:', err);
+      console.error('Error loading user data:', err);
+      setRoles(['socio']); // fallback seguro
     }
   };
 
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      password,
+      password
     });
 
     if (error) throw error;
@@ -106,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     return supabase.auth.resetPasswordForEmail(email);
   };
 
-  const hasRole = (roleName) => roles.includes(roleName);
+  const hasRole = (role) => roles.includes(role);
 
   const value = {
     user,
@@ -120,7 +124,6 @@ export const AuthProvider = ({ children }) => {
     isAdministrador: roles.includes('administrador'),
     isDirector: roles.includes('director'),
     isSocio: roles.length > 0,
-    refreshProfile: () => loadUserData(user?.id),
   };
 
   return (
