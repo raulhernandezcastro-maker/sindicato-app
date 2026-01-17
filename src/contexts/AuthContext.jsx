@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase';
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 };
 
 export const AuthProvider = ({ children }) => {
@@ -17,21 +17,16 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const init = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
 
-        if (session?.user) {
-          setUser(session.user);
-          await loadUserProfile(session.user.id);
-        } else {
-          clearAuth();
-        }
-      } catch (err) {
-        console.error('Auth init error:', err);
+      if (data?.session?.user) {
+        setUser(data.session.user);
+        await loadUserData(data.session.user.id);
+      } else {
         clearAuth();
-      } finally {
-        setLoading(false);
       }
+
+      setLoading(false);
     };
 
     init();
@@ -40,7 +35,7 @@ export const AuthProvider = ({ children }) => {
       async (_event, session) => {
         if (session?.user) {
           setUser(session.user);
-          await loadUserProfile(session.user.id);
+          await loadUserData(session.user.id);
         } else {
           clearAuth();
         }
@@ -59,8 +54,9 @@ export const AuthProvider = ({ children }) => {
     setRoles([]);
   };
 
-  const loadUserProfile = async (userId) => {
+  const loadUserData = async (userId) => {
     try {
+      // Perfil
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -68,25 +64,26 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (profileError) {
-        console.error('Error loading profile:', profileError);
+        console.error('Profile error:', profileError);
         return;
       }
 
       setProfile(profileData);
 
+      // Roles
       const { data: rolesData, error: rolesError } = await supabase
         .from('roles')
         .select('role_name')
         .eq('user_id', userId);
 
       if (rolesError) {
-        console.error('Error loading roles:', rolesError);
+        console.error('Roles error:', rolesError);
         return;
       }
 
       setRoles(rolesData.map(r => r.role_name));
-    } catch (error) {
-      console.error('Error in loadUserProfile:', error);
+    } catch (err) {
+      console.error('loadUserData error:', err);
     }
   };
 
@@ -123,7 +120,7 @@ export const AuthProvider = ({ children }) => {
     isAdministrador: roles.includes('administrador'),
     isDirector: roles.includes('director'),
     isSocio: roles.length > 0,
-    refreshProfile: () => loadUserProfile(user?.id),
+    refreshProfile: () => loadUserData(user?.id),
   };
 
   return (
