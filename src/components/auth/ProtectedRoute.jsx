@@ -19,10 +19,8 @@ export function ProtectedRoute({ children, requireRole }) {
   }
 
   if (requireRole) {
-    const hasAccess = hasRole(requireRole) || hasRole('administrador');
-    if (!hasAccess) {
-      return <Navigate to="/" replace />;
-    }
+    const allowed = hasRole(requireRole) || hasRole('administrador');
+    if (!allowed) return <Navigate to="/" replace />;
   }
 
   return children;
