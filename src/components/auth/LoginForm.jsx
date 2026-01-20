@@ -21,7 +21,6 @@ export function LoginForm({ onForgotPassword }) {
     try {
       await signIn(email, password)
     } catch (err) {
-      console.error(err)
       setError('Correo o contraseña incorrectos')
       setLoading(false)
     }
@@ -29,8 +28,10 @@ export function LoginForm({ onForgotPassword }) {
 
   return (
     <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="text-2xl text-center">Sindicato</CardTitle>
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center">
+          Sindicato de Trabajadores
+        </CardTitle>
         <CardDescription className="text-center">
           Ingresa tus credenciales
         </CardDescription>
@@ -41,13 +42,12 @@ export function LoginForm({ onForgotPassword }) {
           {error && <Alert variant="destructive">{error}</Alert>}
 
           <div className="space-y-2">
-            <Label>Email</Label>
+            <Label>Correo</Label>
             <Input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              disabled={loading}
             />
           </div>
 
@@ -58,11 +58,10 @@ export function LoginForm({ onForgotPassword }) {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              disabled={loading}
             />
           </div>
 
-          <Button className="w-full" type="submit" disabled={loading}>
+          <Button className="w-full" disabled={loading}>
             {loading ? 'Ingresando...' : 'Ingresar'}
           </Button>
         </form>
