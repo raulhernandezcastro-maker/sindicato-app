@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, FileText, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Card, CardContent } from '../components/ui/card';
@@ -14,7 +14,7 @@ import { Alert } from '../components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
 export function DocumentosPage() {
-  const { isAdministrador, isDirector, profile } = useAuth();
+  const { isAdministrador, isDirector, user } = useAuth();
   const [documentos, setDocumentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -33,18 +33,15 @@ export function DocumentosPage() {
   const loadDocumentos = async () => {
     try {
       const { data, error } = await supabase
-        .from('documentos') // ✅ TABLA
-        .select('*, profiles:subido_por(nombre)')
+        .from('documentos')
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error loading documentos:', error);
-        return;
-      }
+      if (error) throw error;
 
       setDocumentos(data || []);
     } catch (err) {
-      console.error('Exception loading documentos:', err);
+      console.error('Error loading documentos:', err);
     } finally {
       setLoading(false);
     }
@@ -66,21 +63,24 @@ export function DocumentosPage() {
       return;
     }
 
+    if (!user?.id) {
+      setFormError('Usuario no autenticado');
+      setFormLoading(false);
+      return;
+    }
+
     try {
       const ext = selectedFile.name.split('.').pop();
       const safeTitle = formData.titulo.replace(/\s+/g, '_').toLowerCase();
       const filePath = `${Date.now()}_${safeTitle}.${ext}`;
 
-      // ✅ SUBIDA A STORAGE
-      const { error: uploadError } = await supabase.storage
-        .from('documents') // ✅ BUCKET
-        .upload(filePath, selectedFile, { upsert: false });
+      console.log('Subiendo a bucket documents:', filePath);
 
-      if (uploadError) {
-        console.error(uploadError);
-        setFormError('Error al subir el archivo');
-        return;
-      }
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, selectedFile);
+
+      if (uploadError) throw uploadError;
 
       const { data: publicUrlData } = supabase.storage
         .from('documents')
@@ -89,29 +89,25 @@ export function DocumentosPage() {
       const publicUrl = publicUrlData.publicUrl;
 
       const { data, error } = await supabase
-        .from('documentos') // ✅ TABLA
+        .from('documentos')
         .insert({
           titulo: formData.titulo,
           categoria: formData.categoria,
           archivo_url: publicUrl,
-          subido_por: profile.id
+          subido_por: user.id, // ✅ CORREGIDO
         })
-        .select('*, profiles:subido_por(nombre)')
+        .select()
         .single();
 
-      if (error) {
-        console.error(error);
-        setFormError('Error al guardar en la base de datos');
-        return;
-      }
+      if (error) throw error;
 
       setDocumentos([data, ...documentos]);
       setDialogOpen(false);
       setFormData({ titulo: '', categoria: 'estatutos' });
       setSelectedFile(null);
     } catch (err) {
-      console.error(err);
-      setFormError('Error inesperado');
+      console.error('Error completo:', err);
+      setFormError(err.message || 'Error al subir el documento');
     } finally {
       setFormLoading(false);
     }
@@ -122,18 +118,16 @@ export function DocumentosPage() {
 
     try {
       const { error } = await supabase
-        .from('documentos') // ✅ TABLA
+        .from('documentos')
         .delete()
         .eq('id', documento.id);
 
-      if (error) {
-        console.error(error);
-        return;
-      }
+      if (error) throw error;
 
       setDocumentos(documentos.filter(d => d.id !== documento.id));
     } catch (err) {
       console.error(err);
+      alert('Error eliminando');
     }
   };
 
@@ -161,9 +155,6 @@ export function DocumentosPage() {
               <div className="flex justify-between">
                 <div>
                   <h3 className="font-semibold">{doc.titulo}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Subido por {doc.profiles?.nombre || 'Usuario'}
-                  </p>
                 </div>
                 <div className="flex space-x-2">
                   <Button size="sm" asChild>
