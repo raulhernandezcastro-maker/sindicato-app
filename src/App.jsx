@@ -1,18 +1,18 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { Toaster } from './components/ui/sonner';
+import React from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
+import { Toaster } from './components/ui/sonner'
 
 // Pages
-import { LoginPage } from './pages/LoginPage';
-import { HomePage } from './pages/HomePage';
-import { AvisosPage } from './pages/AvisosPage';
-import { DocumentosPage } from './pages/DocumentosPage';
-import { PerfilPage } from './pages/PerfilPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { CuotasPage } from './pages/CuotasPage';
-import { SociosPage } from './pages/SociosPage';
+import { LoginPage } from './pages/LoginPage'
+import { HomePage } from './pages/HomePage'
+import { AvisosPage } from './pages/AvisosPage'
+import { DocumentosPage } from './pages/DocumentosPage'
+import { PerfilPage } from './pages/PerfilPage'
+import { DashboardPage } from './pages/DashboardPage'
+import { CuotasPage } from './pages/CuotasPage'
+import { SociosPage } from './pages/SociosPage'
 
 export default function App() {
   return (
@@ -89,5 +89,5 @@ export default function App() {
         <Toaster />
       </AuthProvider>
     </BrowserRouter>
-  );
+  )
 }
