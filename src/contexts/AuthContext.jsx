@@ -5,7 +5,7 @@ const AuthContext = createContext(null)
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
   return ctx
 }
 
@@ -15,59 +15,25 @@ export const AuthProvider = ({ children }) => {
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const clearAuth = () => {
-    setUser(null)
-    setProfile(null)
-    setRoles([])
-  }
-
-  const loadProfileAndRoles = async (userId) => {
-    try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (profileError) {
-        console.error('Error loading profile:', profileError)
-      } else {
-        setProfile(profileData)
-      }
-
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('roles')
-        .select('role_name')
-        .eq('user_id', userId)
-
-      if (rolesError) {
-        console.error('Error loading roles:', rolesError)
-      } else {
-        const roleNames = rolesData.map(r => r.role_name)
-        setRoles(roleNames)
-      }
-
-    } catch (err) {
-      console.error('Unexpected error loading profile/roles:', err)
-    }
-  }
-
   useEffect(() => {
+    let mounted = true
+
     const init = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data } = await supabase.auth.getSession()
+        if (!mounted) return
 
-        if (session?.user) {
-          setUser(session.user)
-          await loadProfileAndRoles(session.user.id)
+        if (data?.session?.user) {
+          setUser(data.session.user)
+          await loadUserProfile(data.session.user.id)
         } else {
           clearAuth()
         }
       } catch (err) {
-        console.error('Init auth error:', err)
+        console.error('Auth init error:', err)
         clearAuth()
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
 
@@ -75,30 +41,60 @@ export const AuthProvider = ({ children }) => {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        setLoading(true)
-
-        if (session?.user) {
-          setUser(session.user)
-          await loadProfileAndRoles(session.user.id)
-        } else {
+        try {
+          if (session?.user) {
+            setUser(session.user)
+            await loadUserProfile(session.user.id)
+          } else {
+            clearAuth()
+          }
+        } catch (err) {
+          console.error('Auth state error:', err)
           clearAuth()
+        } finally {
+          setLoading(false)
         }
-
-        setLoading(false)
       }
     )
 
     return () => {
+      mounted = false
       listener?.subscription?.unsubscribe()
     }
   }, [])
 
-  const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
+  const clearAuth = () => {
+    setUser(null)
+    setProfile(null)
+    setRoles([])
+  }
 
+  const loadUserProfile = async (userId) => {
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (profileError) throw profileError
+      setProfile(profileData)
+
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('roles')
+        .select('role_name')
+        .eq('user_id', userId)
+
+      if (rolesError) throw rolesError
+      setRoles(rolesData.map(r => r.role_name))
+    } catch (err) {
+      console.error('Error loading profile/roles:', err)
+      clearAuth()
+    }
+  }
+
+  const signIn = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     return data
   }
@@ -108,11 +104,7 @@ export const AuthProvider = ({ children }) => {
     clearAuth()
   }
 
-  const resetPassword = async (email) => {
-    return supabase.auth.resetPasswordForEmail(email)
-  }
-
-  const hasRole = (roleName) => roles.includes(roleName)
+  const hasRole = (role) => roles.includes(role)
 
   const value = {
     user,
@@ -121,17 +113,11 @@ export const AuthProvider = ({ children }) => {
     loading,
     signIn,
     signOut,
-    resetPassword,
     hasRole,
     isAdministrador: roles.includes('administrador'),
     isDirector: roles.includes('director'),
     isSocio: roles.length > 0,
-    refreshProfile: () => user && loadProfileAndRoles(user.id)
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
