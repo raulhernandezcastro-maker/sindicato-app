@@ -1,82 +1,78 @@
-import React, { useState } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card';
-import { Alert } from '../ui/alert';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState } from 'react'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Label } from '../ui/label'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card'
+import { Alert } from '../ui/alert'
+import { useAuth } from '../../contexts/AuthContext'
 
 export function LoginForm({ onForgotPassword }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const { signIn } = useAuth()
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+    e.preventDefault()
+    setError('')
+    setLoading(true)
 
     try {
-      await signIn(email, password);
+      await signIn(email, password)
     } catch (err) {
-      console.error(err);
-      setError('Correo o contraseña incorrectos');
-      setLoading(false);
+      console.error(err)
+      setError('Correo o contraseña incorrectos')
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">
-          Sindicato de Trabajadores
-        </CardTitle>
+      <CardHeader>
+        <CardTitle className="text-2xl text-center">Sindicato</CardTitle>
         <CardDescription className="text-center">
           Ingresa tus credenciales
         </CardDescription>
       </CardHeader>
+
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <Alert variant="destructive">{error}</Alert>}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Correo</Label>
+            <Label>Email</Label>
             <Input
-              id="email"
               type="email"
-              placeholder="correo@ejemplo.cl"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               required
               disabled={loading}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
+            <Label>Contraseña</Label>
             <Input
-              id="password"
               type="password"
-              placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               required
               disabled={loading}
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button className="w-full" type="submit" disabled={loading}>
             {loading ? 'Ingresando...' : 'Ingresar'}
           </Button>
         </form>
       </CardContent>
+
       <CardFooter className="flex justify-center">
-        <Button variant="link" onClick={onForgotPassword} disabled={loading}>
+        <Button variant="link" onClick={onForgotPassword}>
           ¿Olvidaste tu contraseña?
         </Button>
       </CardFooter>
     </Card>
-  );
+  )
 }
