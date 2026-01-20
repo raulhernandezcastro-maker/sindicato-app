@@ -20,7 +20,9 @@ export function ProtectedRoute({ children, requireRole }) {
 
   if (requireRole) {
     const allowed = hasRole(requireRole) || hasRole('administrador')
-    if (!allowed) return <Navigate to="/" replace />
+    if (!allowed) {
+      return <Navigate to="/" replace />
+    }
   }
 
   return children
