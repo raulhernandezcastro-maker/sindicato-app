@@ -16,14 +16,13 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let cancelled = false
+    let mounted = true
 
     const init = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession()
+        const { data } = await supabase.auth.getSession()
 
-        if (error) throw error
-        if (cancelled) return
+        if (!mounted) return
 
         if (data?.session?.user) {
           setUser(data.session.user)
@@ -32,10 +31,10 @@ export const AuthProvider = ({ children }) => {
           clearAuth()
         }
       } catch (err) {
-        console.error('AUTH INIT ERROR:', err)
+        console.error('Auth init error:', err)
         clearAuth()
       } finally {
-        if (!cancelled) setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
 
@@ -51,7 +50,7 @@ export const AuthProvider = ({ children }) => {
             clearAuth()
           }
         } catch (err) {
-          console.error('AUTH STATE ERROR:', err)
+          console.error('Auth state error:', err)
           clearAuth()
         } finally {
           setLoading(false)
@@ -60,7 +59,7 @@ export const AuthProvider = ({ children }) => {
     )
 
     return () => {
-      cancelled = true
+      mounted = false
       listener?.subscription?.unsubscribe()
     }
   }, [])
@@ -73,25 +72,30 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = async (userId) => {
     try {
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
-      if (profileError) throw profileError
-      setProfile(profileData)
+      if (profileData) {
+        setProfile(profileData)
+      }
 
-      const { data: rolesData, error: rolesError } = await supabase
+      const { data: rolesData } = await supabase
         .from('roles')
         .select('role_name')
         .eq('user_id', userId)
 
-      if (rolesError) throw rolesError
-      setRoles(rolesData.map(r => r.role_name))
+      if (rolesData) {
+        setRoles(rolesData.map(r => r.role_name))
+      } else {
+        setRoles([])
+      }
     } catch (err) {
-      console.error('PROFILE/ROLE LOAD ERROR:', err)
-      clearAuth()
+      console.error('Error loading profile/roles:', err)
+      setProfile(null)
+      setRoles([])
     }
   }
 
