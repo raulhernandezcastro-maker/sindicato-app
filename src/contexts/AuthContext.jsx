@@ -16,12 +16,14 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let mounted = true
+    let cancelled = false
 
     const init = async () => {
       try {
-        const { data } = await supabase.auth.getSession()
-        if (!mounted) return
+        const { data, error } = await supabase.auth.getSession()
+
+        if (error) throw error
+        if (cancelled) return
 
         if (data?.session?.user) {
           setUser(data.session.user)
@@ -30,10 +32,10 @@ export const AuthProvider = ({ children }) => {
           clearAuth()
         }
       } catch (err) {
-        console.error('Auth init error:', err)
+        console.error('AUTH INIT ERROR:', err)
         clearAuth()
       } finally {
-        if (mounted) setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
@@ -49,7 +51,7 @@ export const AuthProvider = ({ children }) => {
             clearAuth()
           }
         } catch (err) {
-          console.error('Auth state error:', err)
+          console.error('AUTH STATE ERROR:', err)
           clearAuth()
         } finally {
           setLoading(false)
@@ -58,7 +60,7 @@ export const AuthProvider = ({ children }) => {
     )
 
     return () => {
-      mounted = false
+      cancelled = true
       listener?.subscription?.unsubscribe()
     }
   }, [])
@@ -88,7 +90,7 @@ export const AuthProvider = ({ children }) => {
       if (rolesError) throw rolesError
       setRoles(rolesData.map(r => r.role_name))
     } catch (err) {
-      console.error('Error loading profile/roles:', err)
+      console.error('PROFILE/ROLE LOAD ERROR:', err)
       clearAuth()
     }
   }
