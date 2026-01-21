@@ -1,98 +1,54 @@
-import React, { useState } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/card';
-import { Alert } from '../ui/alert';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState } from 'react'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Label } from '../ui/label'
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/card'
+import { Alert } from '../ui/alert'
+import { supabase } from '../../lib/supabase'
 
 export function ForgotPasswordForm({ onBack }) {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const { resetPassword } = useAuth();
-
-  console.log('ForgotPasswordForm: Component rendered');
+  const [email, setEmail] = useState('')
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess(false);
-    setLoading(true);
+    e.preventDefault()
+    setError('')
+    setMessage('')
 
-    console.log('ForgotPasswordForm: Requesting password reset for:', email);
-
-    try {
-      const { error } = await resetPassword(email);
-
-      if (error) {
-        console.error('ForgotPasswordForm: Password reset failed:', error);
-        setError('Error al enviar el correo. Por favor, verifica tu dirección de correo.');
-        setLoading(false);
-        return;
-      }
-
-      console.log('ForgotPasswordForm: Password reset email sent successfully');
-      setSuccess(true);
-      setLoading(false);
-    } catch (error) {
-      console.error('ForgotPasswordForm: Exception during password reset:', error);
-      setError('Error al enviar el correo. Por favor, intenta nuevamente.');
-      setLoading(false);
+    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    if (error) {
+      setError('Error enviando el correo')
+    } else {
+      setMessage('Correo enviado')
     }
-  };
+  }
 
   return (
     <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">
-          Recuperar Contraseña
-        </CardTitle>
-        <CardDescription className="text-center">
-          Ingresa tu correo electrónico para recibir instrucciones
-        </CardDescription>
+      <CardHeader>
+        <CardTitle>Recuperar contraseña</CardTitle>
       </CardHeader>
+
       <CardContent>
-        {success ? (
-          <Alert className="mb-4">
-            <p className="font-semibold">Correo enviado</p>
-            <p className="text-sm mt-1">
-              Revisa tu bandeja de entrada para restablecer tu contraseña.
-            </p>
-          </Alert>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                {error}
-              </Alert>
-            )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <Alert variant="destructive">{error}</Alert>}
+          {message && <Alert>{message}</Alert>}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Correo electrónico</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="correo@ejemplo.cl"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
+          <div>
+            <Label>Email</Label>
+            <Input value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Enviando...' : 'Enviar instrucciones'}
-            </Button>
-          </form>
-        )}
+          <Button className="w-full">Enviar</Button>
+        </form>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <Button variant="link" onClick={onBack} disabled={loading}>
-          Volver al inicio de sesión
+
+      <CardFooter>
+        <Button variant="link" onClick={onBack}>
+          Volver
         </Button>
       </CardFooter>
     </Card>
-  );
+  )
 }
