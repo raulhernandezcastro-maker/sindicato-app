@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
@@ -15,19 +15,56 @@ export const AuthProvider = ({ children }) => {
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // 🔒 evita loops y estados colgados
+  const initialized = useRef(false)
+
   useEffect(() => {
-    let cancelled = false
+    let isMounted = true
+
+    const safeSetLoadingFalse = () => {
+      if (isMounted) setLoading(false)
+    }
+
+    const clearAuth = () => {
+      if (!isMounted) return
+      setUser(null)
+      setProfile(null)
+      setRoles([])
+    }
+
+    const loadUserData = async (userId) => {
+      try {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single()
+
+        if (isMounted) setProfile(profileData ?? null)
+
+        const { data: rolesData } = await supabase
+          .from('roles')
+          .select('role_name')
+          .eq('user_id', userId)
+
+        if (isMounted) {
+          setRoles((rolesData ?? []).map(r => r.role_name))
+        }
+      } catch (err) {
+        console.error('Error loading profile/roles:', err)
+        clearAuth()
+      }
+    }
 
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession()
 
-        if (cancelled) return
+        if (!isMounted) return
 
         if (data?.session?.user) {
-          const u = data.session.user
-          setUser(u)
-          await loadUserProfile(u.id)
+          setUser(data.session.user)
+          await loadUserData(data.session.user.id)
         } else {
           clearAuth()
         }
@@ -35,65 +72,38 @@ export const AuthProvider = ({ children }) => {
         console.error('Auth init error:', err)
         clearAuth()
       } finally {
-        if (!cancelled) setLoading(false)
+        safeSetLoadingFalse()
+        initialized.current = true
       }
     }
 
     init()
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
+    const { data: subscription } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!initialized.current) return
+
         try {
           if (session?.user) {
             setUser(session.user)
-            await loadUserProfile(session.user.id)
+            await loadUserData(session.user.id)
           } else {
             clearAuth()
           }
         } catch (err) {
-          console.error('Auth state error:', err)
+          console.error('Auth state change error:', err)
           clearAuth()
         } finally {
-          setLoading(false)
+          safeSetLoadingFalse()
         }
       }
     )
 
     return () => {
-      cancelled = true
-      listener?.subscription?.unsubscribe()
+      isMounted = false
+      subscription?.subscription?.unsubscribe()
     }
   }, [])
-
-  const clearAuth = () => {
-    setUser(null)
-    setProfile(null)
-    setRoles([])
-  }
-
-  const loadUserProfile = async (userId) => {
-    try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (profileError) throw profileError
-      setProfile(profileData)
-
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('roles')
-        .select('role_name')
-        .eq('user_id', userId)
-
-      if (rolesError) throw rolesError
-      setRoles(rolesData.map(r => r.role_name))
-    } catch (err) {
-      console.error('Error loading profile/roles:', err)
-      clearAuth()
-    }
-  }
 
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
@@ -103,7 +113,10 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    clearAuth()
+    setUser(null)
+    setProfile(null)
+    setRoles([])
+    setLoading(false)
   }
 
   const hasRole = (role) => roles.includes(role)
@@ -121,5 +134,9 @@ export const AuthProvider = ({ children }) => {
     isSocio: roles.length > 0,
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
