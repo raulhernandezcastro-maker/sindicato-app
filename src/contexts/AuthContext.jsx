@@ -16,17 +16,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let mounted = true
+    let cancelled = false
 
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession()
 
-        if (!mounted) return
+        if (cancelled) return
 
         if (data?.session?.user) {
-          setUser(data.session.user)
-          await loadUserProfile(data.session.user.id)
+          const u = data.session.user
+          setUser(u)
+          await loadUserProfile(u.id)
         } else {
           clearAuth()
         }
@@ -34,7 +35,7 @@ export const AuthProvider = ({ children }) => {
         console.error('Auth init error:', err)
         clearAuth()
       } finally {
-        if (mounted) setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
@@ -59,7 +60,7 @@ export const AuthProvider = ({ children }) => {
     )
 
     return () => {
-      mounted = false
+      cancelled = true
       listener?.subscription?.unsubscribe()
     }
   }, [])
@@ -72,30 +73,25 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = async (userId) => {
     try {
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
-      if (profileData) {
-        setProfile(profileData)
-      }
+      if (profileError) throw profileError
+      setProfile(profileData)
 
-      const { data: rolesData } = await supabase
+      const { data: rolesData, error: rolesError } = await supabase
         .from('roles')
         .select('role_name')
         .eq('user_id', userId)
 
-      if (rolesData) {
-        setRoles(rolesData.map(r => r.role_name))
-      } else {
-        setRoles([])
-      }
+      if (rolesError) throw rolesError
+      setRoles(rolesData.map(r => r.role_name))
     } catch (err) {
       console.error('Error loading profile/roles:', err)
-      setProfile(null)
-      setRoles([])
+      clearAuth()
     }
   }
 
