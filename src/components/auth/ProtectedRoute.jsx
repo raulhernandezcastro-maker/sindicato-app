@@ -1,16 +1,14 @@
 import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { Spinner } from '../ui/spinner'
 
 export function ProtectedRoute({ children, requireRole }) {
   const { user, loading, hasRole } = useAuth()
 
-  // ⛔ MATA LA RUEDA INFINITA
-  if (loading === true) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Spinner className="w-8 h-8" />
+        <p>Cargando sesión…</p>
       </div>
     )
   }
