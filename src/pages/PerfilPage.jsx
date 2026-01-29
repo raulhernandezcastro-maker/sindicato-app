@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { AppLayout } from '../components/layout/AppLayout'
 import {
-  Card, CardHeader, CardTitle, CardDescription, CardContent
+  Card, CardHeader, CardTitle, CardContent
 } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -50,7 +50,7 @@ export function PerfilPage() {
           nombre: formData.nombre,
           telefono: formData.telefono
         })
-        .eq('id', profile.id)
+        .eq('id', user.id)
 
       if (error) throw error
 
@@ -123,7 +123,7 @@ export function PerfilPage() {
       if (updateError) throw updateError
 
       await refreshProfile()
-      setSuccess('Foto de perfil actualizada')
+      setSuccess('Foto de perfil actualizada correctamente')
     } catch (err) {
       console.error(err)
       setError('Error al subir la foto')
@@ -169,7 +169,13 @@ export function PerfilPage() {
                 <span><Camera className="w-4 h-4 mr-2" /> Cambiar Foto</span>
               </Button>
             </Label>
-            <Input id="photo" type="file" accept="image/*" hidden onChange={handlePhotoUpload} />
+            <Input
+              id="photo"
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handlePhotoUpload}
+            />
           </CardContent>
         </Card>
 
@@ -180,8 +186,16 @@ export function PerfilPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleProfileUpdate} className="space-y-4">
-              <Input value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} />
-              <Input value={formData.telefono} onChange={e => setFormData({ ...formData, telefono: e.target.value })} />
+              <Input
+                placeholder="Nombre"
+                value={formData.nombre}
+                onChange={e => setFormData({ ...formData, nombre: e.target.value })}
+              />
+              <Input
+                placeholder="Teléfono"
+                value={formData.telefono}
+                onChange={e => setFormData({ ...formData, telefono: e.target.value })}
+              />
               <Button disabled={savingProfile}>
                 {savingProfile ? 'Guardando...' : 'Guardar Cambios'}
               </Button>
@@ -196,11 +210,15 @@ export function PerfilPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePasswordUpdate} className="space-y-4">
-              <Input type="password" placeholder="Nueva contraseña"
+              <Input
+                type="password"
+                placeholder="Nueva contraseña"
                 value={passwordData.newPassword}
                 onChange={e => setPasswordData({ ...passwordData, newPassword: e.target.value })}
               />
-              <Input type="password" placeholder="Confirmar contraseña"
+              <Input
+                type="password"
+                placeholder="Confirmar contraseña"
                 value={passwordData.confirmPassword}
                 onChange={e => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
               />
