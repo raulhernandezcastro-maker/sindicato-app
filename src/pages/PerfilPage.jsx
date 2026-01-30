@@ -58,9 +58,14 @@ export function PerfilPage() {
       return
     }
 
-    await refreshProfile()
+    // ✅ liberar UI primero
     setSuccess('Perfil actualizado correctamente')
     setSavingProfile(false)
+
+    // 🔄 refresh en segundo plano (NO bloquea)
+    refreshProfile().catch(err => {
+      console.warn('refreshProfile falló:', err)
+    })
   }
 
   /* ================= CONTRASEÑA ================= */
@@ -69,13 +74,13 @@ export function PerfilPage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+    setSavingPassword(true)
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setError('Las contraseñas no coinciden')
+      setSavingPassword(false)
       return
     }
-
-    setSavingPassword(true)
 
     const { error } = await supabase.auth.updateUser({
       password: passwordData.newPassword
@@ -129,9 +134,14 @@ export function PerfilPage() {
       return
     }
 
-    await refreshProfile()
+    // ✅ liberar UI primero
     setSuccess('Foto de perfil actualizada correctamente')
     setSavingPhoto(false)
+
+    // 🔄 refresh en segundo plano
+    refreshProfile().catch(err => {
+      console.warn('refreshProfile falló:', err)
+    })
   }
 
   const getInitials = (nombre) =>
@@ -168,7 +178,10 @@ export function PerfilPage() {
 
             <Label htmlFor="photo" className="cursor-pointer">
               <Button disabled={savingPhoto} asChild>
-                <span><Camera className="w-4 h-4 mr-2" /> Cambiar Foto</span>
+                <span>
+                  <Camera className="w-4 h-4 mr-2" />
+                  Cambiar Foto
+                </span>
               </Button>
             </Label>
             <Input
@@ -232,7 +245,9 @@ export function PerfilPage() {
         </Card>
 
         <div className="flex gap-2">
-          {roles.map(r => <Badge key={r}>{getRoleLabel(r)}</Badge>)}
+          {roles.map(r => (
+            <Badge key={r}>{getRoleLabel(r)}</Badge>
+          ))}
         </div>
       </div>
     </AppLayout>
