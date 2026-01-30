@@ -43,25 +43,24 @@ export function PerfilPage() {
     setSuccess('')
     setSavingProfile(true)
 
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          nombre: formData.nombre,
-          telefono: formData.telefono
-        })
-        .eq('id', user.id)
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        nombre: formData.nombre,
+        telefono: formData.telefono
+      })
+      .eq('id', user.id)
 
-      if (error) throw error
-
-      await refreshProfile()
-      setSuccess('Perfil actualizado correctamente')
-    } catch (err) {
-      console.error(err)
+    if (error) {
+      console.error(error)
       setError('Error al actualizar el perfil')
-    } finally {
       setSavingProfile(false)
+      return
     }
+
+    await refreshProfile()
+    setSuccess('Perfil actualizado correctamente')
+    setSavingProfile(false)
   }
 
   /* ================= CONTRASEÑA ================= */
@@ -78,21 +77,20 @@ export function PerfilPage() {
 
     setSavingPassword(true)
 
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: passwordData.newPassword
-      })
+    const { error } = await supabase.auth.updateUser({
+      password: passwordData.newPassword
+    })
 
-      if (error) throw error
-
-      setPasswordData({ newPassword: '', confirmPassword: '' })
-      setSuccess('Contraseña actualizada correctamente')
-    } catch (err) {
-      console.error(err)
+    if (error) {
+      console.error(error)
       setError('Error al cambiar la contraseña')
-    } finally {
       setSavingPassword(false)
+      return
     }
+
+    setPasswordData({ newPassword: '', confirmPassword: '' })
+    setSuccess('Contraseña actualizada correctamente')
+    setSavingPassword(false)
   }
 
   /* ================= FOTO ================= */
@@ -105,31 +103,35 @@ export function PerfilPage() {
     setSuccess('')
     setSavingPhoto(true)
 
-    try {
-      const ext = file.name.split('.').pop()
-      const path = `${user.id}.${ext}`
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}.${ext}`
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true })
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true })
 
-      if (uploadError) throw uploadError
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ foto_url: path })
-        .eq('id', user.id)
-
-      if (updateError) throw updateError
-
-      await refreshProfile()
-      setSuccess('Foto de perfil actualizada correctamente')
-    } catch (err) {
-      console.error(err)
+    if (uploadError) {
+      console.error(uploadError)
       setError('Error al subir la foto')
-    } finally {
       setSavingPhoto(false)
+      return
     }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ foto_url: path })
+      .eq('id', user.id)
+
+    if (updateError) {
+      console.error(updateError)
+      setError('Error al guardar la foto')
+      setSavingPhoto(false)
+      return
+    }
+
+    await refreshProfile()
+    setSuccess('Foto de perfil actualizada correctamente')
+    setSavingPhoto(false)
   }
 
   const getInitials = (nombre) =>
