@@ -1,23 +1,22 @@
 import React, { useEffect, useState } from 'react'
-import { DollarSign, TrendingUp, AlertCircle } from 'lucide-react'
+import { DollarSign, TrendingUp, AlertCircle, Upload } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+
 import { AppLayout } from '../components/layout/AppLayout'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card'
 import { Spinner } from '../components/ui/spinner'
 import { Badge } from '../components/ui/badge'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '../components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
+import {
+  Tabs, TabsContent, TabsList, TabsTrigger
+} from '../components/ui/tabs'
 
-// 🔴 IMPORT CLAVE (ANTES NO ESTABA)
-import { CargaCuotasExcel } from '../components/cuotas/CargaCuotasExcel'
+// ✅ IMPORTS CORRECTOS (default)
+import CargaCuotasExcel from '../components/cuotas/CargaCuotasExcel'
+import PreviewCuotas from '../components/cuotas/PreviewCuotas'
 
 export function CuotasPage() {
   const { isAdministrador } = useAuth()
@@ -32,154 +31,61 @@ export function CuotasPage() {
   const [pagos, setPagos] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const canViewDetails = isAdministrador
-
   useEffect(() => {
     loadData()
   }, [])
 
   const loadData = async () => {
     try {
-      const { data: allPagos, error } = await supabase
+      const { data, error } = await supabase
         .from('pagos')
         .select('*')
 
       if (error) throw error
 
-      const pagosPagados = allPagos.filter(p => p.estado === 'pagado')
-      const pagosPendientes = allPagos.filter(p => p.estado === 'pendiente')
-      const pagosAtrasados = allPagos.filter(p => p.estado === 'atrasado')
-
-      const totalRecaudado = pagosPagados.reduce(
-        (sum, p) => sum + Number(p.monto || 0),
-        0
-      )
+      const pagados = data.filter(p => p.estado === 'pagado')
+      const pendientes = data.filter(p => p.estado === 'pendiente')
+      const atrasados = data.filter(p => p.estado === 'atrasado')
 
       setStats({
-        totalPagos: allPagos.length,
-        pagosPendientes: pagosPendientes.length,
-        pagosAtrasados: pagosAtrasados.length,
-        totalRecaudado
+        totalPagos: data.length,
+        pagosPendientes: pendientes.length,
+        pagosAtrasados: atrasados.length,
+        totalRecaudado: pagados.reduce((sum, p) => sum + Number(p.monto), 0)
       })
 
-      if (canViewDetails) {
-        const { data, error } = await supabase
+      if (isAdministrador) {
+        const { data: detalle } = await supabase
           .from('pagos')
-          .select('*, profiles:user_id(nombre, rut)')
+          .select('*, profiles(nombre, rut)')
           .order('created_at', { ascending: false })
 
-        if (!error) setPagos(data || [])
+        setPagos(detalle || [])
       }
     } catch (err) {
-      console.error('Error cargando cuotas:', err)
+      console.error(err)
     } finally {
       setLoading(false)
     }
   }
 
-  const getEstadoBadgeVariant = (estado) => {
+  const estadoBadge = (estado) => {
     if (estado === 'pagado') return 'default'
     if (estado === 'pendiente') return 'secondary'
     if (estado === 'atrasado') return 'destructive'
     return 'secondary'
   }
 
-  const getEstadoLabel = (estado) => {
-    if (estado === 'pagado') return 'Pagado'
-    if (estado === 'pendiente') return 'Pendiente'
-    if (estado === 'atrasado') return 'Atrasado'
-    return estado
-  }
-
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP'
-    }).format(amount)
-
-  const statCards = [
-    {
-      title: 'Total Recaudado',
-      value: formatCurrency(stats.totalRecaudado),
-      icon: DollarSign
-    },
-    {
-      title: 'Pagos Realizados',
-      value: stats.totalPagos - stats.pagosPendientes - stats.pagosAtrasados,
-      icon: TrendingUp
-    },
-    {
-      title: 'Pagos Pendientes',
-      value: stats.pagosPendientes,
-      icon: AlertCircle
-    },
-    {
-      title: 'Pagos Atrasados',
-      value: stats.pagosAtrasados,
-      icon: AlertCircle
-    }
-  ]
-
-  const PagosTable = ({ estado }) => {
-    const filtrados = pagos.filter(p => p.estado === estado)
-
-    if (filtrados.length === 0) {
-      return (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            No hay pagos {getEstadoLabel(estado)}
-          </CardContent>
-        </Card>
-      )
-    }
-
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>RUT</TableHead>
-                <TableHead>Periodo</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Estado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtrados.map(p => (
-                <TableRow key={p.id}>
-                  <TableCell>{p.profiles?.nombre || '-'}</TableCell>
-                  <TableCell>{p.profiles?.rut || '-'}</TableCell>
-                  <TableCell>{p.periodo}</TableCell>
-                  <TableCell>{formatCurrency(p.monto)}</TableCell>
-                  <TableCell>
-                    {p.fecha_pago
-                      ? new Date(p.fecha_pago).toLocaleDateString('es-CL')
-                      : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getEstadoBadgeVariant(p.estado)}>
-                      {getEstadoLabel(p.estado)}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    )
-  }
+  const formatCLP = (monto) =>
+    new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(monto)
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="space-y-6 max-w-6xl mx-auto">
         <div>
           <h1 className="text-3xl font-bold">Gestión de Cuotas</h1>
           <p className="text-muted-foreground">
-            Administración de pagos y cargas masivas
+            Administración y control de pagos
           </p>
         </div>
 
@@ -189,49 +95,91 @@ export function CuotasPage() {
           </div>
         ) : (
           <>
-            {/* 🔴 BLOQUE NUEVO – SOLO ADMIN */}
-            {canViewDetails && <CargaCuotasExcel />}
+            {/* ===== BLOQUE CARGA MASIVA ===== */}
+            {isAdministrador && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="w-5 h-5" />
+                    Carga masiva de cuotas (Excel)
+                  </CardTitle>
+                  <CardDescription>
+                    Importa pagos mensuales de socios y aportantes desde Excel
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <CargaCuotasExcel />
+                  <PreviewCuotas />
+                </CardContent>
+              </Card>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {statCards.map(({ title, value, icon: Icon }) => (
-                <Card key={title}>
-                  <CardContent className="pt-6 flex justify-between items-center">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{title}</p>
-                      <p className="text-2xl font-bold">{value}</p>
-                    </div>
-                    <Icon className="w-6 h-6 text-muted-foreground" />
-                  </CardContent>
-                </Card>
-              ))}
+            {/* ===== ESTADÍSTICAS ===== */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">Total Recaudado</p>
+                  <p className="text-2xl font-bold">
+                    {formatCLP(stats.totalRecaudado)}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">Pagos Pendientes</p>
+                  <p className="text-2xl font-bold">{stats.pagosPendientes}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">Pagos Atrasados</p>
+                  <p className="text-2xl font-bold">{stats.pagosAtrasados}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">Total Registros</p>
+                  <p className="text-2xl font-bold">{stats.totalPagos}</p>
+                </CardContent>
+              </Card>
             </div>
 
-            {canViewDetails && (
+            {/* ===== TABLA ===== */}
+            {isAdministrador && (
               <Card>
                 <CardHeader>
                   <CardTitle>Detalle de Pagos</CardTitle>
-                  <CardDescription>
-                    Pagos clasificados por estado
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Tabs defaultValue="pagado">
-                    <TabsList className="grid grid-cols-3">
-                      <TabsTrigger value="pagado">Pagados</TabsTrigger>
-                      <TabsTrigger value="pendiente">Pendientes</TabsTrigger>
-                      <TabsTrigger value="atrasado">Atrasados</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="pagado">
-                      <PagosTable estado="pagado" />
-                    </TabsContent>
-                    <TabsContent value="pendiente">
-                      <PagosTable estado="pendiente" />
-                    </TabsContent>
-                    <TabsContent value="atrasado">
-                      <PagosTable estado="atrasado" />
-                    </TabsContent>
-                  </Tabs>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>RUT</TableHead>
+                        <TableHead>Periodo</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Estado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pagos.map(p => (
+                        <TableRow key={p.id}>
+                          <TableCell>{p.profiles?.nombre}</TableCell>
+                          <TableCell>{p.profiles?.rut}</TableCell>
+                          <TableCell>{p.periodo}</TableCell>
+                          <TableCell>{formatCLP(p.monto)}</TableCell>
+                          <TableCell>
+                            <Badge variant={estadoBadge(p.estado)}>
+                              {p.estado}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}
@@ -241,3 +189,5 @@ export function CuotasPage() {
     </AppLayout>
   )
 }
+
+export default CuotasPage
