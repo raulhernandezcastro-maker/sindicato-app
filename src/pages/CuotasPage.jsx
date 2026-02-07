@@ -22,8 +22,8 @@ import {
   TabsTrigger
 } from '../components/ui/tabs'
 
-// 🔽 IMPORT CORRECTO DEL COMPONENTE DE EXCEL
-import { CargaCuotasExcel } from '../components/cuotas/CargaCuotasExcel'
+// ✅ IMPORT CORRECTO (DEFAULT EXPORT)
+import CargaCuotasExcel from '../components/cuotas/CargaCuotasExcel'
 
 export function CuotasPage() {
   const { isAdministrador } = useAuth()
@@ -48,7 +48,6 @@ export function CuotasPage() {
     setLoading(true)
 
     try {
-      // Cargar pagos
       const { data: allPagos, error } = await supabase
         .from('cuotas')
         .select('*')
@@ -72,14 +71,12 @@ export function CuotasPage() {
       })
 
       if (canViewDetails) {
-        const { data: detalle, error: errDetalle } = await supabase
+        const { data: detalle } = await supabase
           .from('cuotas')
           .select('*, socios(nombre, rut)')
           .order('created_at', { ascending: false })
 
-        if (!errDetalle) {
-          setPagos(detalle || [])
-        }
+        setPagos(detalle || [])
       }
     } catch (err) {
       console.error('Error cargando cuotas:', err)
@@ -158,7 +155,6 @@ export function CuotasPage() {
           </p>
         </div>
 
-        {/* 🔄 SPINNER SIN BLOQUEAR LA APP */}
         {loading && (
           <div className="flex justify-center py-12">
             <Spinner className="w-8 h-8" />
@@ -167,40 +163,7 @@ export function CuotasPage() {
 
         {!loading && (
           <>
-            {/* 📊 ESTADÍSTICAS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">Total recaudado</p>
-                  <p className="text-2xl font-bold">
-                    {formatCLP(stats.totalRecaudado)}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">Pendientes</p>
-                  <p className="text-2xl font-bold">{stats.pagosPendientes}</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">Atrasados</p>
-                  <p className="text-2xl font-bold">{stats.pagosAtrasados}</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">Total pagos</p>
-                  <p className="text-2xl font-bold">{stats.totalPagos}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* 📥 CARGA EXCEL (SOLO ADMIN) */}
+            {/* 📥 CARGA MASIVA */}
             {isAdministrador && <CargaCuotasExcel />}
 
             {/* 📋 DETALLE */}
