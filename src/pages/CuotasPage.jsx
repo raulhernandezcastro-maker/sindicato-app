@@ -1,219 +1,87 @@
-import React, { useEffect, useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
-import { AppLayout } from '../components/layout/AppLayout'
+import React, { useState } from 'react'
+import { supabase } from '../../lib/supabase'
+import { Button } from '../ui/button'
+import { Alert } from '../ui/alert'
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent
-} from '../components/ui/card'
+export default function ConfirmarCuotas({ onFinish }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
-import { Spinner } from '../components/ui/spinner'
-import { Badge } from '../components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '../components/ui/table'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
-} from '../components/ui/tabs'
-
-import CargaCuotasExcel from '../components/cuotas/CargaCuotasExcel'
-import PreviewCuotas from '../components/cuotas/PreviewCuotas'
-
-export function CuotasPage() {
-  const { isAdministrador } = useAuth()
-
-  const [stats, setStats] = useState({
-    totalPagos: 0,
-    pagosPendientes: 0,
-    pagosAtrasados: 0,
-    totalRecaudado: 0
-  })
-
-  const [pagos, setPagos] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (isAdministrador) {
-      cargarResumen()
-    } else {
-      setLoading(false)
-    }
-  }, [isAdministrador])
-
-  const cargarResumen = async () => {
+  const confirmarCuotas = async () => {
     setLoading(true)
+    setError('')
+    setSuccess('')
 
     try {
-      const { data, error } = await supabase
-        .from('cuotas')
+      /* 1️⃣ Obtener filas válidas */
+      const { data: filas, error: fetchError } = await supabase
+        .from('cuotas_importacion')
         .select('*')
+        .eq('estado', 'validado')
 
-      if (error) throw error
+      if (fetchError) throw fetchError
 
-      const pagados = data.filter(p => p.estado === 'pagado')
-      const pendientes = data.filter(p => p.estado === 'pendiente')
-      const atrasados = data.filter(p => p.estado === 'atrasado')
+      if (!filas || filas.length === 0) {
+        setError('No hay cuotas válidas para confirmar')
+        setLoading(false)
+        return
+      }
 
-      const totalRecaudado = pagados.reduce(
-        (sum, p) => sum + Number(p.monto || 0),
-        0
-      )
+      /* 2️⃣ Insertar en tabla definitiva */
+      const cuotasFinales = filas.map(f => ({
+        rut: f.rut,
+        tipo: f.tipo,
+        periodo: f.periodo,
+        monto: f.monto,
+        estado: 'pagado'
+      }))
 
-      setStats({
-        totalPagos: data.length,
-        pagosPendientes: pendientes.length,
-        pagosAtrasados: atrasados.length,
-        totalRecaudado
-      })
-
-      const { data: detalle } = await supabase
+      const { error: insertError } = await supabase
         .from('cuotas')
-        .select('*, socios(nombre, rut)')
-        .order('created_at', { ascending: false })
+        .insert(cuotasFinales)
 
-      setPagos(detalle || [])
+      if (insertError) throw insertError
+
+      /* 3️⃣ Marcar como confirmadas */
+      const ids = filas.map(f => f.id)
+
+      const { error: updateError } = await supabase
+        .from('cuotas_importacion')
+        .update({ estado: 'confirmado' })
+        .in('id', ids)
+
+      if (updateError) throw updateError
+
+      setSuccess(`✔ ${filas.length} cuotas confirmadas correctamente`)
+      if (onFinish) onFinish()
+
     } catch (err) {
-      console.error('Error cargando cuotas:', err)
+      console.error(err)
+      setError('Error al confirmar las cuotas')
     } finally {
       setLoading(false)
     }
   }
 
-  const estadoBadge = (estado) => {
-    if (estado === 'pagado') return 'default'
-    if (estado === 'pendiente') return 'secondary'
-    if (estado === 'atrasado') return 'destructive'
-    return 'secondary'
-  }
-
-  const formatCLP = (valor) =>
-    new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP'
-    }).format(valor)
-
-  const PagosTable = ({ estado }) => {
-    const lista = pagos.filter(p => p.estado === estado)
-
-    if (lista.length === 0) {
-      return (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No hay pagos {estado}
-          </CardContent>
-        </Card>
-      )
-    }
-
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>RUT</TableHead>
-                <TableHead>Periodo</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Estado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lista.map(p => (
-                <TableRow key={p.id}>
-                  <TableCell>{p.socios?.nombre || '—'}</TableCell>
-                  <TableCell>{p.socios?.rut || '—'}</TableCell>
-                  <TableCell>{p.periodo}</TableCell>
-                  <TableCell>{formatCLP(p.monto)}</TableCell>
-                  <TableCell>
-                    <Badge variant={estadoBadge(p.estado)}>
-                      {p.estado}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <AppLayout>
-      <div className="space-y-6 max-w-6xl mx-auto">
-        <div>
-          <h1 className="text-3xl font-bold">Gestión de Cuotas</h1>
-          <p className="text-muted-foreground">
-            Carga, revisión y control de pagos
-          </p>
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Confirmar cuotas importadas</CardTitle>
+      </CardHeader>
 
-        {!isAdministrador && (
-          <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">
-              Solo el administrador puede acceder a la gestión de cuotas
-            </CardContent>
-          </Card>
-        )}
+      <CardContent className="space-y-4">
+        {error && <Alert variant="destructive">{error}</Alert>}
+        {success && <Alert>{success}</Alert>}
 
-        {isAdministrador && (
-          <>
-            {/* 📥 CARGA MASIVA */}
-            <CargaCuotasExcel />
-
-            {/* 👀 PREVIEW */}
-            <PreviewCuotas />
-
-            {/* 📊 RESUMEN */}
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <Spinner className="w-8 h-8" />
-              </div>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Detalle de Pagos Confirmados</CardTitle>
-                  <CardDescription>
-                    Pagos ya ingresados en el sistema
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue="pagado">
-                    <TabsList className="grid grid-cols-3">
-                      <TabsTrigger value="pagado">Pagados</TabsTrigger>
-                      <TabsTrigger value="pendiente">Pendientes</TabsTrigger>
-                      <TabsTrigger value="atrasado">Atrasados</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="pagado">
-                      <PagosTable estado="pagado" />
-                    </TabsContent>
-                    <TabsContent value="pendiente">
-                      <PagosTable estado="pendiente" />
-                    </TabsContent>
-                    <TabsContent value="atrasado">
-                      <PagosTable estado="atrasado" />
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
-      </div>
-    </AppLayout>
+        <Button
+          onClick={confirmarCuotas}
+          disabled={loading}
+        >
+          {loading ? 'Confirmando cuotas...' : 'Confirmar cuotas válidas'}
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
