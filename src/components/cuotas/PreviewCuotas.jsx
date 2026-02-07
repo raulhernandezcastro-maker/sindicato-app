@@ -16,7 +16,7 @@ import {
 export default function PreviewCuotas() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
-  const [processingRut, setProcessingRut] = useState(null)
+  const [processing, setProcessing] = useState(false)
 
   useEffect(() => {
     loadPreview()
@@ -32,7 +32,6 @@ export default function PreviewCuotas() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-
       setRows(data || [])
     } catch (err) {
       console.error('Error cargando preview:', err)
@@ -41,62 +40,55 @@ export default function PreviewCuotas() {
     }
   }
 
-  const crearPersona = async (row, tipo) => {
-    setProcessingRut(row.rut)
+  /* ================= CONFIRMAR CUOTAS ================= */
+
+  const confirmarCuotas = async () => {
+    const pendientes = rows.filter(r => r.estado_validacion === 'resuelto')
+
+    if (pendientes.length === 0) {
+      alert('No hay cuotas listas para confirmar')
+      return
+    }
+
+    if (!confirm(`Se confirmarán ${pendientes.length} cuotas. ¿Continuar?`)) {
+      return
+    }
+
+    setProcessing(true)
 
     try {
-      const { error } = await supabase
-        .from(tipo === 'socio' ? 'socios' : 'aportantes')
-        .insert({
+      for (const row of pendientes) {
+        await supabase.from('cuotas').insert({
           rut: row.rut,
           nombre: row.nombre,
-          estado: 'activo'
+          tipo: row.tipo,
+          monto: row.monto,
+          periodo: row.periodo,
+          estado: 'pagado'
         })
 
-      if (error) throw error
+        await supabase
+          .from('cuotas_importacion')
+          .update({ estado_validacion: 'confirmado' })
+          .eq('id', row.id)
+      }
 
-      await marcarResuelto(row.id)
+      await loadPreview()
+      alert('Cuotas confirmadas correctamente')
     } catch (err) {
       console.error(err)
-      alert('Error al crear registro')
+      alert('Error al confirmar cuotas')
     } finally {
-      setProcessingRut(null)
+      setProcessing(false)
     }
-  }
-
-  const activarSocio = async (row) => {
-    setProcessingRut(row.rut)
-
-    try {
-      const { error } = await supabase
-        .from('socios')
-        .update({ estado: 'activo' })
-        .eq('rut', row.rut)
-
-      if (error) throw error
-
-      await marcarResuelto(row.id)
-    } catch (err) {
-      console.error(err)
-      alert('Error al activar socio')
-    } finally {
-      setProcessingRut(null)
-    }
-  }
-
-  const marcarResuelto = async (importId) => {
-    await supabase
-      .from('cuotas_importacion')
-      .update({ estado_validacion: 'resuelto' })
-      .eq('id', importId)
-
-    loadPreview()
   }
 
   const badgeEstado = (estado) => {
     if (estado === 'ok') return 'default'
     if (estado === 'inactivo') return 'secondary'
     if (estado === 'no_existe') return 'destructive'
+    if (estado === 'resuelto') return 'outline'
+    if (estado === 'confirmado') return 'default'
     return 'secondary'
   }
 
@@ -110,88 +102,57 @@ export default function PreviewCuotas() {
     )
   }
 
-  if (rows.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-6 text-center text-muted-foreground">
-          No hay cargas pendientes de validar
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Vista previa de cuotas importadas</CardTitle>
+
+        <Button
+          disabled={processing}
+          onClick={confirmarCuotas}
+        >
+          {processing ? 'Confirmando...' : 'Confirmar cuotas'}
+        </Button>
       </CardHeader>
 
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>RUT</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Monto</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            {rows.map(row => (
-              <TableRow key={row.id}>
-                <TableCell>{row.rut}</TableCell>
-                <TableCell>{row.nombre}</TableCell>
-                <TableCell>{row.tipo}</TableCell>
-                <TableCell>
-                  ${Number(row.monto).toLocaleString('es-CL')}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={badgeEstado(row.estado_validacion)}>
-                    {row.estado_validacion}
-                  </Badge>
-                </TableCell>
-                <TableCell className="space-x-2">
-                  {row.estado_validacion === 'no_existe' && (
-                    <>
-                      <Button
-                        size="sm"
-                        disabled={processingRut === row.rut}
-                        onClick={() => crearPersona(row, 'socio')}
-                      >
-                        Crear Socio
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={processingRut === row.rut}
-                        onClick={() => crearPersona(row, 'aportante')}
-                      >
-                        Crear Aportante
-                      </Button>
-                    </>
-                  )}
-
-                  {row.estado_validacion === 'inactivo' && (
-                    <Button
-                      size="sm"
-                      disabled={processingRut === row.rut}
-                      onClick={() => activarSocio(row)}
-                    >
-                      Activar
-                    </Button>
-                  )}
-
-                  {row.estado_validacion === 'ok' && (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
+        {rows.length === 0 ? (
+          <p className="text-center text-muted-foreground py-6">
+            No hay cargas pendientes
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>RUT</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Periodo</TableHead>
+                <TableHead>Estado</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+
+            <TableBody>
+              {rows.map(row => (
+                <TableRow key={row.id}>
+                  <TableCell>{row.rut}</TableCell>
+                  <TableCell>{row.nombre}</TableCell>
+                  <TableCell>{row.tipo}</TableCell>
+                  <TableCell>
+                    ${Number(row.monto).toLocaleString('es-CL')}
+                  </TableCell>
+                  <TableCell>{row.periodo}</TableCell>
+                  <TableCell>
+                    <Badge variant={badgeEstado(row.estado_validacion)}>
+                      {row.estado_validacion}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   )
