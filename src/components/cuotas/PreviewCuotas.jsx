@@ -5,13 +5,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from '../ui/badge'
 import { Spinner } from '../ui/spinner'
 
-export default function PreviewCuotas({ rows = [], periodo }) {
-  const [loading, setLoading] = useState(false)
+export function PreviewCuotas({ rows, periodo }) {
+  const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState([])
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    if (rows.length === 0) {
-      setPreview([])
+    if (!rows || rows.length === 0) {
       setLoading(false)
       return
     }
@@ -22,63 +22,114 @@ export default function PreviewCuotas({ rows = [], periodo }) {
 
   const validarRuts = async () => {
     setLoading(true)
+    setError('')
 
-    const ruts = rows.map(r => r.rut)
+    try {
+      const resultado = []
 
-    const { data: socios } = await supabase
-      .from('socios')
-      .select('rut, activo')
-      .in('rut', ruts)
+      for (const row of rows) {
+        const rut = row.rut?.trim()
 
-    const { data: aportantes } = await supabase
-      .from('aportantes')
-      .select('rut')
-      .in('rut', ruts)
+        if (!rut) {
+          resultado.push({
+            ...row,
+            estado: 'ERROR',
+            accion: 'RUT VACÍO'
+          })
+          continue
+        }
 
-    const sociosMap = new Map()
-    socios?.forEach(s => sociosMap.set(s.rut, s))
+        // 🔍 Buscar en socios
+        const { data: socio } = await supabase
+          .from('socios')
+          .select('id, activo')
+          .eq('rut', rut)
+          .maybeSingle()
 
-    const aportantesSet = new Set(aportantes?.map(a => a.rut))
-
-    const resultado = rows.map(row => {
-      let estado = 'no_existe'
-      let detalle = 'RUT no registrado'
-
-      if (row.tipo === 'SOCIO') {
-        const socio = sociosMap.get(row.rut)
         if (socio) {
-          estado = socio.activo ? 'ok' : 'inactivo'
-          detalle = socio.activo ? 'Socio activo' : 'Socio inactivo'
+          resultado.push({
+            ...row,
+            estado: socio.activo ? 'OK' : 'INACTIVO',
+            accion: socio.activo ? 'REGISTRAR PAGO' : 'SOCIO INACTIVO'
+          })
+          continue
         }
+
+        // 🔍 Buscar en aportantes
+        const { data: aportante } = await supabase
+          .from('aportantes')
+          .select('id, activo')
+          .eq('rut', rut)
+          .maybeSingle()
+
+        if (aportante) {
+          resultado.push({
+            ...row,
+            estado: aportante.activo ? 'OK' : 'INACTIVO',
+            accion: aportante.activo ? 'REGISTRAR APORTE' : 'APORTANTE INACTIVO'
+          })
+          continue
+        }
+
+        // ❌ No existe
+        resultado.push({
+          ...row,
+          estado: 'NO EXISTE',
+          accion: 'REVISAR / CREAR'
+        })
       }
 
-      if (row.tipo === 'APORTANTE') {
-        if (aportantesSet.has(row.rut)) {
-          estado = 'ok'
-          detalle = 'Aportante registrado'
-        }
-      }
-
-      return { ...row, periodo, estado, detalle }
-    })
-
-    setPreview(resultado)
-    setLoading(false)
+      setPreview(resultado)
+    } catch (err) {
+      console.error(err)
+      setError('Error al validar los RUT')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const badgeVariant = (estado) =>
-    estado === 'ok'
-      ? 'default'
-      : estado === 'inactivo'
-      ? 'secondary'
-      : 'destructive'
+  const badgeVariant = (estado) => {
+    switch (estado) {
+      case 'OK':
+        return 'default'
+      case 'NO EXISTE':
+        return 'destructive'
+      case 'INACTIVO':
+        return 'secondary'
+      default:
+        return 'outline'
+    }
+  }
 
-  const badgeLabel = (estado) =>
-    estado === 'ok'
-      ? 'OK'
-      : estado === 'inactivo'
-      ? 'Inactivo'
-      : 'No existe'
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-10 flex justify-center">
+          <Spinner />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-red-600">
+          {error}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (preview.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-muted-foreground">
+          No hay datos para mostrar
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>
@@ -86,53 +137,34 @@ export default function PreviewCuotas({ rows = [], periodo }) {
         <CardTitle>Vista previa de cuotas – {periodo}</CardTitle>
       </CardHeader>
       <CardContent>
-
-        {rows.length === 0 && (
-          <p className="text-muted-foreground text-sm text-center py-6">
-            Carga un archivo Excel para visualizar la vista previa.
-          </p>
-        )}
-
-        {loading && (
-          <div className="flex justify-center py-8">
-            <Spinner className="w-6 h-6" />
-          </div>
-        )}
-
-        {!loading && preview.length > 0 && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>RUT</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Estado</TableHead>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>RUT</TableHead>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Monto</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Acción</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {preview.map((row, idx) => (
+              <TableRow key={idx}>
+                <TableCell>{row.rut}</TableCell>
+                <TableCell>{row.nombre}</TableCell>
+                <TableCell>{row.tipo}</TableCell>
+                <TableCell>${Number(row.valor_pagado).toLocaleString('es-CL')}</TableCell>
+                <TableCell>
+                  <Badge variant={badgeVariant(row.estado)}>
+                    {row.estado}
+                  </Badge>
+                </TableCell>
+                <TableCell>{row.accion}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {preview.map((row, i) => (
-                <TableRow key={i}>
-                  <TableCell>{row.rut}</TableCell>
-                  <TableCell>{row.nombre}</TableCell>
-                  <TableCell>{row.tipo}</TableCell>
-                  <TableCell>
-                    ${Number(row.monto).toLocaleString('es-CL')}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={badgeVariant(row.estado)}>
-                      {badgeLabel(row.estado)}
-                    </Badge>
-                    <div className="text-xs text-muted-foreground">
-                      {row.detalle}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   )
