@@ -24,6 +24,7 @@ import {
 export default function PreviewCuotas() {
   const [filas, setFilas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [procesandoTodo, setProcesandoTodo] = useState(false)
   const [procesandoId, setProcesandoId] = useState(null)
 
   useEffect(() => {
@@ -45,14 +46,25 @@ export default function PreviewCuotas() {
 
   const confirmarFila = async (fila) => {
     setProcesandoId(fila.id)
-
     const res = await confirmarCuotaImportada(fila)
-
     setProcesandoId(null)
 
     if (res.ok) {
       setFilas(filas.filter(f => f.id !== fila.id))
     }
+  }
+
+  const confirmarTodas = async () => {
+    if (!window.confirm('¿Confirmar TODAS las cuotas pendientes?')) return
+
+    setProcesandoTodo(true)
+
+    for (const fila of filas) {
+      await confirmarCuotaImportada(fila)
+    }
+
+    await cargarPreview()
+    setProcesandoTodo(false)
   }
 
   const badgeEstado = (estado) => {
@@ -64,8 +76,18 @@ export default function PreviewCuotas() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Vista previa de cuotas importadas</CardTitle>
+
+        {filas.length > 0 && (
+          <Button
+            variant="default"
+            onClick={confirmarTodas}
+            disabled={procesandoTodo}
+          >
+            {procesandoTodo ? 'Confirmando…' : 'Confirmar todas'}
+          </Button>
+        )}
       </CardHeader>
 
       <CardContent>
@@ -116,10 +138,12 @@ export default function PreviewCuotas() {
                   <TableCell>
                     <Button
                       size="sm"
-                      disabled={procesandoId === fila.id}
+                      disabled={procesandoId === fila.id || procesandoTodo}
                       onClick={() => confirmarFila(fila)}
                     >
-                      {procesandoId === fila.id ? 'Confirmando…' : 'Confirmar'}
+                      {procesandoId === fila.id
+                        ? 'Confirmando…'
+                        : 'Confirmar'}
                     </Button>
                   </TableCell>
                 </TableRow>
