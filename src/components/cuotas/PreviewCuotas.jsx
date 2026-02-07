@@ -1,141 +1,87 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Badge } from '../ui/badge'
 import { Spinner } from '../ui/spinner'
+import { Alert } from '../ui/alert'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '../ui/table'
 
-export function PreviewCuotas({ rows, periodo }) {
+export function PreviewCuotas() {
+  const [importacion, setImportacion] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [preview, setPreview] = useState([])
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!rows || rows.length === 0) {
-      setLoading(false)
-      return
-    }
+    loadImportacionPendiente()
+  }, [])
 
-    validarRuts()
-    // eslint-disable-next-line
-  }, [rows])
-
-  const validarRuts = async () => {
-    setLoading(true)
-    setError('')
-
+  const loadImportacionPendiente = async () => {
     try {
-      const resultado = []
+      const { data, error } = await supabase
+        .from('cuotas_importacion')
+        .select('*')
+        .eq('estado', 'pendiente')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
 
-      for (const row of rows) {
-        const rut = row.rut?.trim()
-
-        if (!rut) {
-          resultado.push({
-            ...row,
-            estado: 'ERROR',
-            accion: 'RUT VACÍO'
-          })
-          continue
-        }
-
-        // 🔍 Buscar en socios
-        const { data: socio } = await supabase
-          .from('socios')
-          .select('id, activo')
-          .eq('rut', rut)
-          .maybeSingle()
-
-        if (socio) {
-          resultado.push({
-            ...row,
-            estado: socio.activo ? 'OK' : 'INACTIVO',
-            accion: socio.activo ? 'REGISTRAR PAGO' : 'SOCIO INACTIVO'
-          })
-          continue
-        }
-
-        // 🔍 Buscar en aportantes
-        const { data: aportante } = await supabase
-          .from('aportantes')
-          .select('id, activo')
-          .eq('rut', rut)
-          .maybeSingle()
-
-        if (aportante) {
-          resultado.push({
-            ...row,
-            estado: aportante.activo ? 'OK' : 'INACTIVO',
-            accion: aportante.activo ? 'REGISTRAR APORTE' : 'APORTANTE INACTIVO'
-          })
-          continue
-        }
-
-        // ❌ No existe
-        resultado.push({
-          ...row,
-          estado: 'NO EXISTE',
-          accion: 'REVISAR / CREAR'
-        })
+      if (error) {
+        setError('No hay cargas pendientes')
+        setLoading(false)
+        return
       }
 
-      setPreview(resultado)
+      setImportacion(data)
     } catch (err) {
       console.error(err)
-      setError('Error al validar los RUT')
+      setError('Error al cargar la vista previa')
     } finally {
       setLoading(false)
     }
   }
 
-  const badgeVariant = (estado) => {
+  const getEstadoBadge = (estado) => {
     switch (estado) {
-      case 'OK':
-        return 'default'
+      case 'SOCIO ACTIVO':
+        return <Badge>Socio activo</Badge>
+      case 'SOCIO INACTIVO':
+        return <Badge variant="secondary">Socio inactivo</Badge>
+      case 'APORTANTE':
+        return <Badge variant="outline">Aportante</Badge>
       case 'NO EXISTE':
-        return 'destructive'
-      case 'INACTIVO':
-        return 'secondary'
+        return <Badge variant="destructive">No existe</Badge>
       default:
-        return 'outline'
+        return <Badge variant="secondary">{estado}</Badge>
     }
   }
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="py-10 flex justify-center">
-          <Spinner />
-        </CardContent>
-      </Card>
+      <div className="flex justify-center py-12">
+        <Spinner className="w-8 h-8" />
+      </div>
     )
   }
 
   if (error) {
-    return (
-      <Card>
-        <CardContent className="py-6 text-red-600">
-          {error}
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (preview.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-6 text-muted-foreground">
-          No hay datos para mostrar
-        </CardContent>
-      </Card>
-    )
+    return <Alert variant="destructive">{error}</Alert>
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Vista previa de cuotas – {periodo}</CardTitle>
+        <CardTitle>
+          Vista previa de cuotas – Período {importacion.periodo}
+        </CardTitle>
       </CardHeader>
+
       <CardContent>
         <Table>
           <TableHeader>
@@ -145,22 +91,22 @@ export function PreviewCuotas({ rows, periodo }) {
               <TableHead>Tipo</TableHead>
               <TableHead>Monto</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead>Acción</TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
-            {preview.map((row, idx) => (
-              <TableRow key={idx}>
-                <TableCell>{row.rut}</TableCell>
-                <TableCell>{row.nombre}</TableCell>
-                <TableCell>{row.tipo}</TableCell>
-                <TableCell>${Number(row.valor_pagado).toLocaleString('es-CL')}</TableCell>
+            {importacion.filas.map((fila, index) => (
+              <TableRow key={index}>
+                <TableCell>{fila.rut}</TableCell>
+                <TableCell>{fila.nombre}</TableCell>
+                <TableCell>{fila.tipo}</TableCell>
                 <TableCell>
-                  <Badge variant={badgeVariant(row.estado)}>
-                    {row.estado}
-                  </Badge>
+                  {fila.valor_pagado.toLocaleString('es-CL', {
+                    style: 'currency',
+                    currency: 'CLP'
+                  })}
                 </TableCell>
-                <TableCell>{row.accion}</TableCell>
+                <TableCell>{getEstadoBadge(fila.estado)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
