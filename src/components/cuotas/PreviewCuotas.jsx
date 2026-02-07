@@ -24,7 +24,6 @@ export default function PreviewCuotas() {
 
   const loadPreview = async () => {
     setLoading(true)
-
     try {
       const { data, error } = await supabase
         .from('cuotas_importacion')
@@ -40,24 +39,45 @@ export default function PreviewCuotas() {
     }
   }
 
-  /* ================= CONFIRMAR CUOTAS ================= */
+  /* ================= VALIDACIONES ================= */
+
+  const tieneErroresPendientes = rows.some(
+    r =>
+      r.estado_validacion !== 'resuelto' &&
+      r.estado_validacion !== 'confirmado'
+  )
+
+  const filasConfirmables = rows.filter(
+    r => r.estado_validacion === 'resuelto'
+  )
+
+  /* ================= CONFIRMAR ================= */
 
   const confirmarCuotas = async () => {
-    const pendientes = rows.filter(r => r.estado_validacion === 'resuelto')
-
-    if (pendientes.length === 0) {
-      alert('No hay cuotas listas para confirmar')
+    if (tieneErroresPendientes) {
+      alert(
+        'Existen filas con errores o pendientes. Resuélvelas antes de confirmar.'
+      )
       return
     }
 
-    if (!confirm(`Se confirmarán ${pendientes.length} cuotas. ¿Continuar?`)) {
+    if (filasConfirmables.length === 0) {
+      alert('No hay cuotas nuevas para confirmar')
+      return
+    }
+
+    if (
+      !confirm(
+        `Se confirmarán ${filasConfirmables.length} cuotas. ¿Deseas continuar?`
+      )
+    ) {
       return
     }
 
     setProcessing(true)
 
     try {
-      for (const row of pendientes) {
+      for (const row of filasConfirmables) {
         await supabase.from('cuotas').insert({
           rut: row.rut,
           nombre: row.nombre,
@@ -84,11 +104,10 @@ export default function PreviewCuotas() {
   }
 
   const badgeEstado = (estado) => {
-    if (estado === 'ok') return 'default'
-    if (estado === 'inactivo') return 'secondary'
-    if (estado === 'no_existe') return 'destructive'
-    if (estado === 'resuelto') return 'outline'
     if (estado === 'confirmado') return 'default'
+    if (estado === 'resuelto') return 'outline'
+    if (estado === 'no_existe') return 'destructive'
+    if (estado === 'inactivo') return 'secondary'
     return 'secondary'
   }
 
@@ -108,14 +127,20 @@ export default function PreviewCuotas() {
         <CardTitle>Vista previa de cuotas importadas</CardTitle>
 
         <Button
-          disabled={processing}
           onClick={confirmarCuotas}
+          disabled={processing || tieneErroresPendientes}
         >
           {processing ? 'Confirmando...' : 'Confirmar cuotas'}
         </Button>
       </CardHeader>
 
       <CardContent>
+        {tieneErroresPendientes && (
+          <p className="mb-4 text-sm text-red-600">
+            ⚠️ Existen cuotas con errores o pendientes. Deben resolverse antes de confirmar.
+          </p>
+        )}
+
         {rows.length === 0 ? (
           <p className="text-center text-muted-foreground py-6">
             No hay cargas pendientes
