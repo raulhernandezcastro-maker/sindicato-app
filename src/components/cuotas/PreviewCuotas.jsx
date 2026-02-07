@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
+import { confirmarCuotaImportada } from '../../services/confirmarCuota'
+
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent
+} from '../ui/card'
+import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
+import { Spinner } from '../ui/spinner'
+
 import {
   Table,
   TableBody,
@@ -10,12 +20,11 @@ import {
   TableHeader,
   TableRow
 } from '../ui/table'
-import { Spinner } from '../ui/spinner'
-import { Button } from '../ui/button'
 
 export default function PreviewCuotas() {
-  const [rows, setRows] = useState([])
+  const [filas, setFilas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [procesandoId, setProcesandoId] = useState(null)
 
   useEffect(() => {
     cargarPreview()
@@ -27,39 +36,30 @@ export default function PreviewCuotas() {
     const { data, error } = await supabase
       .from('cuotas_importacion')
       .select('*')
+      .in('estado', ['pendiente', 'error'])
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Error cargando preview:', error)
-    } else {
-      setRows(data || [])
-    }
-
+    if (!error) setFilas(data || [])
     setLoading(false)
   }
 
-  const badgeVariant = (estado) => {
-    if (estado === 'valido') return 'default'
+  const confirmarFila = async (fila) => {
+    setProcesandoId(fila.id)
+
+    const res = await confirmarCuotaImportada(fila)
+
+    setProcesandoId(null)
+
+    if (res.ok) {
+      setFilas(filas.filter(f => f.id !== fila.id))
+    }
+  }
+
+  const badgeEstado = (estado) => {
+    if (estado === 'pendiente') return 'secondary'
+    if (estado === 'confirmado') return 'default'
     if (estado === 'error') return 'destructive'
     return 'secondary'
-  }
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-10">
-        <Spinner className="w-8 h-8" />
-      </div>
-    )
-  }
-
-  if (rows.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-10 text-center text-muted-foreground">
-          No hay cuotas cargadas para revisar
-        </CardContent>
-      </Card>
-    )
   }
 
   return (
@@ -67,46 +67,66 @@ export default function PreviewCuotas() {
       <CardHeader>
         <CardTitle>Vista previa de cuotas importadas</CardTitle>
       </CardHeader>
+
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>RUT</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Periodo</TableHead>
-              <TableHead>Monto</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Acción</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.rut}</TableCell>
-                <TableCell>{r.nombre}</TableCell>
-                <TableCell>{r.tipo}</TableCell>
-                <TableCell>{r.periodo}</TableCell>
-                <TableCell>${Number(r.monto).toLocaleString('es-CL')}</TableCell>
-                <TableCell>
-                  <Badge variant={badgeVariant(r.estado_validacion)}>
-                    {r.estado_validacion}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {r.estado_validacion === 'valido' && (
-                    <Button size="sm">Confirmar</Button>
-                  )}
-                  {r.estado_validacion === 'error' && (
-                    <Button size="sm" variant="outline">
-                      Gestionar
-                    </Button>
-                  )}
-                </TableCell>
+        {loading && (
+          <div className="flex justify-center py-10">
+            <Spinner className="w-6 h-6" />
+          </div>
+        )}
+
+        {!loading && filas.length === 0 && (
+          <p className="text-center text-muted-foreground">
+            No hay cuotas pendientes por confirmar
+          </p>
+        )}
+
+        {!loading && filas.length > 0 && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>RUT</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Periodo</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Acción</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+
+            <TableBody>
+              {filas.map(fila => (
+                <TableRow key={fila.id}>
+                  <TableCell>{fila.rut}</TableCell>
+                  <TableCell>{fila.nombre}</TableCell>
+                  <TableCell>{fila.tipo}</TableCell>
+                  <TableCell>{fila.periodo}</TableCell>
+                  <TableCell>
+                    {new Intl.NumberFormat('es-CL', {
+                      style: 'currency',
+                      currency: 'CLP'
+                    }).format(fila.monto)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={badgeEstado(fila.estado)}>
+                      {fila.estado}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      disabled={procesandoId === fila.id}
+                      onClick={() => confirmarFila(fila)}
+                    >
+                      {procesandoId === fila.id ? 'Confirmando…' : 'Confirmar'}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   )
