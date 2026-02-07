@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Alert } from '../ui/alert'
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
+import { Spinner } from '../ui/spinner'
 
-export default function ConfirmarCuotas({ onFinish }) {
+export default function ConfirmarCuotas({ onConfirm }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -15,27 +16,26 @@ export default function ConfirmarCuotas({ onFinish }) {
     setSuccess('')
 
     try {
-      /* 1️⃣ Obtener filas válidas */
-      const { data: filas, error: fetchError } = await supabase
+      // 1️⃣ Traer cuotas pendientes de confirmar
+      const { data: preview, error: previewError } = await supabase
         .from('cuotas_importacion')
         .select('*')
-        .eq('estado', 'validado')
+        .eq('confirmado', false)
 
-      if (fetchError) throw fetchError
-
-      if (!filas || filas.length === 0) {
-        setError('No hay cuotas válidas para confirmar')
+      if (previewError) throw previewError
+      if (!preview || preview.length === 0) {
+        setError('No hay cuotas para confirmar')
         setLoading(false)
         return
       }
 
-      /* 2️⃣ Insertar en tabla definitiva */
-      const cuotasFinales = filas.map(f => ({
-        rut: f.rut,
-        tipo: f.tipo,
-        periodo: f.periodo,
-        monto: f.monto,
-        estado: 'pagado'
+      // 2️⃣ Insertar cuotas definitivas
+      const cuotasFinales = preview.map(p => ({
+        periodo: p.periodo,
+        monto: p.monto,
+        estado: 'pagado',
+        socio_id: p.socio_id || null,
+        aportante_id: p.aportante_id || null
       }))
 
       const { error: insertError } = await supabase
@@ -44,18 +44,18 @@ export default function ConfirmarCuotas({ onFinish }) {
 
       if (insertError) throw insertError
 
-      /* 3️⃣ Marcar como confirmadas */
-      const ids = filas.map(f => f.id)
-
+      // 3️⃣ Marcar importación como confirmada
       const { error: updateError } = await supabase
         .from('cuotas_importacion')
-        .update({ estado: 'confirmado' })
-        .in('id', ids)
+        .update({ confirmado: true })
+        .eq('confirmado', false)
 
       if (updateError) throw updateError
 
-      setSuccess(`✔ ${filas.length} cuotas confirmadas correctamente`)
-      if (onFinish) onFinish()
+      setSuccess('Cuotas confirmadas correctamente')
+
+      // 4️⃣ Refrescar pantalla principal
+      if (onConfirm) onConfirm()
 
     } catch (err) {
       console.error(err)
@@ -69,6 +69,9 @@ export default function ConfirmarCuotas({ onFinish }) {
     <Card>
       <CardHeader>
         <CardTitle>Confirmar cuotas importadas</CardTitle>
+        <CardDescription>
+          Esta acción registrará definitivamente las cuotas en el sistema
+        </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -78,8 +81,16 @@ export default function ConfirmarCuotas({ onFinish }) {
         <Button
           onClick={confirmarCuotas}
           disabled={loading}
+          className="w-full"
         >
-          {loading ? 'Confirmando cuotas...' : 'Confirmar cuotas válidas'}
+          {loading ? (
+            <>
+              <Spinner className="w-4 h-4 mr-2" />
+              Confirmando…
+            </>
+          ) : (
+            'Confirmar cuotas'
+          )}
         </Button>
       </CardContent>
     </Card>
