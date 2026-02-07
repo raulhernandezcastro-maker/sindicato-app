@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react'
-import { DollarSign, TrendingUp, AlertCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { AppLayout } from '../components/layout/AppLayout'
 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent
+} from '../components/ui/card'
+
 import { Spinner } from '../components/ui/spinner'
 import { Badge } from '../components/ui/badge'
 import {
@@ -22,8 +28,8 @@ import {
   TabsTrigger
 } from '../components/ui/tabs'
 
-// ✅ IMPORT CORRECTO (DEFAULT EXPORT)
 import CargaCuotasExcel from '../components/cuotas/CargaCuotasExcel'
+import PreviewCuotas from '../components/cuotas/PreviewCuotas'
 
 export function CuotasPage() {
   const { isAdministrador } = useAuth()
@@ -38,25 +44,27 @@ export function CuotasPage() {
   const [pagos, setPagos] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const canViewDetails = isAdministrador
-
   useEffect(() => {
-    loadData()
-  }, [])
+    if (isAdministrador) {
+      cargarResumen()
+    } else {
+      setLoading(false)
+    }
+  }, [isAdministrador])
 
-  const loadData = async () => {
+  const cargarResumen = async () => {
     setLoading(true)
 
     try {
-      const { data: allPagos, error } = await supabase
+      const { data, error } = await supabase
         .from('cuotas')
         .select('*')
 
       if (error) throw error
 
-      const pagados = allPagos.filter(p => p.estado === 'pagado')
-      const pendientes = allPagos.filter(p => p.estado === 'pendiente')
-      const atrasados = allPagos.filter(p => p.estado === 'atrasado')
+      const pagados = data.filter(p => p.estado === 'pagado')
+      const pendientes = data.filter(p => p.estado === 'pendiente')
+      const atrasados = data.filter(p => p.estado === 'atrasado')
 
       const totalRecaudado = pagados.reduce(
         (sum, p) => sum + Number(p.monto || 0),
@@ -64,20 +72,18 @@ export function CuotasPage() {
       )
 
       setStats({
-        totalPagos: allPagos.length,
+        totalPagos: data.length,
         pagosPendientes: pendientes.length,
         pagosAtrasados: atrasados.length,
         totalRecaudado
       })
 
-      if (canViewDetails) {
-        const { data: detalle } = await supabase
-          .from('cuotas')
-          .select('*, socios(nombre, rut)')
-          .order('created_at', { ascending: false })
+      const { data: detalle } = await supabase
+        .from('cuotas')
+        .select('*, socios(nombre, rut)')
+        .order('created_at', { ascending: false })
 
-        setPagos(detalle || [])
-      }
+      setPagos(detalle || [])
     } catch (err) {
       console.error('Error cargando cuotas:', err)
     } finally {
@@ -151,28 +157,37 @@ export function CuotasPage() {
         <div>
           <h1 className="text-3xl font-bold">Gestión de Cuotas</h1>
           <p className="text-muted-foreground">
-            Administración y control de pagos
+            Carga, revisión y control de pagos
           </p>
         </div>
 
-        {loading && (
-          <div className="flex justify-center py-12">
-            <Spinner className="w-8 h-8" />
-          </div>
+        {!isAdministrador && (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              Solo el administrador puede acceder a la gestión de cuotas
+            </CardContent>
+          </Card>
         )}
 
-        {!loading && (
+        {isAdministrador && (
           <>
             {/* 📥 CARGA MASIVA */}
-            {isAdministrador && <CargaCuotasExcel />}
+            <CargaCuotasExcel />
 
-            {/* 📋 DETALLE */}
-            {canViewDetails && (
+            {/* 👀 PREVIEW */}
+            <PreviewCuotas />
+
+            {/* 📊 RESUMEN */}
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Spinner className="w-8 h-8" />
+              </div>
+            ) : (
               <Card>
                 <CardHeader>
-                  <CardTitle>Detalle de Pagos</CardTitle>
+                  <CardTitle>Detalle de Pagos Confirmados</CardTitle>
                   <CardDescription>
-                    Pagos agrupados por estado
+                    Pagos ya ingresados en el sistema
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
