@@ -13,10 +13,6 @@ export default function CargaCuotasExcel() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0])
-  }
-
   const handleProcess = async () => {
     setError('')
     setSuccess('')
@@ -37,59 +33,49 @@ export default function CargaCuotasExcel() {
       // 🔹 Convertir YYYY-MM a YYYY-MM-01
       const periodoDate = `${periodo}-01`
 
-      const reader = new FileReader()
+      // 🔹 Leer archivo correctamente (sin FileReader)
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array' })
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      const jsonData = XLSX.utils.sheet_to_json(sheet)
 
-      reader.onload = async (evt) => {
-        try {
-          const data = new Uint8Array(evt.target.result)
-          const workbook = XLSX.read(data, { type: 'array' })
-          const sheet = workbook.Sheets[workbook.SheetNames[0]]
-          const jsonData = XLSX.utils.sheet_to_json(sheet)
-
-          if (jsonData.length === 0) {
-            setError('El archivo está vacío')
-            setLoading(false)
-            return
-          }
-
-          const rows = jsonData.map((row) => ({
-            periodo: periodoDate,
-            rut: String(row.Rut || '').trim(),
-            nombre: row.Nombre || '',
-            tipo: row.Tipo || '',
-            valor_pagado: Number(row['Valor Pagado'] || 0),
-            estado: 'pendiente',
-            estado_validacion: 'pendiente'
-          }))
-
-          const { error: insertError } = await supabase
-            .from('cuotas_importacion')
-            .insert(rows)
-
-          if (insertError) {
-            console.error(insertError)
-            setError('Error al insertar datos: ' + insertError.message)
-            setLoading(false)
-            return
-          }
-
-          setSuccess(`Se importaron ${rows.length} registros correctamente`)
-          setFile(null)
-          setLoading(false)
-        } catch (err) {
-          console.error(err)
-          setError('Error procesando el archivo')
-          setLoading(false)
-        }
+      if (!jsonData.length) {
+        setError('El archivo está vacío')
+        setLoading(false)
+        return
       }
 
-      reader.readAsArrayBuffer(file)
+      const rows = jsonData.map((row) => ({
+        periodo: periodoDate,
+        rut: String(row.Rut || '').replace(/\D/g, ''), // limpia puntos y guión
+        nombre: row.Nombre || '',
+        tipo: row.Tipo || '',
+        valor_pagado: Number(row['Valor Pagado'] || 0),
+        estado: 'pendiente',
+        estado_validacion: 'pendiente'
+      }))
 
+      console.log('Insertando filas:', rows)
+
+      const { error: insertError } = await supabase
+        .from('cuotas_importacion')
+        .insert(rows)
+
+      if (insertError) {
+        console.error(insertError)
+        setError(insertError.message)
+        setLoading(false)
+        return
+      }
+
+      setSuccess(`Se importaron ${rows.length} registros correctamente`)
+      setFile(null)
     } catch (err) {
       console.error(err)
-      setError('Error inesperado')
-      setLoading(false)
+      setError('Error procesando archivo: ' + err.message)
     }
+
+    setLoading(false)
   }
 
   return (
@@ -116,7 +102,7 @@ export default function CargaCuotasExcel() {
           <Input
             type="file"
             accept=".xlsx, .xls"
-            onChange={handleFileChange}
+            onChange={(e) => setFile(e.target.files[0])}
           />
         </div>
 
