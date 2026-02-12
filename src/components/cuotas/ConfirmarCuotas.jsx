@@ -9,66 +9,62 @@ export default function ConfirmarCuotas({ onFinish }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const confirmar = async () => {
+  const confirmarCuotas = async () => {
     setLoading(true)
     setError('')
     setSuccess('')
 
     try {
-      // 1️⃣ Obtener cuotas pendientes
-      const { data: pendientes, error: e1 } = await supabase
+      const { data: filas, error } = await supabase
         .from('cuotas_importacion')
         .select('*')
         .eq('estado', 'pendiente')
         .eq('estado_validacion', 'ok')
 
-      if (e1) throw e1
-      if (!pendientes.length) {
+      if (error) throw error
+
+      if (!filas || filas.length === 0) {
         setSuccess('No hay cuotas para confirmar')
         setLoading(false)
         return
       }
 
-      for (const row of pendientes) {
+      for (const fila of filas) {
         let socioId = null
         let aportanteId = null
 
-        if (row.tipo === 'SOCIO') {
+        if (fila.tipo === 'SOCIO') {
           const { data } = await supabase
             .from('socios')
             .select('id')
-            .eq('rut', row.rut)
+            .eq('rut', fila.rut)
             .single()
 
           socioId = data?.id || null
         }
 
-        if (row.tipo === 'APORTANTE') {
+        if (fila.tipo === 'APORTANTE') {
           const { data } = await supabase
             .from('aportantes')
             .select('id')
-            .eq('rut', row.rut)
+            .eq('rut', fila.rut)
             .single()
 
           aportanteId = data?.id || null
         }
 
-        // 2️⃣ Insertar cuota definitiva
-        const { error: e2 } = await supabase.from('cuotas').insert({
-          periodo: row.periodo,
-          monto: row.valor_pagado,
+        await supabase.from('cuotas').insert({
+          periodo: fila.periodo,
+          monto: fila.valor_pagado,
           estado: 'pagado',
           socio_id: socioId,
           aportante_id: aportanteId
         })
 
-        if (e2) throw e2
-
-        // 3️⃣ Marcar como confirmada
         await supabase
           .from('cuotas_importacion')
           .update({ estado: 'confirmado' })
-          .eq('id', row.id)
+          .eq('id', fila.id)
       }
 
       setSuccess('Cuotas confirmadas correctamente')
@@ -91,7 +87,7 @@ export default function ConfirmarCuotas({ onFinish }) {
         {error && <Alert variant="destructive">{error}</Alert>}
         {success && <Alert>{success}</Alert>}
 
-        <Button onClick={confirmar} disabled={loading}>
+        <Button onClick={confirmarCuotas} disabled={loading}>
           {loading ? 'Confirmando...' : 'Confirmar cuotas'}
         </Button>
       </CardContent>
