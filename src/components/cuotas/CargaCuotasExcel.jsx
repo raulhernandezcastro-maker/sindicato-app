@@ -1,60 +1,93 @@
 import React, { useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../lib/supabase'
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Alert } from '../ui/alert'
 
-export default function CargaCuotasExcel({ onProcessed }) {
-  const [file, setFile] = useState(null)
+export default function CargaCuotasExcel() {
   const [periodo, setPeriodo] = useState('')
+  const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0])
+  }
+
   const handleProcess = async () => {
-    if (!file || !periodo) {
-      setError('Debes seleccionar archivo y período')
+    setError('')
+    setSuccess('')
+
+    if (!periodo) {
+      setError('Debes ingresar un periodo')
       return
     }
 
-    setError('')
-    setSuccess('')
+    if (!file) {
+      setError('Debes seleccionar un archivo Excel')
+      return
+    }
+
     setLoading(true)
 
     try {
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data)
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(sheet)
+      // 🔹 Convertir YYYY-MM a YYYY-MM-01
+      const periodoDate = `${periodo}-01`
 
-      const filas = rows.map(r => ({
-        rut: String(r.Rut).trim(),
-        nombre: r.Nombre || '',
-        tipo: r.Tipo || 'SOCIO',
-        valor_pagado: Number(r['Valor pagado']) || 0,
-        estado: 'PENDIENTE'
-      }))
+      const reader = new FileReader()
 
-      const { error: insertError } = await supabase
-        .from('cuotas_importacion')
-        .insert({
-          periodo,
-          estado: 'pendiente',
-          filas
-        })
+      reader.onload = async (evt) => {
+        try {
+          const data = new Uint8Array(evt.target.result)
+          const workbook = XLSX.read(data, { type: 'array' })
+          const sheet = workbook.Sheets[workbook.SheetNames[0]]
+          const jsonData = XLSX.utils.sheet_to_json(sheet)
 
-      if (insertError) throw insertError
+          if (jsonData.length === 0) {
+            setError('El archivo está vacío')
+            setLoading(false)
+            return
+          }
 
-      setSuccess('Archivo procesado correctamente')
-      setFile(null)
-      onProcessed?.()
+          const rows = jsonData.map((row) => ({
+            periodo: periodoDate,
+            rut: String(row.Rut || '').trim(),
+            nombre: row.Nombre || '',
+            tipo: row.Tipo || '',
+            valor_pagado: Number(row['Valor Pagado'] || 0),
+            estado: 'pendiente',
+            estado_validacion: 'pendiente'
+          }))
+
+          const { error: insertError } = await supabase
+            .from('cuotas_importacion')
+            .insert(rows)
+
+          if (insertError) {
+            console.error(insertError)
+            setError('Error al insertar datos: ' + insertError.message)
+            setLoading(false)
+            return
+          }
+
+          setSuccess(`Se importaron ${rows.length} registros correctamente`)
+          setFile(null)
+          setLoading(false)
+        } catch (err) {
+          console.error(err)
+          setError('Error procesando el archivo')
+          setLoading(false)
+        }
+      }
+
+      reader.readAsArrayBuffer(file)
 
     } catch (err) {
       console.error(err)
-      setError('Error al procesar el Excel')
-    } finally {
+      setError('Error inesperado')
       setLoading(false)
     }
   }
@@ -62,27 +95,35 @@ export default function CargaCuotasExcel({ onProcessed }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Carga Masiva de Cuotas</CardTitle>
+        <CardTitle>Carga masiva de cuotas (Excel)</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+
         {error && <Alert variant="destructive">{error}</Alert>}
         {success && <Alert>{success}</Alert>}
 
-        <Input
-          placeholder="Periodo (YYYY-MM)"
-          value={periodo}
-          onChange={e => setPeriodo(e.target.value)}
-        />
+        <div>
+          <label className="block text-sm mb-1">Periodo (YYYY-MM)</label>
+          <Input
+            type="month"
+            value={periodo}
+            onChange={(e) => setPeriodo(e.target.value)}
+          />
+        </div>
 
-        <Input
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={e => setFile(e.target.files[0])}
-        />
+        <div>
+          <label className="block text-sm mb-1">Archivo Excel</label>
+          <Input
+            type="file"
+            accept=".xlsx, .xls"
+            onChange={handleFileChange}
+          />
+        </div>
 
         <Button onClick={handleProcess} disabled={loading}>
           {loading ? 'Procesando...' : 'Procesar Excel'}
         </Button>
+
       </CardContent>
     </Card>
   )
