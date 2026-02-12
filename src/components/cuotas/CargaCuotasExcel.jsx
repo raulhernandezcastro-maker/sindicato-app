@@ -1,220 +1,119 @@
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../lib/supabase'
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent
-} from '../ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Alert } from '../ui/alert'
-import { Spinner } from '../ui/spinner'
 
-export default function CargaCuotasExcel() {
-  const [file, setFile] = useState(null)
+export default function CargaCuotasExcel({ onFinish }) {
   const [periodo, setPeriodo] = useState('')
+  const [file, setFile] = useState(null)
   const [processing, setProcessing] = useState(false)
-  const [preview, setPreview] = useState([])
-  const [error, setError] = useState(null)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
-  const fileInputRef = useRef(null)
-
-  /* =============================
-     LIMPIAR MONTO CORRECTAMENTE
-  ============================= */
-
-  const cleanMonto = (value) => {
-    if (!value) return 0
-
+  const normalizarMonto = (valor) => {
+    if (!valor) return 0
     return Number(
-      String(value)
-        .replace(/\./g, '')   // elimina separador miles
-        .replace(',', '.')   // cambia coma decimal
+      String(valor)
+        .replace(/\$/g, '')
+        .replace(/\./g, '')
+        .replace(/,/g, '')
         .trim()
     )
   }
 
-  /* =============================
-     CARGAR PREVIEW DESDE BD
-  ============================= */
-
-  const loadPreview = async () => {
-    const { data } = await supabase
-      .from('cuotas_importacion')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    setPreview(data || [])
-  }
-
-  /* =============================
-     PROCESAR EXCEL
-  ============================= */
-
   const handleProcess = async () => {
     if (!file || !periodo) {
-      setError('Debes seleccionar archivo y período')
+      setError('Debe seleccionar período y archivo')
       return
     }
 
-    setError(null)
     setProcessing(true)
+    setError('')
+    setSuccess('')
 
     try {
-      const reader = new FileReader()
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data)
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json(sheet)
 
-      reader.onload = async (e) => {
-        const data = new Uint8Array(e.target.result)
-        const workbook = XLSX.read(data, { type: 'array' })
-        const sheet = workbook.Sheets[workbook.SheetNames[0]]
-        const json = XLSX.utils.sheet_to_json(sheet)
-
-        if (!json.length) {
-          setError('El archivo está vacío')
-          setProcessing(false)
-          return
-        }
-
-        const rowsToInsert = json.map(row => ({
-          periodo: `${periodo}-01`,
-          rut: String(row.Rut || '').trim(),
-          nombre: row.Nombre || '',
-          tipo: String(row.Tipo || '').toUpperCase(),
-          valor_pagado: cleanMonto(row['Valor Pagado']),
-          estado: 'pendiente',
-          estado_validacion: 'pendiente'
-        }))
-
-        const { error: insertError } = await supabase
-          .from('cuotas_importacion')
-          .insert(rowsToInsert)
-
-        if (insertError) {
-          console.error(insertError)
-          setError(insertError.message)
-          setProcessing(false)
-          return
-        }
-
-        // 🔄 Recargar preview
-        await loadPreview()
-
-        // 🧹 Limpiar formulario
-        setFile(null)
-        setPeriodo('')
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ''
-        }
-
-        setProcessing(false)
+      if (!rows.length) {
+        throw new Error('El archivo no tiene registros')
       }
 
-      reader.readAsArrayBuffer(file)
+      // 🔹 Limpiar importación previa del mismo período
+      await supabase
+        .from('cuotas_importacion')
+        .delete()
+        .eq('periodo', `${periodo}-01`)
+
+      const registros = rows.map(r => ({
+        periodo: `${periodo}-01`,
+        rut: String(r.rut).trim(),
+        nombre: String(r.nombre).trim(),
+        tipo: String(r.tipo).toUpperCase(),
+        valor_pagado: normalizarMonto(r.valor_pagado),
+        estado: 'pendiente',
+        estado_validacion: 'pendiente'
+      }))
+
+      // 🔹 Validar duplicados dentro del mismo archivo
+      const keys = new Set()
+      for (const r of registros) {
+        const key = `${r.rut}-${r.periodo}`
+        if (keys.has(key)) {
+          throw new Error(`Duplicado en Excel: RUT ${r.rut}`)
+        }
+        keys.add(key)
+      }
+
+      const { error: insertError } = await supabase
+        .from('cuotas_importacion')
+        .insert(registros)
+
+      if (insertError) throw insertError
+
+      setSuccess(`Se importaron ${registros.length} registros correctamente`)
+      setPeriodo('')
+      setFile(null)
+
+      if (onFinish) onFinish()
 
     } catch (err) {
       console.error(err)
-      setError('Error procesando archivo')
+      setError(err.message || 'Error al procesar archivo')
+    } finally {
       setProcessing(false)
     }
   }
 
-  /* =============================
-     RENDER
-  ============================= */
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Carga Masiva de Cuotas</CardTitle>
+        <CardTitle>Carga masiva de cuotas (Excel)</CardTitle>
       </CardHeader>
-
       <CardContent className="space-y-4">
-
         {error && <Alert variant="destructive">{error}</Alert>}
+        {success && <Alert>{success}</Alert>}
 
-        <div>
-          <label className="text-sm font-medium">
-            Período (YYYY-MM)
-          </label>
-          <Input
-            type="month"
-            value={periodo}
-            onChange={(e) => setPeriodo(e.target.value)}
-          />
-        </div>
+        <Input
+          type="month"
+          value={periodo}
+          onChange={e => setPeriodo(e.target.value)}
+        />
 
-        <div>
-          <label className="text-sm font-medium">
-            Archivo Excel
-          </label>
-          <Input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={(e) => setFile(e.target.files[0])}
-          />
-        </div>
+        <Input
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={e => setFile(e.target.files[0])}
+        />
 
-        <Button
-          onClick={handleProcess}
-          disabled={processing}
-        >
+        <Button onClick={handleProcess} disabled={processing}>
           {processing ? 'Procesando...' : 'Procesar Excel'}
         </Button>
-
-        {/* PREVIEW */}
-        <div className="mt-6">
-          <h3 className="font-semibold mb-2">
-            Vista previa de cuotas importadas
-          </h3>
-
-          {processing && (
-            <div className="flex justify-center py-6">
-              <Spinner />
-            </div>
-          )}
-
-          {!processing && preview.length === 0 && (
-            <p className="text-muted-foreground">
-              No hay cuotas importadas
-            </p>
-          )}
-
-          {!processing && preview.length > 0 && (
-            <table className="w-full text-sm border">
-              <thead>
-                <tr className="border-b bg-gray-100">
-                  <th className="p-2">RUT</th>
-                  <th className="p-2">Nombre</th>
-                  <th className="p-2">Tipo</th>
-                  <th className="p-2">Periodo</th>
-                  <th className="p-2">Monto</th>
-                  <th className="p-2">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.map(row => (
-                  <tr key={row.id} className="border-b">
-                    <td className="p-2">{row.rut}</td>
-                    <td className="p-2">{row.nombre}</td>
-                    <td className="p-2">{row.tipo}</td>
-                    <td className="p-2">{row.periodo}</td>
-                    <td className="p-2">
-                      {new Intl.NumberFormat('es-CL', {
-                        style: 'currency',
-                        currency: 'CLP'
-                      }).format(row.valor_pagado)}
-                    </td>
-                    <td className="p-2">{row.estado}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
       </CardContent>
     </Card>
   )
