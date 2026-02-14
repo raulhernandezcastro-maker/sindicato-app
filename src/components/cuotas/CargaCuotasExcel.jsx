@@ -15,9 +15,20 @@ export default function CargaCuotasExcel({ periodo }) {
     return Number(limpio);
   };
 
+  // 🔑 helper para leer columnas sin depender del nombre exacto
+  const getField = (row, posibles) => {
+    for (const key of posibles) {
+      if (row[key] !== undefined) return row[key];
+    }
+    return undefined;
+  };
+
   const procesarExcel = async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file || !periodo) {
+      alert("Debe seleccionar archivo y período");
+      return;
+    }
 
     setLoading(true);
     setErrores([]);
@@ -32,23 +43,33 @@ export default function CargaCuotasExcel({ periodo }) {
       const registros = [];
       const erroresLocales = [];
 
-      // 🔎 Obtener duplicados históricos
-      const { data: existentes } = await supabase
+      // 🔎 Buscar duplicados históricos para el período
+      const { data: existentes, error: errorExistentes } = await supabase
         .from("cuotas_importacion")
         .select("rut, periodo")
         .eq("periodo", periodo);
 
+      if (errorExistentes) throw errorExistentes;
+
       const historicos = new Set(
-        existentes?.map((r) => `${r.rut}_${r.periodo}`) || []
+        (existentes || []).map((r) => `${r.rut}_${r.periodo}`)
       );
 
       rows.forEach((row, index) => {
-        const rut = normalizarRut(row.rut);
-        const tipo = String(row.tipo || "").toUpperCase();
-        const monto = parseMonto(row.valor_pagado);
+        const rutRaw = getField(row, ["rut", "Rut", "RUT"]);
+        const tipoRaw = getField(row, ["tipo", "Tipo"]);
+        const montoRaw = getField(row, [
+          "valor_pagado",
+          "Valor_Pagado",
+          "monto",
+          "Monto",
+        ]);
+
+        const rut = normalizarRut(rutRaw);
+        const tipo = String(tipoRaw || "").toUpperCase();
+        const monto = parseMonto(montoRaw);
 
         const key = `${rut}_${periodo}`;
-
         let mensajeError = null;
 
         if (!rut) mensajeError = "RUT vacío";
@@ -66,7 +87,7 @@ export default function CargaCuotasExcel({ periodo }) {
         registros.push({
           periodo,
           rut,
-          nombre: row.nombre || "",
+          nombre: getField(row, ["nombre", "Nombre"]) || "",
           tipo,
           valor_pagado: Number.isFinite(monto) ? monto : 0,
           estado: "pendiente",
@@ -79,16 +100,16 @@ export default function CargaCuotasExcel({ periodo }) {
         }
       });
 
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from("cuotas_importacion")
         .insert(registros);
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
       setErrores(erroresLocales);
       e.target.value = ""; // limpiar input
     } catch (err) {
-      console.error(err);
+      console.error("ERROR REAL:", err);
       alert("Error procesando Excel");
     } finally {
       setLoading(false);
@@ -100,7 +121,7 @@ export default function CargaCuotasExcel({ periodo }) {
       <input type="file" accept=".xlsx" onChange={procesarExcel} />
       {loading && <p>Procesando Excel...</p>}
       {errores.length > 0 && (
-        <div style={{ color: "red" }}>
+        <div style={{ color: "red", marginTop: 12 }}>
           <h4>Errores detectados</h4>
           <ul>
             {errores.map((e, i) => (
