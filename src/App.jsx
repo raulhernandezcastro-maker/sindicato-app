@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import DashboardPage from "./pages/DashboardPage";
-import CuotasPage from "./pages/CuotasPage";
-import SociosPage from "./pages/SociosPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { CuotasPage } from "./pages/CuotasPage";
+import { SociosPage } from "./pages/SociosPage";
 
 export default function App() {
   return (
