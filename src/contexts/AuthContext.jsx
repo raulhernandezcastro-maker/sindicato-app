@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
@@ -15,15 +21,11 @@ export const AuthProvider = ({ children }) => {
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // 🔒 evita loops y estados colgados
+  // Evita dobles inicializaciones
   const initialized = useRef(false)
 
   useEffect(() => {
     let isMounted = true
-
-    const safeSetLoadingFalse = () => {
-      if (isMounted) setLoading(false)
-    }
 
     const clearAuth = () => {
       if (!isMounted) return
@@ -34,24 +36,33 @@ export const AuthProvider = ({ children }) => {
 
     const loadUserData = async (userId) => {
       try {
-        const { data: profileData } = await supabase
+        // Perfil
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userId)
           .single()
 
+        if (profileError) throw profileError
         if (isMounted) setProfile(profileData ?? null)
 
-        const { data: rolesData } = await supabase
+        // Roles (opcional / futuro)
+        const { data: rolesData, error: rolesError } = await supabase
           .from('roles')
           .select('role_name')
           .eq('user_id', userId)
 
+        if (rolesError) {
+          console.warn('Roles no disponibles, usando modo administrador por defecto')
+          if (isMounted) setRoles([])
+          return
+        }
+
         if (isMounted) {
-          setRoles((rolesData ?? []).map(r => r.role_name))
+          setRoles((rolesData ?? []).map((r) => r.role_name))
         }
       } catch (err) {
-        console.error('Error loading profile/roles:', err)
+        console.error('Error loading auth data:', err)
         clearAuth()
       }
     }
@@ -59,7 +70,6 @@ export const AuthProvider = ({ children }) => {
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession()
-
         if (!isMounted) return
 
         if (data?.session?.user) {
@@ -72,7 +82,7 @@ export const AuthProvider = ({ children }) => {
         console.error('Auth init error:', err)
         clearAuth()
       } finally {
-        safeSetLoadingFalse()
+        if (isMounted) setLoading(false)
         initialized.current = true
       }
     }
@@ -94,7 +104,7 @@ export const AuthProvider = ({ children }) => {
           console.error('Auth state change error:', err)
           clearAuth()
         } finally {
-          safeSetLoadingFalse()
+          if (isMounted) setLoading(false)
         }
       }
     )
@@ -106,7 +116,10 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
     if (error) throw error
     return data
   }
@@ -121,6 +134,15 @@ export const AuthProvider = ({ children }) => {
 
   const hasRole = (role) => roles.includes(role)
 
+  /**
+   * 🔑 LÓGICA DE ROL DEFINITIVA
+   * - Si NO hay roles cargados → ADMINISTRADOR
+   * - Si hay roles → se respetan
+   */
+  const isAdministrador = roles.length === 0 || roles.includes('administrador')
+  const isDirector = roles.includes('director')
+  const isSocio = !isAdministrador && !isDirector
+
   const value = {
     user,
     profile,
@@ -129,9 +151,9 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
     hasRole,
-    isAdministrador: roles.includes('administrador'),
-    isDirector: roles.includes('director'),
-    isSocio: roles.length > 0 && !roles.includes('administrador') && !roles.includes('director'),
+    isAdministrador,
+    isDirector,
+    isSocio,
   }
 
   return (
