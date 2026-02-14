@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 
 export default function CargaCuotasExcel({ periodo, onProcesado }) {
   const [loading, setLoading] = useState(false);
+  const [archivo, setArchivo] = useState(null);
 
   const normalizarRut = (rut) =>
     String(rut || "").replace(/[.\-]/g, "").trim();
@@ -14,17 +15,17 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
     return Number(limpio);
   };
 
-  const procesarExcel = async (file) => {
-    if (!file) return;
+  const procesarExcel = async () => {
+    if (!archivo) return;
     if (!periodo) {
-      alert("Debe seleccionar un período antes de procesar el Excel");
+      alert("Debe seleccionar un período");
       return;
     }
 
     setLoading(true);
 
     try {
-      const data = await file.arrayBuffer();
+      const data = await archivo.arrayBuffer();
       const workbook = XLSX.read(data);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet);
@@ -34,7 +35,6 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
         return;
       }
 
-      // 🔎 Buscar duplicados históricos para el período
       const { data: existentes, error } = await supabase
         .from("cuotas_importacion")
         .select("rut, periodo")
@@ -95,7 +95,8 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
 
       if (insertError) throw insertError;
 
-      if (onProcesado) onProcesado(); // refrescar preview si ya existía
+      if (onProcesado) onProcesado();
+      setArchivo(null);
     } catch (err) {
       console.error("Error procesando Excel:", err);
       alert("Error procesando Excel");
@@ -104,8 +105,17 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
     }
   };
 
-  return {
-    procesarExcel,
-    loading,
-  };
+  return (
+    <div>
+      <input
+        type="file"
+        accept=".xlsx"
+        onChange={(e) => setArchivo(e.target.files[0])}
+      />
+
+      <button onClick={procesarExcel} disabled={loading}>
+        {loading ? "Procesando..." : "Procesar Excel"}
+      </button>
+    </div>
+  );
 }
