@@ -131,7 +131,7 @@ export const AuthProvider = ({ children }) => {
     hasRole,
     isAdministrador: roles.includes('administrador'),
     isDirector: roles.includes('director'),
-    isSocio: roles.length > 0,
+    isSocio: roles.length > 0 && !roles.includes('administrador') && !roles.includes('director'),
   }
 
   return (
