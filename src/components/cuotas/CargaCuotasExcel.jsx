@@ -15,7 +15,6 @@ export default function CargaCuotasExcel({ periodo }) {
     return Number(limpio);
   };
 
-  // 🔑 helper para leer columnas sin depender del nombre exacto
   const getField = (row, posibles) => {
     for (const key of posibles) {
       if (row[key] !== undefined) return row[key];
@@ -25,10 +24,14 @@ export default function CargaCuotasExcel({ periodo }) {
 
   const procesarExcel = async (e) => {
     const file = e.target.files[0];
-    if (!file || !periodo) {
-      alert("Debe seleccionar archivo y período");
+
+    if (!periodo) {
+      alert("Debe seleccionar el período antes de cargar el Excel");
+      e.target.value = "";
       return;
     }
+
+    if (!file) return;
 
     setLoading(true);
     setErrores([]);
@@ -39,11 +42,16 @@ export default function CargaCuotasExcel({ periodo }) {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet);
 
+      if (rows.length === 0) {
+        alert("El archivo Excel no contiene datos");
+        return;
+      }
+
       const vistos = new Set();
       const registros = [];
       const erroresLocales = [];
 
-      // 🔎 Buscar duplicados históricos para el período
+      // 🔎 Duplicados históricos para el mismo período
       const { data: existentes, error: errorExistentes } = await supabase
         .from("cuotas_importacion")
         .select("rut, periodo")
@@ -85,7 +93,7 @@ export default function CargaCuotasExcel({ periodo }) {
         vistos.add(key);
 
         registros.push({
-          periodo,
+          periodo, // 🔴 PERÍODO FORZADO DESDE UI
           rut,
           nombre: getField(row, ["nombre", "Nombre"]) || "",
           tipo,
@@ -107,9 +115,9 @@ export default function CargaCuotasExcel({ periodo }) {
       if (insertError) throw insertError;
 
       setErrores(erroresLocales);
-      e.target.value = ""; // limpiar input
+      e.target.value = "";
     } catch (err) {
-      console.error("ERROR REAL:", err);
+      console.error("ERROR PROCESANDO EXCEL:", err);
       alert("Error procesando Excel");
     } finally {
       setLoading(false);
@@ -118,8 +126,15 @@ export default function CargaCuotasExcel({ periodo }) {
 
   return (
     <div>
-      <input type="file" accept=".xlsx" onChange={procesarExcel} />
+      <input
+        type="file"
+        accept=".xlsx"
+        onChange={procesarExcel}
+        disabled={!periodo || loading}
+      />
+
       {loading && <p>Procesando Excel...</p>}
+
       {errores.length > 0 && (
         <div style={{ color: "red", marginTop: 12 }}>
           <h4>Errores detectados</h4>
