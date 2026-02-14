@@ -1,120 +1,114 @@
-import React, { useState } from 'react'
-import * as XLSX from 'xlsx'
-import { supabase } from '../../lib/supabase'
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
-import { Button } from '../ui/button'
-import { Input } from '../ui/input'
-import { Alert } from '../ui/alert'
+import { useState } from "react";
+import * as XLSX from "xlsx";
+import { supabase } from "../../lib/supabase";
 
-export default function CargaCuotasExcel({ onFinish }) {
-  const [periodo, setPeriodo] = useState('')
-  const [file, setFile] = useState(null)
-  const [processing, setProcessing] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+export default function CargaCuotasExcel({ periodo }) {
+  const [loading, setLoading] = useState(false);
+  const [errores, setErrores] = useState([]);
 
-  const normalizarMonto = (valor) => {
-    if (!valor) return 0
-    return Number(
-      String(valor)
-        .replace(/\$/g, '')
-        .replace(/\./g, '')
-        .replace(/,/g, '')
-        .trim()
-    )
-  }
+  const normalizarRut = (rut) =>
+    String(rut || "").replace(/[.\-]/g, "").trim();
 
-  const handleProcess = async () => {
-    if (!file || !periodo) {
-      setError('Debe seleccionar período y archivo')
-      return
-    }
+  const parseMonto = (valor) => {
+    if (valor === null || valor === undefined) return NaN;
+    const limpio = String(valor).replace(/[^\d]/g, "");
+    return Number(limpio);
+  };
 
-    setProcessing(true)
-    setError('')
-    setSuccess('')
+  const procesarExcel = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    setErrores([]);
 
     try {
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data)
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(sheet)
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
 
-      if (!rows.length) {
-        throw new Error('El archivo no tiene registros')
-      }
+      const vistos = new Set();
+      const registros = [];
+      const erroresLocales = [];
 
-      // 🔹 Limpiar importación previa del mismo período
-      await supabase
-        .from('cuotas_importacion')
-        .delete()
-        .eq('periodo', `${periodo}-01`)
+      // 🔎 Obtener duplicados históricos
+      const { data: existentes } = await supabase
+        .from("cuotas_importacion")
+        .select("rut, periodo")
+        .eq("periodo", periodo);
 
-      const registros = rows.map(r => ({
-        periodo: `${periodo}-01`,
-        rut: String(r.rut).trim(),
-        nombre: String(r.nombre).trim(),
-        tipo: String(r.tipo).toUpperCase(),
-        valor_pagado: normalizarMonto(r.valor_pagado),
-        estado: 'pendiente',
-        estado_validacion: 'pendiente'
-      }))
+      const historicos = new Set(
+        existentes?.map((r) => `${r.rut}_${r.periodo}`) || []
+      );
 
-      // 🔹 Validar duplicados dentro del mismo archivo
-      const keys = new Set()
-      for (const r of registros) {
-        const key = `${r.rut}-${r.periodo}`
-        if (keys.has(key)) {
-          throw new Error(`Duplicado en Excel: RUT ${r.rut}`)
+      rows.forEach((row, index) => {
+        const rut = normalizarRut(row.rut);
+        const tipo = String(row.tipo || "").toUpperCase();
+        const monto = parseMonto(row.valor_pagado);
+
+        const key = `${rut}_${periodo}`;
+
+        let mensajeError = null;
+
+        if (!rut) mensajeError = "RUT vacío";
+        else if (!["SOCIO", "APORTANTE"].includes(tipo))
+          mensajeError = "Tipo inválido";
+        else if (!Number.isFinite(monto) || monto <= 0)
+          mensajeError = "Monto inválido";
+        else if (vistos.has(key))
+          mensajeError = "Duplicado dentro del Excel";
+        else if (historicos.has(key))
+          mensajeError = "Ya existe carga para este período";
+
+        vistos.add(key);
+
+        registros.push({
+          periodo,
+          rut,
+          nombre: row.nombre || "",
+          tipo,
+          valor_pagado: Number.isFinite(monto) ? monto : 0,
+          estado: "pendiente",
+          estado_validacion: mensajeError ? "error" : "ok",
+          mensaje_error: mensajeError,
+        });
+
+        if (mensajeError) {
+          erroresLocales.push(`Fila ${index + 2}: ${mensajeError}`);
         }
-        keys.add(key)
-      }
+      });
 
-      const { error: insertError } = await supabase
-        .from('cuotas_importacion')
-        .insert(registros)
+      const { error } = await supabase
+        .from("cuotas_importacion")
+        .insert(registros);
 
-      if (insertError) throw insertError
+      if (error) throw error;
 
-      setSuccess(`Se importaron ${registros.length} registros correctamente`)
-      setPeriodo('')
-      setFile(null)
-
-      if (onFinish) onFinish()
-
+      setErrores(erroresLocales);
+      e.target.value = ""; // limpiar input
     } catch (err) {
-      console.error(err)
-      setError(err.message || 'Error al procesar archivo')
+      console.error(err);
+      alert("Error procesando Excel");
     } finally {
-      setProcessing(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Carga masiva de cuotas (Excel)</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {error && <Alert variant="destructive">{error}</Alert>}
-        {success && <Alert>{success}</Alert>}
-
-        <Input
-          type="month"
-          value={periodo}
-          onChange={e => setPeriodo(e.target.value)}
-        />
-
-        <Input
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={e => setFile(e.target.files[0])}
-        />
-
-        <Button onClick={handleProcess} disabled={processing}>
-          {processing ? 'Procesando...' : 'Procesar Excel'}
-        </Button>
-      </CardContent>
-    </Card>
-  )
+    <div>
+      <input type="file" accept=".xlsx" onChange={procesarExcel} />
+      {loading && <p>Procesando Excel...</p>}
+      {errores.length > 0 && (
+        <div style={{ color: "red" }}>
+          <h4>Errores detectados</h4>
+          <ul>
+            {errores.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
