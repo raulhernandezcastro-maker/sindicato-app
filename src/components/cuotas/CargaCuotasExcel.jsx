@@ -3,8 +3,8 @@ import * as XLSX from "xlsx";
 import { supabase } from "../../lib/supabase";
 
 export default function CargaCuotasExcel({ periodo, onProcesado }) {
-  const [loading, setLoading] = useState(false);
   const [archivo, setArchivo] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const normalizarRut = (rut) =>
     String(rut || "").replace(/[.\-]/g, "").trim();
@@ -16,7 +16,11 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
   };
 
   const procesarExcel = async () => {
-    if (!archivo) return;
+    if (!archivo) {
+      alert("Debe seleccionar un archivo Excel");
+      return;
+    }
+
     if (!periodo) {
       alert("Debe seleccionar un período");
       return;
@@ -35,6 +39,7 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
         return;
       }
 
+      // 🔎 Buscar duplicados históricos para el período
       const { data: existentes, error } = await supabase
         .from("cuotas_importacion")
         .select("rut, periodo")
@@ -55,6 +60,7 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
         const monto = parseMonto(row.Valor_Pagado || row.valor_pagado);
 
         const key = `${rut}_${periodo}`;
+
         let estadoValidacion = "ok";
         let mensajeError = null;
 
