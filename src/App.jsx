@@ -4,50 +4,25 @@ import { DashboardPage } from './pages/DashboardPage'
 import CuotasPage from './pages/CuotasPage'
 import { SociosPage } from './pages/SociosPage'
 
-import { AppLayout } from './components/layout/AppLayout'
-import { useAuth } from './contexts/AuthContext'
-
-function ProtectedLayout({ children }) {
-  const { loading, user } = useAuth()
-
-  if (loading) return null
-  if (!user) return <Navigate to="/login" replace />
-
-  return <AppLayout>{children}</AppLayout>
-}
+// (si existen, se agregan después)
+import AvisosPage from './pages/AvisosPage'
+import DocumentosPage from './pages/DocumentosPage'
+import PerfilPage from './pages/PerfilPage'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <ProtectedLayout>
-              <DashboardPage />
-            </ProtectedLayout>
-          }
-        />
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
 
-        <Route
-          path="/cuotas"
-          element={
-            <ProtectedLayout>
-              <CuotasPage />
-            </ProtectedLayout>
-          }
-        />
+        <Route path="/avisos" element={<AvisosPage />} />
+        <Route path="/documentos" element={<DocumentosPage />} />
+        <Route path="/perfil" element={<PerfilPage />} />
 
-        <Route
-          path="/socios"
-          element={
-            <ProtectedLayout>
-              <SociosPage />
-            </ProtectedLayout>
-          }
-        />
+        <Route path="/cuotas" element={<CuotasPage />} />
+        <Route path="/socios" element={<SociosPage />} />
 
-        {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
