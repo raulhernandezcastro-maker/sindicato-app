@@ -4,11 +4,6 @@ import { DashboardPage } from './pages/DashboardPage'
 import CuotasPage from './pages/CuotasPage'
 import { SociosPage } from './pages/SociosPage'
 
-// (si existen, se agregan después)
-import AvisosPage from './pages/AvisosPage'
-import DocumentosPage from './pages/DocumentosPage'
-import PerfilPage from './pages/PerfilPage'
-
 export default function App() {
   return (
     <BrowserRouter>
@@ -16,13 +11,10 @@ export default function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
 
-        <Route path="/avisos" element={<AvisosPage />} />
-        <Route path="/documentos" element={<DocumentosPage />} />
-        <Route path="/perfil" element={<PerfilPage />} />
-
         <Route path="/cuotas" element={<CuotasPage />} />
         <Route path="/socios" element={<SociosPage />} />
 
+        {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
