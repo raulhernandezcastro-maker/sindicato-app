@@ -1,25 +1,55 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
-import { AuthProvider } from "./contexts/AuthContext";
-import { AppLayout } from "./components/layout/AppLayout";
+import { DashboardPage } from './pages/DashboardPage'
+import CuotasPage from './pages/CuotasPage'
+import { SociosPage } from './pages/SociosPage'
 
-import { DashboardPage } from "./pages/DashboardPage";
-import CuotasPage from "./pages/CuotasPage";
-import { SociosPage } from "./pages/SociosPage";
+import { AppLayout } from './components/layout/AppLayout'
+import { useAuth } from './contexts/AuthContext'
+
+function ProtectedLayout({ children }) {
+  const { loading, user } = useAuth()
+
+  if (loading) return null
+  if (!user) return <Navigate to="/login" replace />
+
+  return <AppLayout>{children}</AppLayout>
+}
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Layout principal */}
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/cuotas" element={<CuotasPage />} />
-            <Route path="/socios" element={<SociosPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
-  );
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ProtectedLayout>
+              <DashboardPage />
+            </ProtectedLayout>
+          }
+        />
+
+        <Route
+          path="/cuotas"
+          element={
+            <ProtectedLayout>
+              <CuotasPage />
+            </ProtectedLayout>
+          }
+        />
+
+        <Route
+          path="/socios"
+          element={
+            <ProtectedLayout>
+              <SociosPage />
+            </ProtectedLayout>
+          }
+        />
+
+        {/* fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
 }
