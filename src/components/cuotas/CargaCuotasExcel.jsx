@@ -15,6 +15,9 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
     return Number(limpio);
   };
 
+  // ✅ convierte YYYY-MM → YYYY-MM-01 (date válido)
+  const periodoToDate = (periodo) => `${periodo}-01`;
+
   const procesarExcel = async () => {
     if (!archivo) {
       alert("Debe seleccionar un archivo Excel");
@@ -29,6 +32,8 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
     setLoading(true);
 
     try {
+      const periodoDate = periodoToDate(periodo);
+
       const data = await archivo.arrayBuffer();
       const workbook = XLSX.read(data);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -39,11 +44,11 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
         return;
       }
 
-      // 🔎 Buscar duplicados históricos para el período
+      // 🔎 buscar duplicados históricos
       const { data: existentes, error: selectError } = await supabase
         .from("cuotas_importacion")
         .select("rut, periodo")
-        .eq("periodo", periodo);
+        .eq("periodo", periodoDate);
 
       if (selectError) throw selectError;
 
@@ -59,7 +64,7 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
         const tipo = String(row.Tipo || row.tipo || "").toUpperCase();
         const monto = parseMonto(row.Valor_Pagado || row.valor_pagado);
 
-        const key = `${rut}_${periodo}`;
+        const key = `${rut}_${periodoDate}`;
 
         let estadoValidacion = "ok";
         let mensajeError = null;
@@ -84,7 +89,7 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
         vistosExcel.add(key);
 
         registros.push({
-          periodo, // ⚠️ lo dejamos TAL CUAL, no lo tocamos aún
+          periodo: periodoDate, // ✅ date correcto
           rut,
           nombre: row.Nombre || row.nombre || "",
           tipo,
@@ -101,22 +106,14 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
 
       if (insertError) throw insertError;
 
+      alert("Excel procesado correctamente");
       if (onProcesado) onProcesado();
       setArchivo(null);
-
-      alert("Excel procesado correctamente");
     } catch (err) {
-      console.error("❌ ERROR REAL PROCESANDO EXCEL:", err);
-
-      if (err?.message) {
-        alert("Error procesando Excel:\n" + err.message);
-      } else if (err?.error?.message) {
-        alert("Error procesando Excel:\n" + err.error.message);
-      } else {
-        alert("Error procesando Excel (ver consola)");
-      }
+      console.error("❌ ERROR PROCESANDO EXCEL:", err);
+      alert(err.message || "Error procesando Excel (ver consola)");
     } finally {
-      setLoading(false); // 🔑 evita botón colgado
+      setLoading(false);
     }
   };
 
