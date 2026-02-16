@@ -39,7 +39,7 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
         return;
       }
 
-      // 🔎 Buscar duplicados históricos para el período
+      // 🔎 buscar duplicados históricos por período
       const { data: existentes, error } = await supabase
         .from("cuotas_importacion")
         .select("rut, periodo")
@@ -52,62 +52,54 @@ export default function CargaCuotasExcel({ periodo, onProcesado }) {
       );
 
       const vistosExcel = new Set();
-      const registros = [];
+      const registrosValidos = [];
 
       rows.forEach((row) => {
         const rut = normalizarRut(row.Rut || row.rut);
         const tipo = String(row.Tipo || row.tipo || "").toUpperCase();
         const monto = parseMonto(row.Valor_Pagado || row.valor_pagado);
-
         const key = `${rut}_${periodo}`;
 
-        let estadoValidacion = "ok";
-        let mensajeError = null;
-
-        if (!rut) {
-          estadoValidacion = "error";
-          mensajeError = "RUT vacío";
-        } else if (!["SOCIO", "APORTANTE"].includes(tipo)) {
-          estadoValidacion = "error";
-          mensajeError = "Tipo inválido";
-        } else if (!Number.isFinite(monto) || monto <= 0) {
-          estadoValidacion = "error";
-          mensajeError = "Monto inválido";
-        } else if (vistosExcel.has(key)) {
-          estadoValidacion = "error";
-          mensajeError = "Duplicado dentro del Excel";
-        } else if (historicos.has(key)) {
-          estadoValidacion = "error";
-          mensajeError = "Ya existe cuota para este período";
-        }
+        if (!rut) return;
+        if (!["SOCIO", "APORTANTE"].includes(tipo)) return;
+        if (!Number.isFinite(monto) || monto <= 0) return;
+        if (vistosExcel.has(key)) return;
+        if (historicos.has(key)) return;
 
         vistosExcel.add(key);
 
-        registros.push({
+        registrosValidos.push({
           periodo,
           rut,
           nombre: row.Nombre || row.nombre || "",
           tipo,
-          valor_pagado: Number.isFinite(monto) ? monto : 0,
+          valor_pagado: monto,
           estado: "pendiente",
-          estado_validacion: estadoValidacion,
-          mensaje_error: mensajeError,
+          estado_validacion: "ok",
+          mensaje_error: null,
         });
       });
 
+      if (!registrosValidos.length) {
+        alert("No hay registros válidos para importar");
+        return;
+      }
+
       const { error: insertError } = await supabase
         .from("cuotas_importacion")
-        .insert(registros);
+        .insert(registrosValidos);
 
       if (insertError) throw insertError;
 
-      if (onProcesado) onProcesado();
       setArchivo(null);
+      if (onProcesado) onProcesado();
+
+      alert(`Se importaron ${registrosValidos.length} cuotas correctamente`);
     } catch (err) {
       console.error("Error procesando Excel:", err);
       alert("Error procesando Excel");
     } finally {
-      setLoading(false); // 🔑 evita botón colgado
+      setLoading(false);
     }
   };
 
