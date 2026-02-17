@@ -4,6 +4,7 @@ import ResumenCuotas from "../components/cuotas/ResumenCuotas";
 import CargaCuotasExcel from "../components/cuotas/CargaCuotasExcel";
 import PreviewCuotas from "../components/cuotas/PreviewCuotas";
 import ConfirmarCuotas from "../components/cuotas/ConfirmarCuotas";
+import CuotasConfirmadas from "../components/cuotas/CuotasConfirmadas";
 
 export default function CuotasPage() {
   const [periodo, setPeriodo] = useState("");
@@ -45,6 +46,10 @@ export default function CuotasPage() {
 
       {/* ✅ CONFIRMACIÓN */}
       <ConfirmarCuotas />
+
+      <hr />
+
+      <CuotasConfirmadas />
     </div>
   );
 }
