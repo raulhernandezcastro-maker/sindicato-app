@@ -11,23 +11,47 @@ import {
   TableRow
 } from '../ui/table'
 
-export default function PreviewCuotas() {
+export default function PreviewCuotas({ periodo }) {
   const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (!periodo) {
+      setRows([])
+      return
+    }
+
     load()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodo])
 
   const load = async () => {
     setLoading(true)
-    const { data } = await supabase
+
+    const { data, error } = await supabase
       .from('cuotas_importacion')
       .select('*')
+      .eq('periodo', periodo)
       .order('created_at', { ascending: false })
 
-    setRows(data || [])
+    if (error) {
+      console.error('Error cargando preview cuotas:', error)
+      setRows([])
+    } else {
+      setRows(data || [])
+    }
+
     setLoading(false)
+  }
+
+  if (!periodo) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-center text-muted-foreground">
+          Seleccione un período para ver las cuotas
+        </CardContent>
+      </Card>
+    )
   }
 
   if (loading) {
@@ -44,7 +68,7 @@ export default function PreviewCuotas() {
     return (
       <Card>
         <CardContent className="py-6 text-center text-muted-foreground">
-          No hay cuotas importadas
+          No hay cuotas importadas para este período
         </CardContent>
       </Card>
     )
