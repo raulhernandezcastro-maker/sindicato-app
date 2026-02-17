@@ -1,59 +1,89 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase";
 import { Card, CardContent } from "../ui/card";
-import { AlertCircle, Clock, CheckCircle } from "lucide-react";
 
-export default function ResumenCuotas({
-  pendientes = 0,
-  conError = 0,
-  confirmadas = 0,
-}) {
+export default function ResumenCuotas() {
+  const [loading, setLoading] = useState(true);
+  const [resumen, setResumen] = useState({
+    pendientes: 0,
+    conError: 0,
+    confirmadas: 0,
+  });
+
+  useEffect(() => {
+    cargarResumen();
+  }, []);
+
+  const cargarResumen = async () => {
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("cuotas_importacion")
+        .select("estado, estado_validacion");
+
+      if (error) throw error;
+
+      let pendientes = 0;
+      let conError = 0;
+      let confirmadas = 0;
+
+      data.forEach((r) => {
+        if (r.estado === "confirmada") {
+          confirmadas++;
+        } else if (r.estado_validacion === "error") {
+          conError++;
+        } else {
+          pendientes++;
+        }
+      });
+
+      setResumen({ pendientes, conError, confirmadas });
+    } catch (err) {
+      console.error("Error cargando resumen de cuotas:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card><CardContent className="p-6">Cargando…</CardContent></Card>
+        <Card><CardContent className="p-6">Cargando…</CardContent></Card>
+        <Card><CardContent className="p-6">Cargando…</CardContent></Card>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-      {/* ⏳ PENDIENTES */}
       <Card>
-        <CardContent className="pt-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Cuotas pendientes</p>
-            <p className="text-3xl font-bold text-yellow-600">
-              {pendientes}
-            </p>
-          </div>
-          <div className="p-3 rounded-full bg-yellow-100">
-            <Clock className="w-6 h-6 text-yellow-600" />
-          </div>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">Cuotas Pendientes</p>
+          <p className="text-3xl font-bold text-yellow-600">
+            {resumen.pendientes}
+          </p>
         </CardContent>
       </Card>
 
-      {/* ❌ CON ERROR */}
       <Card>
-        <CardContent className="pt-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Cuotas con error</p>
-            <p className="text-3xl font-bold text-red-600">
-              {conError}
-            </p>
-          </div>
-          <div className="p-3 rounded-full bg-red-100">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-          </div>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">Cuotas con Error</p>
+          <p className="text-3xl font-bold text-red-600">
+            {resumen.conError}
+          </p>
         </CardContent>
       </Card>
 
-      {/* ✅ CONFIRMADAS */}
       <Card>
-        <CardContent className="pt-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Cuotas confirmadas</p>
-            <p className="text-3xl font-bold text-green-600">
-              {confirmadas}
-            </p>
-          </div>
-          <div className="p-3 rounded-full bg-green-100">
-            <CheckCircle className="w-6 h-6 text-green-600" />
-          </div>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">Cuotas Confirmadas</p>
+          <p className="text-3xl font-bold text-green-600">
+            {resumen.confirmadas}
+          </p>
         </CardContent>
       </Card>
-
     </div>
   );
 }
