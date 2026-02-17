@@ -1,21 +1,30 @@
 import { useState } from "react";
+
+import ResumenCuotas from "../components/cuotas/ResumenCuotas";
 import CargaCuotasExcel from "../components/cuotas/CargaCuotasExcel";
 import PreviewCuotas from "../components/cuotas/PreviewCuotas";
 import ConfirmarCuotas from "../components/cuotas/ConfirmarCuotas";
-import CuotasConfirmadas from "../components/cuotas/CuotasConfirmadas";
-
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 
 export default function CuotasPage() {
   const [periodo, setPeriodo] = useState("");
 
+  // ⚠️ Por ahora estos valores pueden ser fijos o venir de estado.
+  // En el siguiente paso los conectamos a Supabase.
+  const pendientes = 12;
+  const conError = 3;
+  const confirmadas = 0;
+
   return (
     <div className="space-y-6">
 
-      {/* 🔢 RECUADROS RESUMEN (ya existentes) */}
-      {/* ⬆️ estos ya los tienes arriba, NO los tocamos */}
+      {/* 🔢 RESUMEN SUPERIOR */}
+      <ResumenCuotas
+        pendientes={pendientes}
+        conError={conError}
+        confirmadas={confirmadas}
+      />
 
-      {/* 📌 TÍTULO PRINCIPAL */}
+      {/* 📌 TÍTULO */}
       <div>
         <h1 className="text-2xl font-bold">Gestión de Cuotas</h1>
         <p className="text-muted-foreground">
@@ -23,26 +32,23 @@ export default function CuotasPage() {
         </p>
       </div>
 
-      {/* 📥 CARGA DE CUOTAS */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Carga de cuotas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="font-medium">Período a cargar</label>
-            <br />
-            <input
-              type="month"
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-              className="mt-1"
-            />
-          </div>
+      {/* 📅 PERÍODO */}
+      <div>
+        <label className="font-medium">
+          Período a cargar:
+        </label>
+        <div className="mt-2">
+          <input
+            type="month"
+            value={periodo}
+            onChange={(e) => setPeriodo(e.target.value)}
+            className="border rounded px-3 py-2"
+          />
+        </div>
+      </div>
 
-          <CargaCuotasExcel periodo={periodo} />
-        </CardContent>
-      </Card>
+      {/* 📥 CARGA EXCEL */}
+      <CargaCuotasExcel periodo={periodo} />
 
       {/* 👀 PREVIEW */}
       <PreviewCuotas periodo={periodo} />
@@ -50,8 +56,6 @@ export default function CuotasPage() {
       {/* ✅ CONFIRMACIÓN */}
       <ConfirmarCuotas periodo={periodo} />
 
-      {/* 📊 CUOTAS CONFIRMADAS */}
-      <CuotasConfirmadas />
     </div>
   );
 }
