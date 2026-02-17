@@ -11,13 +11,17 @@ export default function CuotasPage() {
   return (
     <div>
       <h1>Gestión de Cuotas</h1>
-      <p>Carga, validación y confirmación de cuotas</p>
 
       {/* 📊 RESUMEN */}
       <ResumenCuotas />
 
-      {/* 🔴 SELECTOR DE PERÍODO (solo para CARGA) */}
-      <div style={{ marginBottom: 20 }}>
+      {/* 🧾 DESCRIPCIÓN */}
+      <p style={{ marginTop: 12 }}>
+        Carga, validación y confirmación de cuotas
+      </p>
+
+      {/* 🔴 SELECTOR DE PERÍODO (solo para carga) */}
+      <div style={{ marginBottom: 20, marginTop: 16 }}>
         <label>
           <strong>Período a cargar:</strong>
         </label>
@@ -34,7 +38,7 @@ export default function CuotasPage() {
 
       <hr />
 
-      {/* 👀 PREVIEW (pendientes, sin filtrar por período) */}
+      {/* 👀 PREVIEW (pendientes globales) */}
       <PreviewCuotas />
 
       <hr />
