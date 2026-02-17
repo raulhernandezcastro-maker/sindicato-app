@@ -4,25 +4,16 @@ import ResumenCuotas from "../components/cuotas/ResumenCuotas";
 import CargaCuotasExcel from "../components/cuotas/CargaCuotasExcel";
 import PreviewCuotas from "../components/cuotas/PreviewCuotas";
 import ConfirmarCuotas from "../components/cuotas/ConfirmarCuotas";
+import TablaCuotasConfirmadas from "../components/cuotas/TablaCuotasConfirmadas";
 
 export default function CuotasPage() {
   const [periodo, setPeriodo] = useState("");
 
-  // ⚠️ Por ahora estos valores pueden ser fijos o venir de estado.
-  // En el siguiente paso los conectamos a Supabase.
-  const pendientes = 12;
-  const conError = 3;
-  const confirmadas = 0;
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
 
-      {/* 🔢 RESUMEN SUPERIOR */}
-      <ResumenCuotas
-        pendientes={pendientes}
-        conError={conError}
-        confirmadas={confirmadas}
-      />
+      {/* 🔢 RESUMEN DE CUOTAS */}
+      <ResumenCuotas />
 
       {/* 📌 TÍTULO */}
       <div>
@@ -32,10 +23,10 @@ export default function CuotasPage() {
         </p>
       </div>
 
-      {/* 📅 PERÍODO */}
+      {/* 📅 PERÍODO (solo para carga) */}
       <div>
         <label className="font-medium">
-          Período a cargar:
+          Período a cargar
         </label>
         <div className="mt-2">
           <input
@@ -50,11 +41,14 @@ export default function CuotasPage() {
       {/* 📥 CARGA EXCEL */}
       <CargaCuotasExcel periodo={periodo} />
 
-      {/* 👀 PREVIEW */}
-      <PreviewCuotas periodo={periodo} />
+      {/* 👀 PREVIEW DE PENDIENTES */}
+      <PreviewCuotas />
 
       {/* ✅ CONFIRMACIÓN */}
-      <ConfirmarCuotas periodo={periodo} />
+      <ConfirmarCuotas />
+
+      {/* 📊 HISTÓRICO DE CUOTAS CONFIRMADAS */}
+      <TablaCuotasConfirmadas />
 
     </div>
   );
