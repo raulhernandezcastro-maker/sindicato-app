@@ -1,4 +1,6 @@
 import { useState } from "react";
+
+import ResumenCuotas from "../components/cuotas/ResumenCuotas";
 import CargaCuotasExcel from "../components/cuotas/CargaCuotasExcel";
 import PreviewCuotas from "../components/cuotas/PreviewCuotas";
 import ConfirmarCuotas from "../components/cuotas/ConfirmarCuotas";
@@ -11,7 +13,10 @@ export default function CuotasPage() {
       <h1>Gestión de Cuotas</h1>
       <p>Carga, validación y confirmación de cuotas</p>
 
-      {/* 🔴 SELECTOR DE PERÍODO (OBLIGATORIO) */}
+      {/* 📊 RESUMEN */}
+      <ResumenCuotas />
+
+      {/* 🔴 SELECTOR DE PERÍODO (solo para CARGA) */}
       <div style={{ marginBottom: 20 }}>
         <label>
           <strong>Período a cargar:</strong>
@@ -29,13 +34,13 @@ export default function CuotasPage() {
 
       <hr />
 
-      {/* 👀 PREVIEW */}
-      <PreviewCuotas periodo={periodo} />
+      {/* 👀 PREVIEW (pendientes, sin filtrar por período) */}
+      <PreviewCuotas />
 
       <hr />
 
       {/* ✅ CONFIRMACIÓN */}
-      <ConfirmarCuotas periodo={periodo} />
+      <ConfirmarCuotas />
     </div>
   );
 }
