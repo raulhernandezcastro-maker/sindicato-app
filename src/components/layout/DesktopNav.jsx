@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   Home,
   FileText,
@@ -17,7 +17,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 
 export function DesktopNav() {
   const location = useLocation()
-  const navigate = useNavigate()
   const { isAdministrador, isDirector, signOut, profile } = useAuth()
 
   const socioLinks = [
@@ -47,7 +46,8 @@ export function DesktopNav() {
   const handleLogout = async () => {
     try {
       await signOut()
-      navigate('/', { replace: true }) // ✅ RUTA EXISTENTE
+      // 🔑 CIERRE REAL DE SESIÓN
+      window.location.href = '/'
     } catch (error) {
       console.error('Logout error:', error)
     }
