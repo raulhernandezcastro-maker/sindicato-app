@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
 import { Alert } from '../components/ui/alert'
 import { Badge } from '../components/ui/badge'
 
-export function PerfilPage() {
+export default function PerfilPage() {
   const { profile, refreshProfile, roles, user } = useAuth()
 
   const [formData, setFormData] = useState({ nombre: '', telefono: '' })
@@ -52,20 +52,15 @@ export function PerfilPage() {
       .eq('id', user.id)
 
     if (error) {
-      console.error(error)
       setError('Error al actualizar el perfil')
       setSavingProfile(false)
       return
     }
 
-    // ✅ liberar UI primero
     setSuccess('Perfil actualizado correctamente')
     setSavingProfile(false)
 
-    // 🔄 refresh en segundo plano (NO bloquea)
-    refreshProfile().catch(err => {
-      console.warn('refreshProfile falló:', err)
-    })
+    refreshProfile().catch(() => {})
   }
 
   /* ================= CONTRASEÑA ================= */
@@ -87,7 +82,6 @@ export function PerfilPage() {
     })
 
     if (error) {
-      console.error(error)
       setError('Error al cambiar la contraseña')
       setSavingPassword(false)
       return
@@ -116,7 +110,6 @@ export function PerfilPage() {
       .upload(path, file, { upsert: true })
 
     if (uploadError) {
-      console.error(uploadError)
       setError('Error al subir la foto')
       setSavingPhoto(false)
       return
@@ -128,28 +121,24 @@ export function PerfilPage() {
       .eq('id', user.id)
 
     if (updateError) {
-      console.error(updateError)
       setError('Error al guardar la foto')
       setSavingPhoto(false)
       return
     }
 
-    // ✅ liberar UI primero
     setSuccess('Foto de perfil actualizada correctamente')
     setSavingPhoto(false)
 
-    // 🔄 refresh en segundo plano
-    refreshProfile().catch(err => {
-      console.warn('refreshProfile falló:', err)
-    })
+    refreshProfile().catch(() => {})
   }
 
   const getInitials = (nombre) =>
     nombre ? nombre.split(' ').map(n => n[0]).join('').slice(0, 2) : 'U'
 
   const getRoleLabel = (r) =>
-    r === 'administrador' ? 'Administrador' :
-    r === 'director' ? 'Director' : 'Socio'
+    r === 'administrador' ? 'Administrador'
+      : r === 'director' ? 'Director'
+      : 'Socio'
 
   return (
     <AppLayout>
@@ -169,7 +158,8 @@ export function PerfilPage() {
               <AvatarImage
                 src={
                   profile?.foto_url
-                    ? supabase.storage.from('avatars').getPublicUrl(profile.foto_url).data.publicUrl
+                    ? supabase.storage.from('avatars')
+                        .getPublicUrl(profile.foto_url).data.publicUrl
                     : undefined
                 }
               />
