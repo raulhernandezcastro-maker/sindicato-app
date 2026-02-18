@@ -35,71 +35,37 @@ export default function AvisosPage() {
   }, [])
 
   const loadAvisos = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('avisos')
-        .select('*')
-        .order('created_at', { ascending: false })
+    const { data } = await supabase
+      .from('avisos')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setAvisos(data || [])
-    } catch (err) {
-      console.error('Error cargando avisos:', err)
-    } finally {
-      setLoading(false)
-    }
+    setAvisos(data || [])
+    setLoading(false)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
     setSaving(true)
 
-    if (!titulo || !contenido) {
-      setError('Completa todos los campos')
-      setSaving(false)
-      return
-    }
+    const { data, error } = await supabase
+      .from('avisos')
+      .insert({
+        titulo,
+        contenido,
+        creado_por: user.id
+      })
+      .select()
+      .single()
 
-    try {
-      const { data, error } = await supabase
-        .from('avisos')
-        .insert({
-          titulo,
-          contenido,
-          creado_por: user.id
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
+    if (!error) {
       setAvisos([data, ...avisos])
       setOpen(false)
       setTitulo('')
       setContenido('')
-    } catch (err) {
-      setError(err.message || 'Error al crear aviso')
-    } finally {
-      setSaving(false)
     }
-  }
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este aviso?')) return
-
-    try {
-      const { error } = await supabase
-        .from('avisos')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-
-      setAvisos(avisos.filter(a => a.id !== id))
-    } catch (err) {
-      alert('Error eliminando aviso')
-    }
+    setSaving(false)
   }
 
   return (
@@ -143,11 +109,7 @@ export default function AvisosPage() {
                   </div>
 
                   <div className="flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setOpen(false)}
-                    >
+                    <Button variant="outline" onClick={() => setOpen(false)}>
                       Cancelar
                     </Button>
                     <Button type="submit" disabled={saving}>
@@ -165,34 +127,27 @@ export default function AvisosPage() {
             <Spinner className="w-8 h-8" />
           </div>
         ) : (
-          <div className="space-y-4">
-            {avisos.length === 0 && (
-              <p className="text-center text-muted-foreground">No hay avisos</p>
-            )}
-
-            {avisos.map(aviso => (
-              <Card key={aviso.id}>
-                <CardContent className="pt-6 space-y-2">
-                  <div className="flex justify-between">
-                    <h3 className="font-semibold">{aviso.titulo}</h3>
-
-                    {canManage && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDelete(aviso.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground whitespace-pre-line">
-                    {aviso.contenido}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          avisos.map(a => (
+            <Card key={a.id}>
+              <CardContent className="pt-6">
+                <div className="flex justify-between">
+                  <h3 className="font-semibold">{a.titulo}</h3>
+                  {canManage && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => supabase.from('avisos').delete().eq('id', a.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground whitespace-pre-line">
+                  {a.contenido}
+                </p>
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
     </AppLayout>
