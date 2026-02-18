@@ -3,7 +3,7 @@ import { useAuth } from './contexts/AuthContext'
 
 import { AppLayout } from './components/layout/AppLayout'
 
-// DEFAULT imports
+import HomePage from './pages/HomePage'
 import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
 import DocumentosPage from './pages/DocumentosPage'
@@ -15,17 +15,8 @@ import LoginPage from './pages/LoginPage'
 function ProtectedLayout() {
   const { user, loading } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Cargando…</p>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />
-  }
+  if (loading) return null
+  if (!user) return <Navigate to="/login" replace />
 
   return <AppLayout />
 }
@@ -34,12 +25,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* pública */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* protegidas */}
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/avisos" element={<AvisosPage />} />
           <Route path="/documentos" element={<DocumentosPage />} />
