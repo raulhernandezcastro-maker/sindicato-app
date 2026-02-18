@@ -1,6 +1,15 @@
 import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, FileText, FolderOpen, User, Users, DollarSign, LayoutDashboard, LogOut } from 'lucide-react'
+import {
+  Home,
+  FileText,
+  FolderOpen,
+  User,
+  Users,
+  DollarSign,
+  LayoutDashboard,
+  LogOut
+} from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
@@ -29,12 +38,16 @@ export function DesktopNav() {
     { to: '/socios', icon: Users, label: 'Gestión de Socios' },
   ]
 
-  const links = isAdministrador ? adminLinks : isDirector ? directorLinks : socioLinks
+  const links = isAdministrador
+    ? adminLinks
+    : isDirector
+    ? directorLinks
+    : socioLinks
 
   const handleLogout = async () => {
     try {
       await signOut()
-      navigate('/login')
+      navigate('/', { replace: true }) // ✅ RUTA EXISTENTE
     } catch (error) {
       console.error('Logout error:', error)
     }
@@ -42,7 +55,12 @@ export function DesktopNav() {
 
   const getInitials = (nombre) => {
     if (!nombre) return 'U'
-    return nombre.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    return nombre
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
   }
 
   return (
