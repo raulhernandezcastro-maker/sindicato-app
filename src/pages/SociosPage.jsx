@@ -5,12 +5,10 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent
 } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
-import { AppLayout } from '../components/layout/AppLayout'
 import { Spinner } from '../components/ui/spinner'
 import {
   Dialog,
@@ -77,6 +75,21 @@ export default function SociosPage() {
     }
   }
 
+  const openNewDialog = () => {
+    setEditingSocio(null)
+    setFormData({
+      rut: '',
+      nombre: '',
+      email: '',
+      telefono: '',
+      password: '',
+      estado: 'activo',
+      roles: ['socio']
+    })
+    setFormError('')
+    setDialogOpen(true)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError('')
@@ -94,6 +107,7 @@ export default function SociosPage() {
           .eq('id', editingSocio.id)
 
         await supabase.from('roles').delete().eq('user_id', editingSocio.id)
+
         for (const role of formData.roles) {
           await supabase.from('roles').insert({
             user_id: editingSocio.id,
@@ -131,62 +145,258 @@ export default function SociosPage() {
       setEditingSocio(null)
     } catch (err) {
       console.error(err)
-      setFormError('Error al guardar socio')
+      setFormError('Error al guardar el socio')
     } finally {
       setFormLoading(false)
     }
   }
 
-  return (
-    <AppLayout>
-      <div className="space-y-6 max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold">Gestión de Socios</h1>
+  const handleEdit = (socio) => {
+    setEditingSocio(socio)
+    setFormData({
+      rut: socio.rut,
+      nombre: socio.nombre,
+      email: socio.email,
+      telefono: socio.telefono || '',
+      password: '',
+      estado: socio.estado,
+      roles: socio.roles.map(r => r.role_name)
+    })
+    setDialogOpen(true)
+  }
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Spinner className="w-8 h-8" />
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="pt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>RUT</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Roles</TableHead>
-                    <TableHead>Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {socios.map((socio) => (
-                    <TableRow key={socio.id}>
-                      <TableCell>{socio.rut}</TableCell>
-                      <TableCell>{socio.nombre}</TableCell>
-                      <TableCell>{socio.email}</TableCell>
-                      <TableCell>
-                        {socio.roles.map((r) => (
-                          <Badge key={r.role_name} className="mr-1">
-                            {r.role_name}
-                          </Badge>
-                        ))}
-                      </TableCell>
-                      <TableCell>
-                        <Badge>
-                          {socio.estado === 'activo'
-                            ? 'Activo'
-                            : 'Inactivo'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
+  const handleToggleEstado = async (socio) => {
+    const newEstado = socio.estado === 'activo' ? 'inactivo' : 'activo'
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({ estado: newEstado })
+        .eq('id', socio.id)
+
+      await loadSocios()
+    } catch (err) {
+      console.error('Error cambiando estado:', err)
+    }
+  }
+
+  const toggleRole = (role) => {
+    setFormData((prev) => ({
+      ...prev,
+      roles: prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role]
+    }))
+  }
+
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Gestión de Socios</h1>
+          <p className="text-muted-foreground">
+            Administración de socios y roles
+          </p>
+        </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={openNewDialog}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Socio
+            </Button>
+          </DialogTrigger>
+
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingSocio ? 'Editar Socio' : 'Nuevo Socio'}
+              </DialogTitle>
+              <DialogDescription>
+                Completa los datos del socio
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {formError && (
+                <Alert variant="destructive">{formError}</Alert>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>RUT</Label>
+                  <Input
+                    value={formData.rut}
+                    onChange={(e) =>
+                      setFormData({ ...formData, rut: e.target.value })
+                    }
+                    disabled={!!editingSocio}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label>Nombre</Label>
+                  <Input
+                    value={formData.nombre}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nombre: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  disabled={!!editingSocio}
+                  required
+                />
+              </div>
+
+              {!editingSocio && (
+                <div>
+                  <Label>Contraseña</Label>
+                  <Input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              )}
+
+              <div>
+                <Label>Estado</Label>
+                <Select
+                  value={formData.estado}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, estado: v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="activo">Activo</SelectItem>
+                    <SelectItem value="inactivo">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Roles</Label>
+                <div className="space-y-2">
+                  {['socio', 'director', 'administrador'].map((r) => (
+                    <div key={r} className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={formData.roles.includes(r)}
+                        onCheckedChange={() => toggleRole(r)}
+                      />
+                      <span className="capitalize">{r}</span>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={formLoading}>
+                  {formLoading
+                    ? 'Guardando...'
+                    : editingSocio
+                    ? 'Actualizar'
+                    : 'Crear'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
-    </AppLayout>
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Spinner className="w-8 h-8" />
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="pt-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>RUT</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Roles</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {socios.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell>{s.rut}</TableCell>
+                    <TableCell>{s.nombre}</TableCell>
+                    <TableCell>{s.email}</TableCell>
+                    <TableCell>
+                      {s.roles.map((r) => (
+                        <Badge key={r.role_name} className="mr-1">
+                          {r.role_name}
+                        </Badge>
+                      ))}
+                    </TableCell>
+                    <TableCell>
+                      <Badge>
+                        {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => handleEdit(s)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant={
+                            s.estado === 'activo'
+                              ? 'destructive'
+                              : 'default'
+                          }
+                          onClick={() => handleToggleEstado(s)}
+                        >
+                          {s.estado === 'activo' ? (
+                            <UserX className="w-4 h-4" />
+                          ) : (
+                            <UserCheck className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   )
 }
