@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
+// Páginas (default exports)
 import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
 import DocumentosPage from './pages/DocumentosPage'
@@ -13,12 +14,14 @@ export default function App() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+
         <Route path="/avisos" element={<AvisosPage />} />
         <Route path="/documentos" element={<DocumentosPage />} />
         <Route path="/perfil" element={<PerfilPage />} />
-        <Route path="/cuotas" element={<CuotasPage />} />
         <Route path="/socios" element={<SociosPage />} />
+        <Route path="/cuotas" element={<CuotasPage />} />
 
+        {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
