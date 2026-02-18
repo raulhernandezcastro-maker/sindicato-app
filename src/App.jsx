@@ -1,16 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-
 import { AppLayout } from './components/layout/AppLayout'
 
-// Páginas (named exports)
-import { DashboardPage } from './pages/DashboardPage'
+// DEFAULT exports
+import DashboardPage from './pages/DashboardPage'
+import CuotasPage from './pages/CuotasPage'
+
+// NAMED exports
 import { AvisosPage } from './pages/AvisosPage'
 import { DocumentosPage } from './pages/DocumentosPage'
 import { PerfilPage } from './pages/PerfilPage'
 import { SociosPage } from './pages/SociosPage'
-
-// Página con default export
-import CuotasPage from './pages/CuotasPage'
 
 export default function App() {
   return (
