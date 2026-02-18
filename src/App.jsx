@@ -3,16 +3,14 @@ import { useAuth } from './contexts/AuthContext'
 
 import { AppLayout } from './components/layout/AppLayout'
 
-// pages (named exports)
-import { DashboardPage } from './pages/DashboardPage'
-import { AvisosPage } from './pages/AvisosPage'
-import { DocumentosPage } from './pages/DocumentosPage'
-import { PerfilPage } from './pages/PerfilPage'
-import { SociosPage } from './pages/SociosPage'
-import { LoginPage } from './pages/LoginPage'
-
-// default export
+// DEFAULT imports
+import DashboardPage from './pages/DashboardPage'
+import AvisosPage from './pages/AvisosPage'
+import DocumentosPage from './pages/DocumentosPage'
+import PerfilPage from './pages/PerfilPage'
+import SociosPage from './pages/SociosPage'
 import CuotasPage from './pages/CuotasPage'
+import LoginPage from './pages/LoginPage'
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
@@ -36,10 +34,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* PÚBLICA */}
+        {/* pública */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* PROTEGIDAS */}
+        {/* protegidas */}
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -50,7 +48,6 @@ export default function App() {
           <Route path="/socios" element={<SociosPage />} />
         </Route>
 
-        {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
