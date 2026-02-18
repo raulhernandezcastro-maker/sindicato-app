@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AppLayout } from './components/layout/AppLayout'
 
-// Páginas (default exports)
 import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
 import DocumentosPage from './pages/DocumentosPage'
@@ -12,16 +12,16 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/avisos" element={<AvisosPage />} />
+          <Route path="/documentos" element={<DocumentosPage />} />
+          <Route path="/perfil" element={<PerfilPage />} />
+          <Route path="/socios" element={<SociosPage />} />
+          <Route path="/cuotas" element={<CuotasPage />} />
+        </Route>
 
-        <Route path="/avisos" element={<AvisosPage />} />
-        <Route path="/documentos" element={<DocumentosPage />} />
-        <Route path="/perfil" element={<PerfilPage />} />
-        <Route path="/socios" element={<SociosPage />} />
-        <Route path="/cuotas" element={<CuotasPage />} />
-
-        {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
