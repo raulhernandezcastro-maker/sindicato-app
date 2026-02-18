@@ -4,7 +4,7 @@ import { LoginForm } from '../components/auth/LoginForm'
 import { ForgotPasswordForm } from '../components/auth/ForgotPasswordForm'
 import { useAuth } from '../contexts/AuthContext'
 
-export function LoginPage() {
+export default function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const { user, loading } = useAuth()
 
