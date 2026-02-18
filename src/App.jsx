@@ -2,22 +2,19 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import { AppLayout } from './components/layout/AppLayout'
 
-// Páginas
 import { DashboardPage } from './pages/DashboardPage'
-import CuotasPage from './pages/CuotasPage'
-import { SociosPage } from './pages/SociosPage'
-
-// Estas páginas pueden ser simples por ahora
 import AvisosPage from './pages/AvisosPage'
 import DocumentosPage from './pages/DocumentosPage'
 import PerfilPage from './pages/PerfilPage'
+import CuotasPage from './pages/CuotasPage'
+import { SociosPage } from './pages/SociosPage'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
 
-        {/* Todas las páginas internas usan AppLayout */}
+        {/* 🔐 Layout principal con menú */}
         <Route element={<AppLayout />}>
 
           <Route path="/" element={<DashboardPage />} />
