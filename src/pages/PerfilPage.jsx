@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { Camera } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { AppLayout } from '../components/layout/AppLayout'
 import {
-  Card, CardHeader, CardTitle, CardContent
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent
 } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -14,10 +16,13 @@ import { Alert } from '../components/ui/alert'
 import { Badge } from '../components/ui/badge'
 
 export default function PerfilPage() {
-  const { profile, refreshProfile, roles, user } = useAuth()
+  const { profile, roles, user, refreshProfile } = useAuth()
 
   const [formData, setFormData] = useState({ nombre: '', telefono: '' })
-  const [passwordData, setPasswordData] = useState({ newPassword: '', confirmPassword: '' })
+  const [passwordData, setPasswordData] = useState({
+    newPassword: '',
+    confirmPassword: ''
+  })
 
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
@@ -61,9 +66,7 @@ export default function PerfilPage() {
     setSuccess('Perfil actualizado correctamente')
     setSavingProfile(false)
 
-    refreshProfile().catch(err =>
-      console.warn('refreshProfile falló:', err)
-    )
+    refreshProfile?.().catch(() => {})
   }
 
   /* ================= CONTRASEÑA ================= */
@@ -135,117 +138,138 @@ export default function PerfilPage() {
     setSuccess('Foto de perfil actualizada correctamente')
     setSavingPhoto(false)
 
-    refreshProfile().catch(err =>
-      console.warn('refreshProfile falló:', err)
-    )
+    refreshProfile?.().catch(() => {})
   }
 
   const getInitials = (nombre) =>
-    nombre ? nombre.split(' ').map(n => n[0]).join('').slice(0, 2) : 'U'
+    nombre
+      ? nombre
+          .split(' ')
+          .map((n) => n[0])
+          .join('')
+          .slice(0, 2)
+      : 'U'
 
   const getRoleLabel = (r) =>
-    r === 'administrador' ? 'Administrador' :
-    r === 'director' ? 'Director' : 'Socio'
+    r === 'administrador'
+      ? 'Administrador'
+      : r === 'director'
+      ? 'Director'
+      : 'Socio'
 
   return (
-    <AppLayout>
-      <div className="max-w-3xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold">Mi Perfil</h1>
+    <div className="max-w-3xl mx-auto space-y-6">
+      <h1 className="text-3xl font-bold">Mi Perfil</h1>
 
-        {error && <Alert variant="destructive">{error}</Alert>}
-        {success && <Alert>{success}</Alert>}
+      {error && <Alert variant="destructive">{error}</Alert>}
+      {success && <Alert>{success}</Alert>}
 
-        {/* FOTO */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Foto de Perfil</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center gap-6">
-            <Avatar className="w-24 h-24">
-              <AvatarImage
-                src={
-                  profile?.foto_url
-                    ? supabase.storage.from('avatars').getPublicUrl(profile.foto_url).data.publicUrl
-                    : undefined
-                }
-              />
-              <AvatarFallback>{getInitials(profile?.nombre)}</AvatarFallback>
-            </Avatar>
-
-            <Label htmlFor="photo" className="cursor-pointer">
-              <Button disabled={savingPhoto} asChild>
-                <span>
-                  <Camera className="w-4 h-4 mr-2" />
-                  Cambiar Foto
-                </span>
-              </Button>
-            </Label>
-            <Input
-              id="photo"
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={handlePhotoUpload}
+      {/* FOTO */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Foto de Perfil</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center gap-6">
+          <Avatar className="w-24 h-24">
+            <AvatarImage
+              src={
+                profile?.foto_url
+                  ? supabase.storage
+                      .from('avatars')
+                      .getPublicUrl(profile.foto_url).data.publicUrl
+                  : undefined
+              }
             />
-          </CardContent>
-        </Card>
+            <AvatarFallback>{getInitials(profile?.nombre)}</AvatarFallback>
+          </Avatar>
 
-        {/* DATOS */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Datos Personales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleProfileUpdate} className="space-y-4">
-              <Input
-                placeholder="Nombre"
-                value={formData.nombre}
-                onChange={e => setFormData({ ...formData, nombre: e.target.value })}
-              />
-              <Input
-                placeholder="Teléfono"
-                value={formData.telefono}
-                onChange={e => setFormData({ ...formData, telefono: e.target.value })}
-              />
-              <Button disabled={savingProfile}>
-                {savingProfile ? 'Guardando...' : 'Guardar Cambios'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+          <Label htmlFor="photo" className="cursor-pointer">
+            <Button disabled={savingPhoto} asChild>
+              <span>
+                <Camera className="w-4 h-4 mr-2" />
+                Cambiar Foto
+              </span>
+            </Button>
+          </Label>
+          <Input
+            id="photo"
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={handlePhotoUpload}
+          />
+        </CardContent>
+      </Card>
 
-        {/* CONTRASEÑA */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Cambiar Contraseña</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePasswordUpdate} className="space-y-4">
-              <Input
-                type="password"
-                placeholder="Nueva contraseña"
-                value={passwordData.newPassword}
-                onChange={e => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-              />
-              <Input
-                type="password"
-                placeholder="Confirmar contraseña"
-                value={passwordData.confirmPassword}
-                onChange={e => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-              />
-              <Button disabled={savingPassword}>
-                {savingPassword ? 'Actualizando...' : 'Actualizar Contraseña'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      {/* DATOS */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Datos Personales</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleProfileUpdate} className="space-y-4">
+            <Input
+              placeholder="Nombre"
+              value={formData.nombre}
+              onChange={(e) =>
+                setFormData({ ...formData, nombre: e.target.value })
+              }
+            />
+            <Input
+              placeholder="Teléfono"
+              value={formData.telefono}
+              onChange={(e) =>
+                setFormData({ ...formData, telefono: e.target.value })
+              }
+            />
+            <Button disabled={savingProfile}>
+              {savingProfile ? 'Guardando...' : 'Guardar Cambios'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-        <div className="flex gap-2">
-          {roles.map(r => (
-            <Badge key={r}>{getRoleLabel(r)}</Badge>
-          ))}
-        </div>
+      {/* CONTRASEÑA */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Cambiar Contraseña</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handlePasswordUpdate} className="space-y-4">
+            <Input
+              type="password"
+              placeholder="Nueva contraseña"
+              value={passwordData.newPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  newPassword: e.target.value
+                })
+              }
+            />
+            <Input
+              type="password"
+              placeholder="Confirmar contraseña"
+              value={passwordData.confirmPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  confirmPassword: e.target.value
+                })
+              }
+            />
+            <Button disabled={savingPassword}>
+              {savingPassword ? 'Actualizando...' : 'Actualizar Contraseña'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-2">
+        {roles.map((r) => (
+          <Badge key={r}>{getRoleLabel(r)}</Badge>
+        ))}
       </div>
-    </AppLayout>
+    </div>
   )
 }
