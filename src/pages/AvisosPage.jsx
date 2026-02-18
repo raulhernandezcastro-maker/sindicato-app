@@ -5,14 +5,20 @@ import { supabase } from '../lib/supabase'
 import { AppLayout } from '../components/layout/AppLayout'
 import { Card, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Spinner } from '../components/ui/spinner'
 import { Alert } from '../components/ui/alert'
 
-export function AvisosPage() {
+export default function AvisosPage() {
   const { user, isAdministrador, isDirector } = useAuth()
   const [avisos, setAvisos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -61,7 +67,7 @@ export function AvisosPage() {
         .insert({
           titulo,
           contenido,
-          creado_por: user.id, // 🔑 CLAVE
+          creado_por: user.id
         })
         .select()
         .single()
@@ -73,7 +79,6 @@ export function AvisosPage() {
       setTitulo('')
       setContenido('')
     } catch (err) {
-      console.error(err)
       setError(err.message || 'Error al crear aviso')
     } finally {
       setSaving(false)
@@ -93,7 +98,6 @@ export function AvisosPage() {
 
       setAvisos(avisos.filter(a => a.id !== id))
     } catch (err) {
-      console.error(err)
       alert('Error eliminando aviso')
     }
   }
@@ -139,7 +143,11 @@ export function AvisosPage() {
                   </div>
 
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setOpen(false)}
+                    >
                       Cancelar
                     </Button>
                     <Button type="submit" disabled={saving}>
