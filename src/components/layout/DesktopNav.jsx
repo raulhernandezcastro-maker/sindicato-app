@@ -19,6 +19,9 @@ export function DesktopNav() {
   const location = useLocation()
   const { isAdministrador, isDirector, signOut, profile } = useAuth()
 
+  /* ================= LINKS POR ROL ================= */
+
+  // SOCIO: solo contenido informativo
   const socioLinks = [
     { to: '/', icon: Home, label: 'Inicio' },
     { to: '/avisos', icon: FileText, label: 'Avisos' },
@@ -26,12 +29,14 @@ export function DesktopNav() {
     { to: '/perfil', icon: User, label: 'Mi Perfil' },
   ]
 
+  // DIRECTOR: agrega gestión (sin socios)
   const directorLinks = [
     ...socioLinks,
     { to: '/dashboard', icon: LayoutDashboard, label: 'Panel de Gestión' },
     { to: '/cuotas', icon: DollarSign, label: 'Cuotas' },
   ]
 
+  // ADMINISTRADOR: agrega gestión de socios
   const adminLinks = [
     ...directorLinks,
     { to: '/socios', icon: Users, label: 'Gestión de Socios' },
@@ -43,11 +48,12 @@ export function DesktopNav() {
     ? directorLinks
     : socioLinks
 
+  /* ================= LOGOUT ================= */
+
   const handleLogout = async () => {
     try {
       await signOut()
-      // 🔑 CIERRE REAL DE SESIÓN
-      window.location.href = '/'
+      window.location.href = '/login'
     } catch (error) {
       console.error('Logout error:', error)
     }
@@ -103,7 +109,9 @@ export function DesktopNav() {
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{profile?.nombre}</p>
-            <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {profile?.email}
+            </p>
           </div>
         </div>
 
