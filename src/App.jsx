@@ -2,19 +2,21 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import { AppLayout } from './components/layout/AppLayout'
 
-// Páginas
+// Páginas (named exports)
 import { DashboardPage } from './pages/DashboardPage'
 import { AvisosPage } from './pages/AvisosPage'
 import { DocumentosPage } from './pages/DocumentosPage'
 import { PerfilPage } from './pages/PerfilPage'
-import CuotasPage from './pages/CuotasPage'
 import { SociosPage } from './pages/SociosPage'
+
+// Página con default export
+import CuotasPage from './pages/CuotasPage'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 🔑 TODA LA APP CON LAYOUT */}
+        {/* Layout principal */}
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
