@@ -52,6 +52,7 @@ export default function PerfilPage() {
       .eq('id', user.id)
 
     if (error) {
+      console.error(error)
       setError('Error al actualizar el perfil')
       setSavingProfile(false)
       return
@@ -60,7 +61,9 @@ export default function PerfilPage() {
     setSuccess('Perfil actualizado correctamente')
     setSavingProfile(false)
 
-    refreshProfile().catch(() => {})
+    refreshProfile().catch(err =>
+      console.warn('refreshProfile falló:', err)
+    )
   }
 
   /* ================= CONTRASEÑA ================= */
@@ -82,6 +85,7 @@ export default function PerfilPage() {
     })
 
     if (error) {
+      console.error(error)
       setError('Error al cambiar la contraseña')
       setSavingPassword(false)
       return
@@ -110,6 +114,7 @@ export default function PerfilPage() {
       .upload(path, file, { upsert: true })
 
     if (uploadError) {
+      console.error(uploadError)
       setError('Error al subir la foto')
       setSavingPhoto(false)
       return
@@ -121,6 +126,7 @@ export default function PerfilPage() {
       .eq('id', user.id)
 
     if (updateError) {
+      console.error(updateError)
       setError('Error al guardar la foto')
       setSavingPhoto(false)
       return
@@ -129,16 +135,17 @@ export default function PerfilPage() {
     setSuccess('Foto de perfil actualizada correctamente')
     setSavingPhoto(false)
 
-    refreshProfile().catch(() => {})
+    refreshProfile().catch(err =>
+      console.warn('refreshProfile falló:', err)
+    )
   }
 
   const getInitials = (nombre) =>
     nombre ? nombre.split(' ').map(n => n[0]).join('').slice(0, 2) : 'U'
 
   const getRoleLabel = (r) =>
-    r === 'administrador' ? 'Administrador'
-      : r === 'director' ? 'Director'
-      : 'Socio'
+    r === 'administrador' ? 'Administrador' :
+    r === 'director' ? 'Director' : 'Socio'
 
   return (
     <AppLayout>
@@ -158,8 +165,7 @@ export default function PerfilPage() {
               <AvatarImage
                 src={
                   profile?.foto_url
-                    ? supabase.storage.from('avatars')
-                        .getPublicUrl(profile.foto_url).data.publicUrl
+                    ? supabase.storage.from('avatars').getPublicUrl(profile.foto_url).data.publicUrl
                     : undefined
                 }
               />
