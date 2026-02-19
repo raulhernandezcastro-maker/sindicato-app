@@ -8,7 +8,7 @@ import { AvisosPage } from './pages/AvisosPage'
 import { DocumentosPage } from './pages/DocumentosPage'
 import { PerfilPage } from './pages/PerfilPage'
 import { SociosPage } from './pages/SociosPage'
-import { LoginPage } from './pages/LoginPage'
+import LoginPage from './pages/LoginPage'
 
 // Cuotas es la ÚNICA con default export
 import CuotasPage from './pages/CuotasPage'
