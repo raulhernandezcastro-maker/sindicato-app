@@ -1,14 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 
-// Páginas con NAMED export
-import { DashboardPage } from './pages/DashboardPage'
-import { AvisosPage } from './pages/AvisosPage'
-import { DocumentosPage } from './pages/DocumentosPage'
-import { PerfilPage } from './pages/PerfilPage'
-import { SociosPage } from './pages/SociosPage'
-
-// Páginas con DEFAULT export
+// TODAS las páginas como DEFAULT
+import DashboardPage from './pages/DashboardPage'
+import AvisosPage from './pages/AvisosPage'
+import DocumentosPage from './pages/DocumentosPage'
+import PerfilPage from './pages/PerfilPage'
+import SociosPage from './pages/SociosPage'
 import CuotasPage from './pages/CuotasPage'
 import LoginPage from './pages/LoginPage'
 
@@ -17,10 +15,10 @@ export default function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* Login (sin layout) */}
+        {/* Login sin layout */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Layout principal */}
+        {/* App con layout */}
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -33,7 +31,7 @@ export default function App() {
           <Route path="/socios" element={<SociosPage />} />
         </Route>
 
-        {/* Fallback */}
+        {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
