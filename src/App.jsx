@@ -3,31 +3,66 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 // Layout
 import { AppLayout } from './components/layout/AppLayout'
 
-// Páginas (TODAS con default export)
-import DashboardPage from './pages/DashboardPage'
-import AvisosPage from './pages/AvisosPage'
-import DocumentosPage from './pages/DocumentosPage'
-import PerfilPage from './pages/PerfilPage'
-import SociosPage from './pages/SociosPage'
+// Guards
+import { RequireRole } from './components/auth/RequireRole'
+
+// Pages (TODAS con named export)
+import { DashboardPage } from './pages/DashboardPage'
+import { AvisosPage } from './pages/AvisosPage'
+import { DocumentosPage } from './pages/DocumentosPage'
+import { PerfilPage } from './pages/PerfilPage'
+import { SociosPage } from './pages/SociosPage'
+import { LoginPage } from './pages/LoginPage'
+
+// Cuotas es la ÚNICA con default export
 import CuotasPage from './pages/CuotasPage'
-import LoginPage from './pages/LoginPage'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Login (sin layout) */}
+
+        {/* LOGIN */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* App con layout */}
+        {/* APP CON LAYOUT */}
         <Route element={<AppLayout />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
+
+          {/* SOCIO (todos los roles) */}
+          <Route path="/" element={<AvisosPage />} />
           <Route path="/avisos" element={<AvisosPage />} />
           <Route path="/documentos" element={<DocumentosPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
-          <Route path="/cuotas" element={<CuotasPage />} />
-          <Route path="/socios" element={<SociosPage />} />
+
+          {/* DIRECTOR + ADMIN */}
+          <Route
+            path="/dashboard"
+            element={
+              <RequireRole rolesPermitidos={['director', 'administrador']}>
+                <DashboardPage />
+              </RequireRole>
+            }
+          />
+
+          <Route
+            path="/cuotas"
+            element={
+              <RequireRole rolesPermitidos={['director', 'administrador']}>
+                <CuotasPage />
+              </RequireRole>
+            }
+          />
+
+          {/* SOLO ADMIN */}
+          <Route
+            path="/socios"
+            element={
+              <RequireRole rolesPermitidos={['administrador']}>
+                <SociosPage />
+              </RequireRole>
+            }
+          />
+
         </Route>
 
         {/* fallback */}
