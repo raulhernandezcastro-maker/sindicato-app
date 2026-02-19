@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
-import AppLayout from './components/layout/AppLayout'
+// ⬇️ IMPORT CORRECTO (NAMED)
+import { AppLayout } from './components/layout/AppLayout'
 
 // Páginas (TODAS default export)
 import DashboardPage from './pages/DashboardPage'
