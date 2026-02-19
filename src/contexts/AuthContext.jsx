@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
@@ -15,64 +15,106 @@ export const AuthProvider = ({ children }) => {
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // ================= INIT =================
+  const initialized = useRef(false)
+
   useEffect(() => {
-    const init = async () => {
-      setLoading(true)
+    let isMounted = true
 
-      const { data } = await supabase.auth.getSession()
+    const clearAuth = () => {
+      if (!isMounted) return
+      setUser(null)
+      setProfile(null)
+      setRoles([])
+    }
 
-      if (data?.session?.user) {
-        const u = data.session.user
-        setUser(u)
-
+    const loadUserData = async (userId) => {
+      try {
         const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', u.id)
+          .eq('id', userId)
           .single()
+
+        if (isMounted) setProfile(profileData ?? null)
 
         const { data: rolesData } = await supabase
           .from('roles')
           .select('role_name')
-          .eq('user_id', u.id)
+          .eq('user_id', userId)
 
-        setProfile(profileData || null)
-        setRoles((rolesData || []).map(r => r.role_name))
-      } else {
+        const roleNames = (rolesData ?? []).map(r => r.role_name)
+
+        if (isMounted) setRoles(roleNames)
+      } catch (err) {
+        console.error('Error loading profile/roles:', err)
         clearAuth()
       }
+    }
 
-      setLoading(false)
+    const init = async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
+
+        if (!isMounted) return
+
+        if (data?.session?.user) {
+          setUser(data.session.user)
+          await loadUserData(data.session.user.id)
+        } else {
+          clearAuth()
+        }
+      } catch (err) {
+        console.error('Auth init error:', err)
+        clearAuth()
+      } finally {
+        if (isMounted) setLoading(false)
+        initialized.current = true
+      }
     }
 
     init()
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!initialized.current) return
+
+        if (session?.user) {
+          setUser(session.user)
+          await loadUserData(session.user.id)
+        } else {
+          clearAuth()
+        }
+
+        if (isMounted) setLoading(false)
+      }
+    )
+
+    return () => {
+      isMounted = false
+      subscription?.subscription?.unsubscribe()
+    }
   }, [])
 
-  // ================= HELPERS =================
-  const clearAuth = () => {
-    setUser(null)
-    setProfile(null)
-    setRoles([])
-  }
+  /* =========================
+     PRIORIDAD REAL DE ROLES
+     ========================= */
 
-  // ================= AUTH =================
+  const isAdministrador = roles.includes('administrador')
+  const isDirector = !isAdministrador && roles.includes('director')
+  const isSocio = !isAdministrador && !isDirector && roles.includes('socio')
+
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     return data
   }
 
   const signOut = async () => {
-    // 🔥 CIERRE DURO Y DEFINITIVO
     await supabase.auth.signOut()
-    clearAuth()
-
-    // 🔑 REINICIO TOTAL DE LA APP
-    window.location.reload()
+    setUser(null)
+    setProfile(null)
+    setRoles([])
+    setLoading(false)
   }
 
   const value = {
@@ -82,9 +124,11 @@ export const AuthProvider = ({ children }) => {
     loading,
     signIn,
     signOut,
-    isAdministrador: roles.includes('administrador'),
-    isDirector: roles.includes('director'),
-    isSocio: roles.includes('socio'),
+
+    // flags claros y coherentes
+    isAdministrador,
+    isDirector,
+    isSocio,
   }
 
   return (
