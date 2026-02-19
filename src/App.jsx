@@ -3,14 +3,14 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import RequireRole from './components/auth/RequireRole'
 
-// Páginas (NAMED exports)
+// PÁGINAS – NAMED EXPORTS
 import { DashboardPage } from './pages/DashboardPage'
 import { AvisosPage } from './pages/AvisosPage'
 import { DocumentosPage } from './pages/DocumentosPage'
 import { PerfilPage } from './pages/PerfilPage'
 import { SociosPage } from './pages/SociosPage'
 
-// Default exports
+// PÁGINAS – DEFAULT EXPORTS
 import CuotasPage from './pages/CuotasPage'
 import LoginPage from './pages/LoginPage'
 
@@ -22,9 +22,9 @@ export default function App() {
         {/* LOGIN */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* LAYOUT PRINCIPAL */}
+        {/* APP */}
         <Route element={<AppLayout />}>
-          {/* PÚBLICAS PARA SOCIO */}
+          {/* SOCIO */}
           <Route path="/" element={<AvisosPage />} />
           <Route path="/avisos" element={<AvisosPage />} />
           <Route path="/documentos" element={<DocumentosPage />} />
