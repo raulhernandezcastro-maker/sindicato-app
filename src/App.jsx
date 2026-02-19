@@ -3,7 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 // Layout
 import { AppLayout } from './components/layout/AppLayout'
 
-// Pages (default export)
+// Guards
+import ProtectedRoute from './components/auth/ProtectedRoute'
+
+// Pages
 import HomePage from './pages/HomePage'
 import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
@@ -22,18 +25,40 @@ export default function App() {
 
         {/* Layout principal */}
         <Route element={<AppLayout />}>
-          {/* 🔑 INICIO REAL */}
+          {/* Público */}
           <Route path="/" element={<HomePage />} />
-
-          {/* Panel de Gestión */}
-          <Route path="/dashboard" element={<DashboardPage />} />
-
-          {/* Otras páginas */}
           <Route path="/avisos" element={<AvisosPage />} />
           <Route path="/documentos" element={<DocumentosPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
-          <Route path="/cuotas" element={<CuotasPage />} />
-          <Route path="/socios" element={<SociosPage />} />
+
+          {/* Director + Admin */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute allow={['director', 'admin']}>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/cuotas"
+            element={
+              <ProtectedRoute allow={['director', 'admin']}>
+                <CuotasPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Solo Admin */}
+          <Route
+            path="/socios"
+            element={
+              <ProtectedRoute allow={['admin']}>
+                <SociosPage />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         {/* fallback */}
