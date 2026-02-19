@@ -5,22 +5,23 @@ export default function ProtectedRoute({ allow, children }) {
   const { user, loading, isAdministrador, isDirector } = useAuth()
 
   if (loading) {
-    return null // o spinner si quieres
+    return null
   }
 
   if (!user) {
     return <Navigate to="/login" replace />
   }
 
-  const roleMap = {
-    admin: isAdministrador,
-    director: isDirector,
-    socio: !isAdministrador && !isDirector,
+  // 🔑 Rol efectivo (jerarquía clara)
+  let effectiveRole = 'socio'
+
+  if (isAdministrador) {
+    effectiveRole = 'admin'
+  } else if (isDirector) {
+    effectiveRole = 'director'
   }
 
-  const isAllowed = allow.some(role => roleMap[role])
-
-  if (!isAllowed) {
+  if (!allow.includes(effectiveRole)) {
     return <Navigate to="/" replace />
   }
 
