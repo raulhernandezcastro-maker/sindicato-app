@@ -2,38 +2,46 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
 import { AppLayout } from './components/layout/AppLayout'
 
-// Pages (TODAS son named exports)
+// 📄 Páginas (TODAS con NAMED EXPORT)
 import { DashboardPage } from './pages/DashboardPage'
 import { AvisosPage } from './pages/AvisosPage'
 import { DocumentosPage } from './pages/DocumentosPage'
 import { PerfilPage } from './pages/PerfilPage'
 import { SociosPage } from './pages/SociosPage'
-import LoginPage from './pages/LoginPage'
 
-// Cuotas es la ÚNICA con default export
+// 📄 Cuotas es DEFAULT export
 import CuotasPage from './pages/CuotasPage'
+
+// 🔐 Login es DEFAULT export
+import LoginPage from './pages/LoginPage'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Login (sin layout) */}
+
+        {/* 🔐 LOGIN (sin layout) */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Layout principal con menú */}
+        {/* 🧱 LAYOUT PRINCIPAL */}
         <Route element={<AppLayout />}>
+          {/* Inicio */}
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
 
+          {/* Socio */}
           <Route path="/avisos" element={<AvisosPage />} />
           <Route path="/documentos" element={<DocumentosPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
 
+          {/* Director / Admin */}
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/cuotas" element={<CuotasPage />} />
+
+          {/* Admin */}
           <Route path="/socios" element={<SociosPage />} />
         </Route>
 
-        {/* Fallback */}
+        {/* ❌ fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
