@@ -1,28 +1,26 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-
-// Layout
 import { AppLayout } from './components/layout/AppLayout'
 
-// Pages (TODAS named exports)
+// Páginas con NAMED export
 import { DashboardPage } from './pages/DashboardPage'
 import { AvisosPage } from './pages/AvisosPage'
 import { DocumentosPage } from './pages/DocumentosPage'
 import { PerfilPage } from './pages/PerfilPage'
 import { SociosPage } from './pages/SociosPage'
-import { LoginPage } from './pages/LoginPage'
 
-// ÚNICA con default export
+// Páginas con DEFAULT export
 import CuotasPage from './pages/CuotasPage'
+import LoginPage from './pages/LoginPage'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
 
-        {/* Login sin layout */}
+        {/* Login (sin layout) */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* App protegida con layout */}
+        {/* Layout principal */}
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -37,7 +35,6 @@ export default function App() {
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
-
       </Routes>
     </BrowserRouter>
   )
