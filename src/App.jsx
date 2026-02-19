@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
-// ⬇️ IMPORT CORRECTO (NAMED)
+// Layout
 import { AppLayout } from './components/layout/AppLayout'
 
-// Páginas (TODAS default export)
+// Pages (default export)
+import HomePage from './pages/HomePage'
 import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
 import DocumentosPage from './pages/DocumentosPage'
@@ -21,8 +22,13 @@ export default function App() {
 
         {/* Layout principal */}
         <Route element={<AppLayout />}>
-          <Route path="/" element={<DashboardPage />} />
+          {/* 🔑 INICIO REAL */}
+          <Route path="/" element={<HomePage />} />
+
+          {/* Panel de Gestión */}
           <Route path="/dashboard" element={<DashboardPage />} />
+
+          {/* Otras páginas */}
           <Route path="/avisos" element={<AvisosPage />} />
           <Route path="/documentos" element={<DocumentosPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
