@@ -1,22 +1,33 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 
-export default function ProtectedRoute({ allow, children }) {
-  const { loading, isAdministrador, isDirector, isSocio } = useAuth()
+export default function ProtectedRoute({
+  children,
+  allowAdmin = false,
+  allowDirector = false,
+}) {
+  const { user, loading, isAdministrador, isDirector } = useAuth()
 
+  // ⏳ Esperar auth
   if (loading) {
-    return null // o spinner si quieres
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Cargando…</p>
+      </div>
+    )
   }
 
-  const roleMap = {
-    administrador: isAdministrador,
-    director: isDirector,
-    socio: isSocio,
+  // 🔒 No logueado
+  if (!user) {
+    return <Navigate to="/login" replace />
   }
 
-  const hasAccess = allow.some(role => roleMap[role])
+  // 🔐 Validación por rol
+  if (allowAdmin && !isAdministrador) {
+    return <Navigate to="/" replace />
+  }
 
-  if (!hasAccess) {
+  if (allowDirector && !(isAdministrador || isDirector)) {
     return <Navigate to="/" replace />
   }
 
