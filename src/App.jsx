@@ -1,12 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 
-// Layout
 import { AppLayout } from './components/layout/AppLayout'
-
-// Guards
 import ProtectedRoute from './components/auth/ProtectedRoute'
 
-// Pages
+// Páginas
 import HomePage from './pages/HomePage'
 import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
@@ -25,36 +22,39 @@ export default function App() {
 
         {/* Layout principal */}
         <Route element={<AppLayout />}>
-          {/* Público */}
+          {/* Inicio: todos */}
           <Route path="/" element={<HomePage />} />
+
+          {/* Avisos / Documentos / Perfil: todos */}
           <Route path="/avisos" element={<AvisosPage />} />
           <Route path="/documentos" element={<DocumentosPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
 
-          {/* Director + Admin */}
+          {/* Panel: Director y Administrador */}
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allow={['director', 'admin']}>
+              <ProtectedRoute allow={['director', 'administrador']}>
                 <DashboardPage />
               </ProtectedRoute>
             }
           />
 
+          {/* Cuotas: Director y Administrador */}
           <Route
             path="/cuotas"
             element={
-              <ProtectedRoute allow={['director', 'admin']}>
+              <ProtectedRoute allow={['director', 'administrador']}>
                 <CuotasPage />
               </ProtectedRoute>
             }
           />
 
-          {/* Solo Admin */}
+          {/* Gestión de Socios: SOLO Administrador */}
           <Route
             path="/socios"
             element={
-              <ProtectedRoute allow={['admin']}>
+              <ProtectedRoute allow={['administrador']}>
                 <SociosPage />
               </ProtectedRoute>
             }
