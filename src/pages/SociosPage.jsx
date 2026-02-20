@@ -31,28 +31,21 @@ import {
 } from '../components/ui/table'
 import { Checkbox } from '../components/ui/checkbox'
 
-const ROLE_LABELS = {
-  socio: 'Socio',
-  director: 'Director',
-  administrador: 'Administrador'
-}
-
 export default function SociosPage() {
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingSocio, setEditingSocio] = useState(null)
+  const [formError, setFormError] = useState('')
+  const [formLoading, setFormLoading] = useState(false)
 
   const [formData, setFormData] = useState({
-    rut: '',
     nombre: '',
     email: '',
+    telefono: '',
     password: '',
     roles: ['socio']
   })
-
-  const [formError, setFormError] = useState('')
-  const [formLoading, setFormLoading] = useState(false)
 
   useEffect(() => {
     loadSocios()
@@ -60,32 +53,54 @@ export default function SociosPage() {
 
   const loadSocios = async () => {
     setLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, rut, nombre, email, roles(role_name)')
-        .order('nombre')
 
-      if (error) throw error
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, nombre, email, telefono, roles(role_name)')
+      .order('email')
+
+    if (error) {
+      console.error('Error cargando socios:', error)
+    } else {
       setSocios(data || [])
-    } catch (err) {
-      console.error('Error cargando socios:', err)
-    } finally {
-      setLoading(false)
     }
+
+    setLoading(false)
   }
 
   const openNewDialog = () => {
     setEditingSocio(null)
+    setFormError('')
     setFormData({
-      rut: '',
       nombre: '',
       email: '',
+      telefono: '',
       password: '',
       roles: ['socio']
     })
-    setFormError('')
     setDialogOpen(true)
+  }
+
+  const handleEdit = (socio) => {
+    setEditingSocio(socio)
+    setFormError('')
+    setFormData({
+      nombre: socio.nombre || '',
+      email: socio.email,
+      telefono: socio.telefono || '',
+      password: '',
+      roles: socio.roles.map(r => r.role_name)
+    })
+    setDialogOpen(true)
+  }
+
+  const toggleRole = (role) => {
+    setFormData(prev => ({
+      ...prev,
+      roles: prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role]
+    }))
   }
 
   const handleSubmit = async (e) => {
@@ -95,18 +110,16 @@ export default function SociosPage() {
 
     try {
       if (editingSocio) {
-        // Actualizar perfil
-        const { error } = await supabase
+        // actualizar perfil
+        await supabase
           .from('profiles')
           .update({
             nombre: formData.nombre,
-            rut: formData.rut
+            telefono: formData.telefono
           })
           .eq('id', editingSocio.id)
 
-        if (error) throw error
-
-        // Reemplazar roles
+        // reset roles
         await supabase.from('roles').delete().eq('user_id', editingSocio.id)
 
         for (const role of formData.roles) {
@@ -116,30 +129,22 @@ export default function SociosPage() {
           })
         }
       } else {
-        // Crear usuario auth
+        // crear usuario auth
         const { data: authData, error: authError } =
           await supabase.auth.signUp({
             email: formData.email,
             password: formData.password
           })
 
-        if (authError || !authData.user) {
-          throw authError || new Error('No se pudo crear el usuario')
-        }
+        if (authError || !authData.user) throw authError
 
-        // Crear perfil
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            rut: formData.rut,
-            nombre: formData.nombre,
-            email: formData.email
-          })
+        await supabase.from('profiles').insert({
+          id: authData.user.id,
+          nombre: formData.nombre,
+          email: formData.email,
+          telefono: formData.telefono
+        })
 
-        if (profileError) throw profileError
-
-        // Roles
         for (const role of formData.roles) {
           await supabase.from('roles').insert({
             user_id: authData.user.id,
@@ -157,27 +162,6 @@ export default function SociosPage() {
     } finally {
       setFormLoading(false)
     }
-  }
-
-  const handleEdit = (socio) => {
-    setEditingSocio(socio)
-    setFormData({
-      rut: socio.rut || '',
-      nombre: socio.nombre || '',
-      email: socio.email || '',
-      password: '',
-      roles: socio.roles.map(r => r.role_name)
-    })
-    setDialogOpen(true)
-  }
-
-  const toggleRole = (role) => {
-    setFormData(prev => ({
-      ...prev,
-      roles: prev.roles.includes(role)
-        ? prev.roles.filter(r => r !== role)
-        : [...prev.roles, role]
-    }))
   }
 
   return (
@@ -204,7 +188,7 @@ export default function SociosPage() {
                 {editingSocio ? 'Editar Socio' : 'Nuevo Socio'}
               </DialogTitle>
               <DialogDescription>
-                Completa los datos del socio
+                Datos básicos del socio
               </DialogDescription>
             </DialogHeader>
 
@@ -214,22 +198,10 @@ export default function SociosPage() {
               )}
 
               <div>
-                <Label>RUT</Label>
-                <Input
-                  value={formData.rut}
-                  onChange={e =>
-                    setFormData({ ...formData, rut: e.target.value })
-                  }
-                  disabled={!!editingSocio}
-                  required
-                />
-              </div>
-
-              <div>
                 <Label>Nombre</Label>
                 <Input
                   value={formData.nombre}
-                  onChange={e =>
+                  onChange={(e) =>
                     setFormData({ ...formData, nombre: e.target.value })
                   }
                   required
@@ -241,11 +213,21 @@ export default function SociosPage() {
                 <Input
                   type="email"
                   value={formData.email}
-                  onChange={e =>
+                  disabled={!!editingSocio}
+                  onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  disabled={!!editingSocio}
                   required
+                />
+              </div>
+
+              <div>
+                <Label>Teléfono</Label>
+                <Input
+                  value={formData.telefono}
+                  onChange={(e) =>
+                    setFormData({ ...formData, telefono: e.target.value })
+                  }
                 />
               </div>
 
@@ -255,7 +237,7 @@ export default function SociosPage() {
                   <Input
                     type="password"
                     value={formData.password}
-                    onChange={e =>
+                    onChange={(e) =>
                       setFormData({ ...formData, password: e.target.value })
                     }
                     required
@@ -265,14 +247,14 @@ export default function SociosPage() {
 
               <div>
                 <Label>Roles</Label>
-                <div className="space-y-2 mt-2">
-                  {Object.keys(ROLE_LABELS).map(role => (
-                    <div key={role} className="flex items-center space-x-2">
+                <div className="space-y-2">
+                  {['socio', 'director', 'administrador'].map((r) => (
+                    <div key={r} className="flex items-center gap-2">
                       <Checkbox
-                        checked={formData.roles.includes(role)}
-                        onCheckedChange={() => toggleRole(role)}
+                        checked={formData.roles.includes(r)}
+                        onCheckedChange={() => toggleRole(r)}
                       />
-                      <span>{ROLE_LABELS[role]}</span>
+                      <span className="capitalize">{r}</span>
                     </div>
                   ))}
                 </div>
@@ -309,23 +291,23 @@ export default function SociosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>RUT</TableHead>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Teléfono</TableHead>
                   <TableHead>Roles</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {socios.map(s => (
+                {socios.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell>{s.rut}</TableCell>
                     <TableCell>{s.nombre}</TableCell>
                     <TableCell>{s.email}</TableCell>
+                    <TableCell>{s.telefono || '-'}</TableCell>
                     <TableCell>
-                      {s.roles.map(r => (
+                      {s.roles.map((r) => (
                         <Badge key={r.role_name} className="mr-1">
-                          {ROLE_LABELS[r.role_name] || r.role_name}
+                          {r.role_name}
                         </Badge>
                       ))}
                     </TableCell>
