@@ -2,26 +2,21 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function ProtectedRoute({ allow, children }) {
-  const { user, loading, isAdministrador, isDirector } = useAuth()
+  const { loading, isAdministrador, isDirector, isSocio } = useAuth()
 
   if (loading) {
-    return null
+    return null // o spinner si quieres
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />
+  const roleMap = {
+    administrador: isAdministrador,
+    director: isDirector,
+    socio: isSocio,
   }
 
-  // 🔑 Rol efectivo (jerarquía clara)
-  let effectiveRole = 'socio'
+  const hasAccess = allow.some(role => roleMap[role])
 
-  if (isAdministrador) {
-    effectiveRole = 'admin'
-  } else if (isDirector) {
-    effectiveRole = 'director'
-  }
-
-  if (!allow.includes(effectiveRole)) {
+  if (!hasAccess) {
     return <Navigate to="/" replace />
   }
 
