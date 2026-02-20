@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 
-// Páginas
+// Páginas (default export)
 import HomePage from './pages/HomePage'
 import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
@@ -17,51 +17,48 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Login fuera del layout */}
+        {/* Login */}
         <Route path="/login" element={<LoginPage />} />
 
         {/* Layout principal */}
         <Route element={<AppLayout />}>
-          {/* Inicio: todos */}
+          {/* Público */}
           <Route path="/" element={<HomePage />} />
-
-          {/* Avisos / Documentos / Perfil: todos */}
           <Route path="/avisos" element={<AvisosPage />} />
           <Route path="/documentos" element={<DocumentosPage />} />
           <Route path="/perfil" element={<PerfilPage />} />
 
-          {/* Panel: Director y Administrador */}
+          {/* Director / Administrador */}
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allow={['director', 'administrador']}>
+              <ProtectedRoute allowDirector>
                 <DashboardPage />
               </ProtectedRoute>
             }
           />
 
-          {/* Cuotas: Director y Administrador */}
           <Route
             path="/cuotas"
             element={
-              <ProtectedRoute allow={['director', 'administrador']}>
+              <ProtectedRoute allowDirector>
                 <CuotasPage />
               </ProtectedRoute>
             }
           />
 
-          {/* Gestión de Socios: SOLO Administrador */}
+          {/* Solo Administrador */}
           <Route
             path="/socios"
             element={
-              <ProtectedRoute allow={['administrador']}>
+              <ProtectedRoute allowAdmin>
                 <SociosPage />
               </ProtectedRoute>
             }
           />
         </Route>
 
-        {/* fallback */}
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
