@@ -28,26 +28,36 @@ export default function SociosPage() {
   const loadSocios = async () => {
     setLoading(true)
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(`
-        id,
-        nombre,
-        email,
-        roles (
-          role_name
-        )
-      `)
-      .order('created_at', { ascending: false })
+    try {
+      // 1️⃣ perfiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, nombre, email')
 
-    if (error) {
-      console.error('Error cargando socios:', error)
+      if (profilesError) throw profilesError
+
+      // 2️⃣ roles
+      const { data: roles, error: rolesError } = await supabase
+        .from('roles')
+        .select('user_id, role_name')
+
+      if (rolesError) throw rolesError
+
+      // 3️⃣ merge manual
+      const sociosFinal = profiles.map(p => ({
+        ...p,
+        roles: roles
+          .filter(r => r.user_id === p.id)
+          .map(r => r.role_name),
+      }))
+
+      setSocios(sociosFinal)
+    } catch (err) {
+      console.error('Error cargando socios:', err)
       setSocios([])
-    } else {
-      setSocios(data || [])
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   if (loading) {
@@ -74,16 +84,19 @@ export default function SociosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {socios.map((s) => (
+              {socios.map(s => (
                 <TableRow key={s.id}>
                   <TableCell>{s.nombre || 'Sin nombre'}</TableCell>
                   <TableCell>{s.email}</TableCell>
                   <TableCell>
-                    {s.roles.map((r) => (
-                      <Badge key={r.role_name} className="mr-1">
-                        {r.role_name}
-                      </Badge>
-                    ))}
+                    {s.roles.length > 0
+                      ? s.roles.map(r => (
+                          <Badge key={r} className="mr-1 capitalize">
+                            {r}
+                          </Badge>
+                        ))
+                      : <span className="text-muted-foreground">Sin roles</span>
+                    }
                   </TableCell>
                 </TableRow>
               ))}
