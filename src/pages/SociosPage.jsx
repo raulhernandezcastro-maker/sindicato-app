@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Edit } from 'lucide-react'
+import { Plus, Edit, UserX, UserCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+
 import {
   Card,
   CardHeader,
@@ -20,6 +21,13 @@ import {
 } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../components/ui/select'
 import { Alert } from '../components/ui/alert'
 import {
   Table,
@@ -44,6 +52,7 @@ export default function SociosPage() {
     email: '',
     telefono: '',
     password: '',
+    estado: 'activo',
     roles: ['socio']
   })
 
@@ -56,8 +65,17 @@ export default function SociosPage() {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, nombre, email, telefono, roles(role_name)')
-      .order('email')
+      .select(`
+        id,
+        nombre,
+        email,
+        telefono,
+        estado,
+        roles:roles!roles_user_id_fkey (
+          role_name
+        )
+      `)
+      .order('created_at', { ascending: false })
 
     if (error) {
       console.error('Error cargando socios:', error)
@@ -70,56 +88,47 @@ export default function SociosPage() {
 
   const openNewDialog = () => {
     setEditingSocio(null)
-    setFormError('')
     setFormData({
       nombre: '',
       email: '',
       telefono: '',
       password: '',
+      estado: 'activo',
       roles: ['socio']
     })
+    setFormError('')
     setDialogOpen(true)
   }
 
   const handleEdit = (socio) => {
     setEditingSocio(socio)
-    setFormError('')
     setFormData({
       nombre: socio.nombre || '',
       email: socio.email,
       telefono: socio.telefono || '',
       password: '',
+      estado: socio.estado,
       roles: socio.roles.map(r => r.role_name)
     })
     setDialogOpen(true)
   }
 
-  const toggleRole = (role) => {
-    setFormData(prev => ({
-      ...prev,
-      roles: prev.roles.includes(role)
-        ? prev.roles.filter(r => r !== role)
-        : [...prev.roles, role]
-    }))
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setFormError('')
     setFormLoading(true)
+    setFormError('')
 
     try {
       if (editingSocio) {
-        // actualizar perfil
         await supabase
           .from('profiles')
           .update({
             nombre: formData.nombre,
-            telefono: formData.telefono
+            telefono: formData.telefono,
+            estado: formData.estado
           })
           .eq('id', editingSocio.id)
 
-        // reset roles
         await supabase.from('roles').delete().eq('user_id', editingSocio.id)
 
         for (const role of formData.roles) {
@@ -129,7 +138,6 @@ export default function SociosPage() {
           })
         }
       } else {
-        // crear usuario auth
         const { data: authData, error: authError } =
           await supabase.auth.signUp({
             email: formData.email,
@@ -142,7 +150,8 @@ export default function SociosPage() {
           id: authData.user.id,
           nombre: formData.nombre,
           email: formData.email,
-          telefono: formData.telefono
+          telefono: formData.telefono,
+          estado: formData.estado
         })
 
         for (const role of formData.roles) {
@@ -153,15 +162,33 @@ export default function SociosPage() {
         }
       }
 
-      await loadSocios()
       setDialogOpen(false)
-      setEditingSocio(null)
+      await loadSocios()
     } catch (err) {
       console.error(err)
       setFormError('Error al guardar el socio')
     } finally {
       setFormLoading(false)
     }
+  }
+
+  const handleToggleEstado = async (socio) => {
+    const newEstado = socio.estado === 'activo' ? 'inactivo' : 'activo'
+    await supabase
+      .from('profiles')
+      .update({ estado: newEstado })
+      .eq('id', socio.id)
+
+    loadSocios()
+  }
+
+  const toggleRole = (role) => {
+    setFormData(prev => ({
+      ...prev,
+      roles: prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role]
+    }))
   }
 
   return (
@@ -182,13 +209,13 @@ export default function SociosPage() {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-xl">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
                 {editingSocio ? 'Editar Socio' : 'Nuevo Socio'}
               </DialogTitle>
               <DialogDescription>
-                Datos básicos del socio
+                Completa los datos del socio
               </DialogDescription>
             </DialogHeader>
 
@@ -213,21 +240,11 @@ export default function SociosPage() {
                 <Input
                   type="email"
                   value={formData.email}
-                  disabled={!!editingSocio}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
+                  disabled={!!editingSocio}
                   required
-                />
-              </div>
-
-              <div>
-                <Label>Teléfono</Label>
-                <Input
-                  value={formData.telefono}
-                  onChange={(e) =>
-                    setFormData({ ...formData, telefono: e.target.value })
-                  }
                 />
               </div>
 
@@ -249,7 +266,7 @@ export default function SociosPage() {
                 <Label>Roles</Label>
                 <div className="space-y-2">
                   {['socio', 'director', 'administrador'].map((r) => (
-                    <div key={r} className="flex items-center gap-2">
+                    <div key={r} className="flex items-center space-x-2">
                       <Checkbox
                         checked={formData.roles.includes(r)}
                         onCheckedChange={() => toggleRole(r)}
@@ -269,11 +286,7 @@ export default function SociosPage() {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={formLoading}>
-                  {formLoading
-                    ? 'Guardando...'
-                    : editingSocio
-                    ? 'Actualizar'
-                    : 'Crear'}
+                  {formLoading ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
             </form>
@@ -293,8 +306,8 @@ export default function SociosPage() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Teléfono</TableHead>
                   <TableHead>Roles</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -303,7 +316,6 @@ export default function SociosPage() {
                   <TableRow key={s.id}>
                     <TableCell>{s.nombre}</TableCell>
                     <TableCell>{s.email}</TableCell>
-                    <TableCell>{s.telefono || '-'}</TableCell>
                     <TableCell>
                       {s.roles.map((r) => (
                         <Badge key={r.role_name} className="mr-1">
@@ -311,14 +323,30 @@ export default function SociosPage() {
                         </Badge>
                       ))}
                     </TableCell>
+                    <TableCell>
+                      <Badge>
+                        {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => handleEdit(s)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => handleEdit(s)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant={s.estado === 'activo' ? 'destructive' : 'default'}
+                          onClick={() => handleToggleEstado(s)}
+                        >
+                          {s.estado === 'activo'
+                            ? <UserX className="w-4 h-4" />
+                            : <UserCheck className="w-4 h-4" />}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
