@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Edit, UserX, UserCheck } from 'lucide-react'
+import { Plus, Edit } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
   Card,
@@ -20,13 +20,6 @@ import {
 } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '../components/ui/select'
 import { Alert } from '../components/ui/alert'
 import {
   Table,
@@ -38,20 +31,26 @@ import {
 } from '../components/ui/table'
 import { Checkbox } from '../components/ui/checkbox'
 
+const ROLE_LABELS = {
+  socio: 'Socio',
+  director: 'Director',
+  administrador: 'Administrador'
+}
+
 export default function SociosPage() {
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingSocio, setEditingSocio] = useState(null)
+
   const [formData, setFormData] = useState({
     rut: '',
     nombre: '',
     email: '',
-    telefono: '',
     password: '',
-    estado: 'activo',
     roles: ['socio']
   })
+
   const [formError, setFormError] = useState('')
   const [formLoading, setFormLoading] = useState(false)
 
@@ -60,11 +59,12 @@ export default function SociosPage() {
   }, [])
 
   const loadSocios = async () => {
+    setLoading(true)
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*, roles(role_name)')
-        .order('created_at', { ascending: false })
+        .select('id, rut, nombre, email, roles(role_name)')
+        .order('nombre')
 
       if (error) throw error
       setSocios(data || [])
@@ -81,9 +81,7 @@ export default function SociosPage() {
       rut: '',
       nombre: '',
       email: '',
-      telefono: '',
       password: '',
-      estado: 'activo',
       roles: ['socio']
     })
     setFormError('')
@@ -97,15 +95,18 @@ export default function SociosPage() {
 
     try {
       if (editingSocio) {
-        await supabase
+        // Actualizar perfil
+        const { error } = await supabase
           .from('profiles')
           .update({
             nombre: formData.nombre,
-            telefono: formData.telefono,
-            estado: formData.estado
+            rut: formData.rut
           })
           .eq('id', editingSocio.id)
 
+        if (error) throw error
+
+        // Reemplazar roles
         await supabase.from('roles').delete().eq('user_id', editingSocio.id)
 
         for (const role of formData.roles) {
@@ -115,23 +116,30 @@ export default function SociosPage() {
           })
         }
       } else {
+        // Crear usuario auth
         const { data: authData, error: authError } =
           await supabase.auth.signUp({
             email: formData.email,
             password: formData.password
           })
 
-        if (authError || !authData.user) throw authError
+        if (authError || !authData.user) {
+          throw authError || new Error('No se pudo crear el usuario')
+        }
 
-        await supabase.from('profiles').insert({
-          id: authData.user.id,
-          rut: formData.rut,
-          nombre: formData.nombre,
-          email: formData.email,
-          telefono: formData.telefono,
-          estado: formData.estado
-        })
+        // Crear perfil
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            rut: formData.rut,
+            nombre: formData.nombre,
+            email: formData.email
+          })
 
+        if (profileError) throw profileError
+
+        // Roles
         for (const role of formData.roles) {
           await supabase.from('roles').insert({
             user_id: authData.user.id,
@@ -154,34 +162,17 @@ export default function SociosPage() {
   const handleEdit = (socio) => {
     setEditingSocio(socio)
     setFormData({
-      rut: socio.rut,
-      nombre: socio.nombre,
-      email: socio.email,
-      telefono: socio.telefono || '',
+      rut: socio.rut || '',
+      nombre: socio.nombre || '',
+      email: socio.email || '',
       password: '',
-      estado: socio.estado,
       roles: socio.roles.map(r => r.role_name)
     })
     setDialogOpen(true)
   }
 
-  const handleToggleEstado = async (socio) => {
-    const newEstado = socio.estado === 'activo' ? 'inactivo' : 'activo'
-
-    try {
-      await supabase
-        .from('profiles')
-        .update({ estado: newEstado })
-        .eq('id', socio.id)
-
-      await loadSocios()
-    } catch (err) {
-      console.error('Error cambiando estado:', err)
-    }
-  }
-
   const toggleRole = (role) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       roles: prev.roles.includes(role)
         ? prev.roles.filter(r => r !== role)
@@ -207,7 +198,7 @@ export default function SociosPage() {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-xl">
             <DialogHeader>
               <DialogTitle>
                 {editingSocio ? 'Editar Socio' : 'Nuevo Socio'}
@@ -222,29 +213,27 @@ export default function SociosPage() {
                 <Alert variant="destructive">{formError}</Alert>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>RUT</Label>
-                  <Input
-                    value={formData.rut}
-                    onChange={(e) =>
-                      setFormData({ ...formData, rut: e.target.value })
-                    }
-                    disabled={!!editingSocio}
-                    required
-                  />
-                </div>
+              <div>
+                <Label>RUT</Label>
+                <Input
+                  value={formData.rut}
+                  onChange={e =>
+                    setFormData({ ...formData, rut: e.target.value })
+                  }
+                  disabled={!!editingSocio}
+                  required
+                />
+              </div>
 
-                <div>
-                  <Label>Nombre</Label>
-                  <Input
-                    value={formData.nombre}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nombre: e.target.value })
-                    }
-                    required
-                  />
-                </div>
+              <div>
+                <Label>Nombre</Label>
+                <Input
+                  value={formData.nombre}
+                  onChange={e =>
+                    setFormData({ ...formData, nombre: e.target.value })
+                  }
+                  required
+                />
               </div>
 
               <div>
@@ -252,7 +241,7 @@ export default function SociosPage() {
                 <Input
                   type="email"
                   value={formData.email}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({ ...formData, email: e.target.value })
                   }
                   disabled={!!editingSocio}
@@ -266,7 +255,7 @@ export default function SociosPage() {
                   <Input
                     type="password"
                     value={formData.password}
-                    onChange={(e) =>
+                    onChange={e =>
                       setFormData({ ...formData, password: e.target.value })
                     }
                     required
@@ -275,33 +264,15 @@ export default function SociosPage() {
               )}
 
               <div>
-                <Label>Estado</Label>
-                <Select
-                  value={formData.estado}
-                  onValueChange={(v) =>
-                    setFormData({ ...formData, estado: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="activo">Activo</SelectItem>
-                    <SelectItem value="inactivo">Inactivo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
                 <Label>Roles</Label>
-                <div className="space-y-2">
-                  {['socio', 'director', 'administrador'].map((r) => (
-                    <div key={r} className="flex items-center space-x-2">
+                <div className="space-y-2 mt-2">
+                  {Object.keys(ROLE_LABELS).map(role => (
+                    <div key={role} className="flex items-center space-x-2">
                       <Checkbox
-                        checked={formData.roles.includes(r)}
-                        onCheckedChange={() => toggleRole(r)}
+                        checked={formData.roles.includes(role)}
+                        onCheckedChange={() => toggleRole(role)}
                       />
-                      <span className="capitalize">{r}</span>
+                      <span>{ROLE_LABELS[role]}</span>
                     </div>
                   ))}
                 </div>
@@ -342,53 +313,30 @@ export default function SociosPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Roles</TableHead>
-                  <TableHead>Estado</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {socios.map((s) => (
+                {socios.map(s => (
                   <TableRow key={s.id}>
                     <TableCell>{s.rut}</TableCell>
                     <TableCell>{s.nombre}</TableCell>
                     <TableCell>{s.email}</TableCell>
                     <TableCell>
-                      {s.roles.map((r) => (
+                      {s.roles.map(r => (
                         <Badge key={r.role_name} className="mr-1">
-                          {r.role_name}
+                          {ROLE_LABELS[r.role_name] || r.role_name}
                         </Badge>
                       ))}
                     </TableCell>
-                    <TableCell>
-                      <Badge>
-                        {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                      </Badge>
-                    </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => handleEdit(s)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant={
-                            s.estado === 'activo'
-                              ? 'destructive'
-                              : 'default'
-                          }
-                          onClick={() => handleToggleEstado(s)}
-                        >
-                          {s.estado === 'activo' ? (
-                            <UserX className="w-4 h-4" />
-                          ) : (
-                            <UserCheck className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </div>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => handleEdit(s)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
