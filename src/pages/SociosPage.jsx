@@ -50,12 +50,11 @@ export default function SociosPage() {
         id,
         nombre,
         email,
-        roles ( role_name )
       `)
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error cargando socios:', error)
+      console.log('SOCIOS RAW:', data, error)
     } else {
       setSocios(data || [])
     }
