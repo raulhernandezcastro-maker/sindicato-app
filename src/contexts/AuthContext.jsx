@@ -34,10 +34,10 @@ export const AuthProvider = ({ children }) => {
       setProfile(null)
       setRoles([])
     }
- 
+
     const loadUserData = async (userId) => {
       try {
-        // 🔹 Perfil
+        // Perfil
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
         if (profileError) throw profileError
         if (isMounted) setProfile(profileData)
 
-        // 🔹 Roles
+        // Roles
         const { data: rolesData, error: rolesError } = await supabase
           .from('roles')
           .select('role_name')
@@ -57,8 +57,12 @@ export const AuthProvider = ({ children }) => {
 
         const roleNames = (rolesData || []).map(r => r.role_name)
         if (isMounted) setRoles(roleNames)
+
+        // 🔎 LOGS SEGUROS (NO ROMPEN LA APP)
+        console.log('[AUTH] UID:', userId)
+        console.log('[AUTH] ROLES:', roleNames)
       } catch (err) {
-        console.error('Error loading profile/roles:', err)
+        console.error('[AUTH] Error loading profile/roles:', err)
         clearAuth()
       }
     }
@@ -76,7 +80,7 @@ export const AuthProvider = ({ children }) => {
           clearAuth()
         }
       } catch (err) {
-        console.error('Auth init error:', err)
+        console.error('[AUTH] Init error:', err)
         clearAuth()
       } finally {
         if (isMounted) setLoading(false)
@@ -132,22 +136,22 @@ export const AuthProvider = ({ children }) => {
     return data
   }
 
-  // 🔥 SIGN OUT CORRECTO (rompe cache y sesión)
   const signOut = async () => {
     try {
       setLoading(true)
 
       await supabase.auth.signOut()
 
-      // limpieza dura de estado
+      clearTimeout(() => {}) // evita micro race en algunos navegadores
+
       setUser(null)
       setProfile(null)
       setRoles([])
 
-      // 🔑 FORZAR salida REAL (evita sesión pegada)
-      window.location.href = '/login'
+      // 🔑 salida real, sin sesión pegada
+      window.location.replace('/login')
     } catch (err) {
-      console.error('Error signing out:', err)
+      console.error('[AUTH] SignOut error:', err)
     }
   }
 
@@ -160,7 +164,6 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
 
-    // flags claros
     isAdministrador,
     isDirector,
     isSocio
