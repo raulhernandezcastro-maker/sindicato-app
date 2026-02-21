@@ -34,19 +34,7 @@ export const AuthProvider = ({ children }) => {
       setProfile(null)
       setRoles([])
     }
-  
-  useEffect(() => {
-  if (user) {
-    console.log('AUTH UID:', user.id)
-    console.log('ROLES:', roles)
-    console.log('FLAGS:', {
-      isAdministrador,
-      isDirector,
-      isSocio,
-    })
-  }
-}, [user, roles])
-  
+ 
     const loadUserData = async (userId) => {
       try {
         // 🔹 Perfil
