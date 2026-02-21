@@ -1,11 +1,19 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState
+} from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
+  if (!ctx) {
+    throw new Error('useAuth must be used inside AuthProvider')
+  }
   return ctx
 }
 
@@ -29,21 +37,25 @@ export const AuthProvider = ({ children }) => {
 
     const loadUserData = async (userId) => {
       try {
-        const { data: profileData } = await supabase
+        // 🔹 Perfil
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userId)
           .single()
 
-        if (isMounted) setProfile(profileData ?? null)
+        if (profileError) throw profileError
+        if (isMounted) setProfile(profileData)
 
-        const { data: rolesData } = await supabase
+        // 🔹 Roles
+        const { data: rolesData, error: rolesError } = await supabase
           .from('roles')
           .select('role_name')
           .eq('user_id', userId)
 
-        const roleNames = (rolesData ?? []).map(r => r.role_name)
+        if (rolesError) throw rolesError
 
+        const roleNames = (rolesData || []).map(r => r.role_name)
         if (isMounted) setRoles(roleNames)
       } catch (err) {
         console.error('Error loading profile/roles:', err)
@@ -74,7 +86,7 @@ export const AuthProvider = ({ children }) => {
 
     init()
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (!initialized.current) return
 
@@ -91,30 +103,52 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       isMounted = false
-      subscription?.subscription?.unsubscribe()
+      authListener?.subscription?.unsubscribe()
     }
   }, [])
 
   /* =========================
      PRIORIDAD REAL DE ROLES
+     administrador > director > socio
      ========================= */
 
   const isAdministrador = roles.includes('administrador')
   const isDirector = !isAdministrador && roles.includes('director')
-  const isSocio = !isAdministrador && !isDirector && roles.includes('socio')
+  const isSocio =
+    !isAdministrador && !isDirector && roles.includes('socio')
+
+  /* =========================
+     AUTH ACTIONS
+     ========================= */
 
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+
     if (error) throw error
     return data
   }
 
+  // 🔥 SIGN OUT CORRECTO (rompe cache y sesión)
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    setProfile(null)
-    setRoles([])
-    setLoading(false)
+    try {
+      setLoading(true)
+
+      await supabase.auth.signOut()
+
+      // limpieza dura de estado
+      setUser(null)
+      setProfile(null)
+      setRoles([])
+
+      // 🔑 FORZAR salida REAL (evita sesión pegada)
+      window.location.href = '/login'
+    } catch (err) {
+      console.error('Error signing out:', err)
+    }
   }
 
   const value = {
@@ -122,13 +156,14 @@ export const AuthProvider = ({ children }) => {
     profile,
     roles,
     loading,
+
     signIn,
     signOut,
 
-    // flags claros y coherentes
+    // flags claros
     isAdministrador,
     isDirector,
-    isSocio,
+    isSocio
   }
 
   return (
