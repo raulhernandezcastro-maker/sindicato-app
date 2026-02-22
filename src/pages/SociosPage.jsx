@@ -54,7 +54,7 @@ export default function SociosPage() {
   }, [])
 
   /* =========================
-     CARGA DE SOCIOS (GRILLA)
+     CARGA CORRECTA DE SOCIOS
      ========================= */
   const loadSocios = async () => {
     setLoading(true)
@@ -65,14 +65,14 @@ export default function SociosPage() {
         id,
         nombre,
         email,
-        roles (
+        roles:roles!roles_user_id_fkey (
           role_name
         )
       `)
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error cargando socios:', error)
+      console.error('❌ Error cargando socios:', error)
       setSocios([])
     } else {
       setSocios(data || [])
@@ -89,20 +89,18 @@ export default function SociosPage() {
     setSaving(true)
 
     try {
-      // 1️⃣ Crear usuario Auth
+      // 1️⃣ Auth
       const { data: authData, error: authError } =
         await supabase.auth.signUp({
           email: formData.email,
           password: formData.password
         })
 
-      if (authError || !authData.user) {
-        throw authError
-      }
+      if (authError || !authData.user) throw authError
 
       const userId = authData.user.id
 
-      // 2️⃣ Crear perfil (incluye RUT)
+      // 2️⃣ Perfil (incluye RUT)
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
@@ -114,7 +112,7 @@ export default function SociosPage() {
 
       if (profileError) throw profileError
 
-      // 3️⃣ Asignar rol
+      // 3️⃣ Rol
       const { error: roleError } = await supabase
         .from('roles')
         .insert({
@@ -124,7 +122,6 @@ export default function SociosPage() {
 
       if (roleError) throw roleError
 
-      // Reset UI
       setOpen(false)
       setFormData({
         rut: '',
@@ -136,7 +133,7 @@ export default function SociosPage() {
 
       await loadSocios()
     } catch (err) {
-      console.error('Error creando socio:', err)
+      console.error('❌ Error creando socio:', err)
       alert('Error al crear el socio')
     } finally {
       setSaving(false)
@@ -258,7 +255,7 @@ export default function SociosPage() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Rol</TableHead>
+                <TableHead>Roles</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
