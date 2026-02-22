@@ -22,7 +22,7 @@ import {
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Alert } from '../components/ui/alert'
-
+import { Checkbox } from '../components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -43,6 +43,7 @@ export default function SociosPage() {
   const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
+    rut: '',
     nombre: '',
     email: '',
     password: '',
@@ -55,29 +56,21 @@ export default function SociosPage() {
 
   const loadSocios = async () => {
     setLoading(true)
-
     try {
-      // 1️⃣ Traer perfiles
-      const { data: profiles, error: profileError } = await supabase
+      const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, nombre, email')
+        .select('id, rut, nombre, email')
         .order('created_at', { ascending: false })
 
-      if (profileError) throw profileError
-
-      // 2️⃣ Traer roles
-      const { data: roles, error: rolesError } = await supabase
+      const { data: roles } = await supabase
         .from('roles')
         .select('user_id, role_name')
 
-      if (rolesError) throw rolesError
-
-      // 3️⃣ Unir en memoria (NO JOIN SQL)
-      const sociosConRoles = profiles.map(p => ({
+      const sociosConRoles = (profiles || []).map(p => ({
         ...p,
         roles: roles
-          .filter(r => r.user_id === p.id)
-          .map(r => r.role_name)
+          ?.filter(r => r.user_id === p.id)
+          .map(r => r.role_name) || []
       }))
 
       setSocios(sociosConRoles)
@@ -89,10 +82,31 @@ export default function SociosPage() {
     }
   }
 
+  const toggleRole = (role) => {
+    setFormData(prev => ({
+      ...prev,
+      roles: prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role]
+    }))
+  }
+
   const handleCreate = async (e) => {
     e.preventDefault()
     setFormError('')
     setSaving(true)
+
+    if (!formData.rut) {
+      setFormError('El RUT es obligatorio')
+      setSaving(false)
+      return
+    }
+
+    if (formData.roles.length === 0) {
+      setFormError('Debe seleccionar al menos un rol')
+      setSaving(false)
+      return
+    }
 
     try {
       const { data: authData, error: authError } =
@@ -109,6 +123,7 @@ export default function SociosPage() {
 
       await supabase.from('profiles').insert({
         id: userId,
+        rut: formData.rut.trim(),
         nombre: formData.nombre,
         email: formData.email
       })
@@ -122,6 +137,7 @@ export default function SociosPage() {
 
       setOpen(false)
       setFormData({
+        rut: '',
         nombre: '',
         email: '',
         password: '',
@@ -161,13 +177,24 @@ export default function SociosPage() {
 
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Crear Nuevo Socio</DialogTitle>
+                <DialogTitle>Crear Nuevo Usuario</DialogTitle>
               </DialogHeader>
 
               <form onSubmit={handleCreate} className="space-y-4">
                 {formError && (
                   <Alert variant="destructive">{formError}</Alert>
                 )}
+
+                <div>
+                  <Label>RUT</Label>
+                  <Input
+                    value={formData.rut}
+                    onChange={(e) =>
+                      setFormData({ ...formData, rut: e.target.value })
+                    }
+                    required
+                  />
+                </div>
 
                 <div>
                   <Label>Nombre</Label>
@@ -204,6 +231,21 @@ export default function SociosPage() {
                   />
                 </div>
 
+                <div>
+                  <Label>Roles</Label>
+                  <div className="space-y-2 mt-2">
+                    {['socio', 'director', 'administrador'].map(r => (
+                      <div key={r} className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={formData.roles.includes(r)}
+                          onCheckedChange={() => toggleRole(r)}
+                        />
+                        <span className="capitalize">{r}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <Button disabled={saving}>
                   {saving ? 'Creando...' : 'Crear Usuario'}
                 </Button>
@@ -229,15 +271,11 @@ export default function SociosPage() {
                   <TableCell>{s.nombre || 'Sin nombre'}</TableCell>
                   <TableCell>{s.email}</TableCell>
                   <TableCell>
-                    {s.roles.length === 0 ? (
-                      <Badge variant="secondary">sin rol</Badge>
-                    ) : (
-                      s.roles.map(r => (
-                        <Badge key={r} className="mr-1">
-                          {r}
-                        </Badge>
-                      ))
-                    )}
+                    {s.roles.map(r => (
+                      <Badge key={r} className="mr-1">
+                        {r}
+                      </Badge>
+                    ))}
                   </TableCell>
                 </TableRow>
               ))}
