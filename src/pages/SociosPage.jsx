@@ -56,24 +56,37 @@ export default function SociosPage() {
   const loadSocios = async () => {
     setLoading(true)
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(`
-        id,
-        nombre,
-        email,
-        roles ( role_name )
-      `)
-      .order('created_at', { ascending: false })
+    try {
+      // 1️⃣ Traer perfiles
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, nombre, email')
+        .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Error cargando socios:', error)
+      if (profileError) throw profileError
+
+      // 2️⃣ Traer roles
+      const { data: roles, error: rolesError } = await supabase
+        .from('roles')
+        .select('user_id, role_name')
+
+      if (rolesError) throw rolesError
+
+      // 3️⃣ Unir en memoria (NO JOIN SQL)
+      const sociosConRoles = profiles.map(p => ({
+        ...p,
+        roles: roles
+          .filter(r => r.user_id === p.id)
+          .map(r => r.role_name)
+      }))
+
+      setSocios(sociosConRoles)
+    } catch (err) {
+      console.error('Error cargando socios:', err)
       setSocios([])
-    } else {
-      setSocios(data || [])
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   const handleCreate = async (e) => {
@@ -82,7 +95,6 @@ export default function SociosPage() {
     setSaving(true)
 
     try {
-      // 1️⃣ Crear usuario auth
       const { data: authData, error: authError } =
         await supabase.auth.signUp({
           email: formData.email,
@@ -95,14 +107,12 @@ export default function SociosPage() {
 
       const userId = authData.user.id
 
-      // 2️⃣ Crear perfil
       await supabase.from('profiles').insert({
         id: userId,
         nombre: formData.nombre,
         email: formData.email
       })
 
-      // 3️⃣ Crear roles
       for (const role of formData.roles) {
         await supabase.from('roles').insert({
           user_id: userId,
@@ -214,16 +224,20 @@ export default function SociosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {socios.map((s) => (
+              {socios.map(s => (
                 <TableRow key={s.id}>
                   <TableCell>{s.nombre || 'Sin nombre'}</TableCell>
                   <TableCell>{s.email}</TableCell>
                   <TableCell>
-                    {s.roles.map((r) => (
-                      <Badge key={r.role_name} className="mr-1">
-                        {r.role_name}
-                      </Badge>
-                    ))}
+                    {s.roles.length === 0 ? (
+                      <Badge variant="secondary">sin rol</Badge>
+                    ) : (
+                      s.roles.map(r => (
+                        <Badge key={r} className="mr-1">
+                          {r}
+                        </Badge>
+                      ))
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
