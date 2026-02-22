@@ -54,26 +54,28 @@ export default function SociosPage() {
     loadSocios()
   }, [])
 
+  /* =========================
+     CARGA CORRECTA DE SOCIOS
+     ========================= */
   const loadSocios = async () => {
     setLoading(true)
     try {
-      const { data: profiles } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('id, rut, nombre, email')
+        .select(`
+          id,
+          rut,
+          nombre,
+          email,
+          roles (
+            role_name
+          )
+        `)
         .order('created_at', { ascending: false })
 
-      const { data: roles } = await supabase
-        .from('roles')
-        .select('user_id, role_name')
+      if (error) throw error
 
-      const sociosConRoles = (profiles || []).map(p => ({
-        ...p,
-        roles: roles
-          ?.filter(r => r.user_id === p.id)
-          .map(r => r.role_name) || []
-      }))
-
-      setSocios(sociosConRoles)
+      setSocios(data || [])
     } catch (err) {
       console.error('Error cargando socios:', err)
       setSocios([])
@@ -271,9 +273,9 @@ export default function SociosPage() {
                   <TableCell>{s.nombre || 'Sin nombre'}</TableCell>
                   <TableCell>{s.email}</TableCell>
                   <TableCell>
-                    {s.roles.map(r => (
-                      <Badge key={r} className="mr-1">
-                        {r}
+                    {(s.roles || []).map(r => (
+                      <Badge key={r.role_name} className="mr-1">
+                        {r.role_name}
                       </Badge>
                     ))}
                   </TableCell>
