@@ -2,29 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   Card,
+  CardContent,
   CardHeader,
-  CardTitle,
-  CardContent
+  CardTitle
 } from '../components/ui/card'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Badge } from '../components/ui/badge'
 import { Spinner } from '../components/ui/spinner'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '../components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '../components/ui/select'
+import { Badge } from '../components/ui/badge'
 import {
   Table,
   TableBody,
@@ -33,116 +16,51 @@ import {
   TableHeader,
   TableRow
 } from '../components/ui/table'
-import { Plus } from 'lucide-react'
 
 export default function SociosPage() {
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-
-  const [formData, setFormData] = useState({
-    rut: '',
-    nombre: '',
-    email: '',
-    password: '',
-    role: 'socio'
-  })
 
   useEffect(() => {
     loadSocios()
   }, [])
 
-  /* =========================
-     CARGA CORRECTA DE SOCIOS
-     ========================= */
   const loadSocios = async () => {
     setLoading(true)
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(`
-        id,
-        nombre,
-        email,
-        roles:roles!roles_user_id_fkey (
-          role_name
-        )
-      `)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('❌ Error cargando socios:', error)
-      setSocios([])
-    } else {
-      setSocios(data || [])
-    }
-
-    setLoading(false)
-  }
-
-  /* =========================
-     CREAR SOCIO
-     ========================= */
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-
     try {
-      // 1️⃣ Auth
-      const { data: authData, error: authError } =
-        await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password
-        })
-
-      if (authError || !authData.user) throw authError
-
-      const userId = authData.user.id
-
-      // 2️⃣ Perfil (incluye RUT)
-      const { error: profileError } = await supabase
+      // 1️⃣ Traer perfiles
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .insert({
-          id: userId,
-          rut: formData.rut,
-          nombre: formData.nombre,
-          email: formData.email
-        })
+        .select('id, nombre, email')
+        .order('created_at', { ascending: false })
 
-      if (profileError) throw profileError
+      if (profilesError) throw profilesError
 
-      // 3️⃣ Rol
-      const { error: roleError } = await supabase
+      // 2️⃣ Traer roles
+      const { data: roles, error: rolesError } = await supabase
         .from('roles')
-        .insert({
-          user_id: userId,
-          role_name: formData.role
-        })
+        .select('user_id, role_name')
 
-      if (roleError) throw roleError
+      if (rolesError) throw rolesError
 
-      setOpen(false)
-      setFormData({
-        rut: '',
-        nombre: '',
-        email: '',
-        password: '',
-        role: 'socio'
-      })
+      // 3️⃣ Unir datos (merge manual)
+      const sociosConRoles = profiles.map(p => ({
+        ...p,
+        roles: roles
+          .filter(r => r.user_id === p.id)
+          .map(r => r.role_name)
+      }))
 
-      await loadSocios()
+      setSocios(sociosConRoles)
     } catch (err) {
-      console.error('❌ Error creando socio:', err)
-      alert('Error al crear el socio')
+      console.error('Error cargando socios:', err)
+      setSocios([])
     } finally {
-      setSaving(false)
+      setLoading(false)
     }
   }
 
-  /* =========================
-     UI
-     ========================= */
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -153,101 +71,9 @@ export default function SociosPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Gestión de Socios</h1>
-
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Usuario
-            </Button>
-          </DialogTrigger>
-
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nuevo Socio</DialogTitle>
-            </DialogHeader>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label>RUT</Label>
-                <Input
-                  value={formData.rut}
-                  onChange={(e) =>
-                    setFormData({ ...formData, rut: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Nombre</Label>
-                <Input
-                  value={formData.nombre}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nombre: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Contraseña</Label>
-                <Input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <Label>Rol</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(v) =>
-                    setFormData({ ...formData, role: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="socio">Socio</SelectItem>
-                    <SelectItem value="director">Director</SelectItem>
-                    <SelectItem value="administrador">Administrador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex justify-end">
-                <Button type="submit" disabled={saving}>
-                  {saving ? 'Creando...' : 'Crear Usuario'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Socios registrados</CardTitle>
+          <CardTitle>Gestión de Socios</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -264,11 +90,17 @@ export default function SociosPage() {
                   <TableCell>{s.nombre || 'Sin nombre'}</TableCell>
                   <TableCell>{s.email}</TableCell>
                   <TableCell>
-                    {s.roles?.map((r) => (
-                      <Badge key={r.role_name} className="mr-1">
-                        {r.role_name}
-                      </Badge>
-                    ))}
+                    {s.roles.length > 0 ? (
+                      s.roles.map(role => (
+                        <Badge key={role} className="mr-1 capitalize">
+                          {role}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground text-sm">
+                        Sin rol
+                      </span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
