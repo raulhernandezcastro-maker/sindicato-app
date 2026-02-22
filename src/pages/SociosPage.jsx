@@ -1,13 +1,28 @@
 import React, { useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+
 import {
   Card,
-  CardContent,
   CardHeader,
-  CardTitle
+  CardTitle,
+  CardContent
 } from '../components/ui/card'
-import { Spinner } from '../components/ui/spinner'
+import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+import { Spinner } from '../components/ui/spinner'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '../components/ui/dialog'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
+import { Alert } from '../components/ui/alert'
+
 import {
   Table,
   TableBody,
@@ -18,8 +33,21 @@ import {
 } from '../components/ui/table'
 
 export default function SociosPage() {
+  const { isAdministrador } = useAuth()
+
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const [open, setOpen] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const [formData, setFormData] = useState({
+    nombre: '',
+    email: '',
+    password: '',
+    roles: ['socio']
+  })
 
   useEffect(() => {
     loadSocios()
@@ -28,35 +56,74 @@ export default function SociosPage() {
   const loadSocios = async () => {
     setLoading(true)
 
-    try {
-      // 1️⃣ perfiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, nombre, email')
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        nombre,
+        email,
+        roles ( role_name )
+      `)
+      .order('created_at', { ascending: false })
 
-      if (profilesError) throw profilesError
-
-      // 2️⃣ roles
-      const { data: roles, error: rolesError } = await supabase
-        .from('roles')
-        .select('user_id, role_name')
-
-      if (rolesError) throw rolesError
-
-      // 3️⃣ merge manual
-      const sociosFinal = profiles.map(p => ({
-        ...p,
-        roles: roles
-          .filter(r => r.user_id === p.id)
-          .map(r => r.role_name),
-      }))
-
-      setSocios(sociosFinal)
-    } catch (err) {
-      console.error('Error cargando socios:', err)
+    if (error) {
+      console.error('Error cargando socios:', error)
       setSocios([])
+    } else {
+      setSocios(data || [])
+    }
+
+    setLoading(false)
+  }
+
+  const handleCreate = async (e) => {
+    e.preventDefault()
+    setFormError('')
+    setSaving(true)
+
+    try {
+      // 1️⃣ Crear usuario auth
+      const { data: authData, error: authError } =
+        await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password
+        })
+
+      if (authError || !authData.user) {
+        throw authError || new Error('No se pudo crear el usuario')
+      }
+
+      const userId = authData.user.id
+
+      // 2️⃣ Crear perfil
+      await supabase.from('profiles').insert({
+        id: userId,
+        nombre: formData.nombre,
+        email: formData.email
+      })
+
+      // 3️⃣ Crear roles
+      for (const role of formData.roles) {
+        await supabase.from('roles').insert({
+          user_id: userId,
+          role_name: role
+        })
+      }
+
+      setOpen(false)
+      setFormData({
+        nombre: '',
+        email: '',
+        password: '',
+        roles: ['socio']
+      })
+
+      await loadSocios()
+    } catch (err) {
+      console.error(err)
+      setFormError('Error al crear el socio')
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
@@ -70,11 +137,74 @@ export default function SociosPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Gestión de Socios</h1>
+
+        {isAdministrador && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Usuario
+              </Button>
+            </DialogTrigger>
+
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Crear Nuevo Socio</DialogTitle>
+              </DialogHeader>
+
+              <form onSubmit={handleCreate} className="space-y-4">
+                {formError && (
+                  <Alert variant="destructive">{formError}</Alert>
+                )}
+
+                <div>
+                  <Label>Nombre</Label>
+                  <Input
+                    value={formData.nombre}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nombre: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label>Contraseña</Label>
+                  <Input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                <Button disabled={saving}>
+                  {saving ? 'Creando...' : 'Crear Usuario'}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
       <Card>
-        <CardHeader>
-          <CardTitle>Gestión de Socios</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Table>
             <TableHeader>
               <TableRow>
@@ -84,19 +214,16 @@ export default function SociosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {socios.map(s => (
+              {socios.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell>{s.nombre || 'Sin nombre'}</TableCell>
                   <TableCell>{s.email}</TableCell>
                   <TableCell>
-                    {s.roles.length > 0
-                      ? s.roles.map(r => (
-                          <Badge key={r} className="mr-1 capitalize">
-                            {r}
-                          </Badge>
-                        ))
-                      : <span className="text-muted-foreground">Sin roles</span>
-                    }
+                    {s.roles.map((r) => (
+                      <Badge key={r.role_name} className="mr-1">
+                        {r.role_name}
+                      </Badge>
+                    ))}
                   </TableCell>
                 </TableRow>
               ))}
