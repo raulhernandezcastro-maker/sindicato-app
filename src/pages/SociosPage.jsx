@@ -40,6 +40,7 @@ export default function SociosPage() {
         id,
         nombre,
         email,
+        rut,
         roles (
           role_name
         )
@@ -47,13 +48,18 @@ export default function SociosPage() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error cargando socios:', error)
+      console.error('❌ Error cargando socios:', error)
       setSocios([])
     } else {
       setSocios(data || [])
     }
 
     setLoading(false)
+  }
+
+  const handleNuevoSocio = () => {
+    // 🔒 Por ahora solo confirmamos que el botón FUNCIONA
+    alert('Nuevo Socio: formulario se implementa en el siguiente paso')
   }
 
   if (loading) {
@@ -70,9 +76,8 @@ export default function SociosPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Gestión de Socios</CardTitle>
 
-          {/* 🔑 BOTÓN SOLO ADMINISTRADOR */}
           {isAdministrador && (
-            <Button>
+            <Button onClick={handleNuevoSocio}>
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Socio
             </Button>
@@ -85,6 +90,7 @@ export default function SociosPage() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>RUT</TableHead>
                 <TableHead>Roles</TableHead>
               </TableRow>
             </TableHeader>
@@ -94,6 +100,7 @@ export default function SociosPage() {
                 <TableRow key={s.id}>
                   <TableCell>{s.nombre || 'Sin nombre'}</TableCell>
                   <TableCell>{s.email}</TableCell>
+                  <TableCell>{s.rut || '-'}</TableCell>
                   <TableCell>
                     {s.roles.map((r) => (
                       <Badge key={r.role_name} className="mr-1">
