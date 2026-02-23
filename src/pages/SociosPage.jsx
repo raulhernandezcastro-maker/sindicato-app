@@ -34,32 +34,49 @@ export default function SociosPage() {
   const loadSocios = async () => {
     setLoading(true)
 
-    const { data, error } = await supabase
+    // 1️⃣ Traer perfiles
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select(`
-        id,
-        nombre,
-        email,
-        rut,
-        roles (
-          role_name
-        )
-      `)
+      .select('id, nombre, email, rut')
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('❌ Error cargando socios:', error)
+    if (profilesError) {
+      console.error('❌ Error profiles:', profilesError)
       setSocios([])
-    } else {
-      setSocios(data || [])
+      setLoading(false)
+      return
     }
 
+    // 2️⃣ Traer roles
+    const { data: rolesData, error: rolesError } = await supabase
+      .from('roles')
+      .select('user_id, role_name')
+
+    if (rolesError) {
+      console.error('❌ Error roles:', rolesError)
+      setSocios([])
+      setLoading(false)
+      return
+    }
+
+    // 3️⃣ Unir en memoria (ROBUSTO)
+    const rolesByUser = rolesData.reduce((acc, r) => {
+      if (!acc[r.user_id]) acc[r.user_id] = []
+      acc[r.user_id].push(r.role_name)
+      return acc
+    }, {})
+
+    const combined = profiles.map(p => ({
+      ...p,
+      roles: rolesByUser[p.id] || []
+    }))
+
+    setSocios(combined)
     setLoading(false)
   }
 
   const handleNuevoSocio = () => {
-    // 🔒 Por ahora solo confirmamos que el botón FUNCIONA
-    alert('Nuevo Socio: formulario se implementa en el siguiente paso')
+    alert('Formulario Nuevo Socio se implementa a continuación')
   }
 
   if (loading) {
@@ -96,15 +113,15 @@ export default function SociosPage() {
             </TableHeader>
 
             <TableBody>
-              {socios.map((s) => (
+              {socios.map(s => (
                 <TableRow key={s.id}>
                   <TableCell>{s.nombre || 'Sin nombre'}</TableCell>
                   <TableCell>{s.email}</TableCell>
                   <TableCell>{s.rut || '-'}</TableCell>
                   <TableCell>
-                    {s.roles.map((r) => (
-                      <Badge key={r.role_name} className="mr-1">
-                        {r.role_name}
+                    {s.roles.map(r => (
+                      <Badge key={r} className="mr-1">
+                        {r}
                       </Badge>
                     ))}
                   </TableCell>
