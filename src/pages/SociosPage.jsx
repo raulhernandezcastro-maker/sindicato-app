@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle
 } from '../components/ui/card'
-import { Spinner } from '../components/ui/spinner'
+import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
+import { Spinner } from '../components/ui/spinner'
 import {
   Table,
   TableBody,
@@ -18,6 +22,8 @@ import {
 } from '../components/ui/table'
 
 export default function SociosPage() {
+  const { isAdministrador } = useAuth()
+
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -28,37 +34,26 @@ export default function SociosPage() {
   const loadSocios = async () => {
     setLoading(true)
 
-    try {
-      // 1️⃣ Traer perfiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, nombre, email')
-        .order('created_at', { ascending: false })
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        nombre,
+        email,
+        roles (
+          role_name
+        )
+      `)
+      .order('created_at', { ascending: false })
 
-      if (profilesError) throw profilesError
-
-      // 2️⃣ Traer roles
-      const { data: roles, error: rolesError } = await supabase
-        .from('roles')
-        .select('user_id, role_name')
-
-      if (rolesError) throw rolesError
-
-      // 3️⃣ Unir datos (merge manual)
-      const sociosConRoles = profiles.map(p => ({
-        ...p,
-        roles: roles
-          .filter(r => r.user_id === p.id)
-          .map(r => r.role_name)
-      }))
-
-      setSocios(sociosConRoles)
-    } catch (err) {
-      console.error('Error cargando socios:', err)
+    if (error) {
+      console.error('Error cargando socios:', error)
       setSocios([])
-    } finally {
-      setLoading(false)
+    } else {
+      setSocios(data || [])
     }
+
+    setLoading(false)
   }
 
   if (loading) {
@@ -72,9 +67,18 @@ export default function SociosPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Gestión de Socios</CardTitle>
+
+          {/* 🔑 BOTÓN SOLO ADMINISTRADOR */}
+          {isAdministrador && (
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Socio
+            </Button>
+          )}
         </CardHeader>
+
         <CardContent>
           <Table>
             <TableHeader>
@@ -84,23 +88,18 @@ export default function SociosPage() {
                 <TableHead>Roles</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
               {socios.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell>{s.nombre || 'Sin nombre'}</TableCell>
                   <TableCell>{s.email}</TableCell>
                   <TableCell>
-                    {s.roles.length > 0 ? (
-                      s.roles.map(role => (
-                        <Badge key={role} className="mr-1 capitalize">
-                          {role}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground text-sm">
-                        Sin rol
-                      </span>
-                    )}
+                    {s.roles.map((r) => (
+                      <Badge key={r.role_name} className="mr-1">
+                        {r.role_name}
+                      </Badge>
+                    ))}
                   </TableCell>
                 </TableRow>
               ))}
