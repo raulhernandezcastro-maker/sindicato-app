@@ -24,20 +24,15 @@ import {
   DialogTitle
 } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
-import { Alert } from '../components/ui/alert'
+import { Label } from '../components/ui/label'
 
 export default function SociosPage() {
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
-
-  // modal
   const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // form
   const [form, setForm] = useState({
     nombre: '',
     email: '',
@@ -50,57 +45,35 @@ export default function SociosPage() {
     loadSocios()
   }, [])
 
-  /* ===============================
-     CARGA DE SOCIOS (GRILLA)
-     =============================== */
   const loadSocios = async () => {
     setLoading(true)
-    try {
-      const { data: profiles, error: pError } = await supabase
-        .from('profiles')
-        .select('id, nombre, email, rut')
-        .order('created_at', { ascending: false })
 
-      if (pError) throw pError
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id,nombre,email,rut')
+      .order('created_at', { ascending: false })
 
-      const { data: roles, error: rError } = await supabase
-        .from('roles')
-        .select('user_id, role_name')
+    const { data: roles } = await supabase
+      .from('roles')
+      .select('user_id,role_name')
 
-      if (rError) throw rError
+    const merged = (profiles || []).map(p => ({
+      ...p,
+      roles: roles
+        .filter(r => r.user_id === p.id)
+        .map(r => r.role_name)
+    }))
 
-      const merged = profiles.map(p => ({
-        ...p,
-        roles: roles
-          .filter(r => r.user_id === p.id)
-          .map(r => r.role_name)
-      }))
-
-      setSocios(merged)
-    } catch (err) {
-      console.error('Error cargando socios:', err)
-      setSocios([])
-    } finally {
-      setLoading(false)
-    }
+    setSocios(merged)
+    setLoading(false)
   }
 
-  /* ===============================
-     CREAR SOCIO (EDGE FUNCTION)
-     =============================== */
-  const handleCreateSocio = async (e) => {
-    e.preventDefault()
-    setError('')
-    setSaving(true)
-
+  const handleCreateSocio = async () => {
     try {
-      const {
-        data: { session }
-      } = await supabase.auth.getSession()
+      setError('')
 
-      if (!session?.access_token) {
-        throw new Error('Sesión inválida')
-      }
+      const session = await supabase.auth.getSession()
+      const token = session.data.session.access_token
 
       const res = await fetch(
         'https://ncbvillobdmthjtvxtsm.supabase.co/functions/v1/bright-service',
@@ -108,25 +81,19 @@ export default function SociosPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`
+            Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({
-            nombre: form.nombre,
-            email: form.email,
-            password: form.password,
-            rut: form.rut,
-            roles: form.roles
-          })
+          body: JSON.stringify(form)
         }
       )
 
-      const result = await res.json()
+      const json = await res.json()
 
       if (!res.ok) {
-        throw new Error(result.error || 'Error creando socio')
+        throw new Error(json.error || 'Error creando socio')
       }
 
-      // reset
+      setOpen(false)
       setForm({
         nombre: '',
         email: '',
@@ -134,29 +101,12 @@ export default function SociosPage() {
         password: '',
         roles: ['socio']
       })
-      setOpen(false)
 
       await loadSocios()
     } catch (err) {
-      console.error(err)
       setError(err.message)
-    } finally {
-      setSaving(false)
     }
   }
-
-  const toggleRole = (role) => {
-    setForm(prev => ({
-      ...prev,
-      roles: prev.roles.includes(role)
-        ? prev.roles.filter(r => r !== role)
-        : [...prev.roles, role]
-    }))
-  }
-
-  /* ===============================
-     UI
-     =============================== */
 
   if (loading) {
     return (
@@ -194,115 +144,69 @@ export default function SociosPage() {
                   <TableCell>{s.email}</TableCell>
                   <TableCell>{s.rut || '-'}</TableCell>
                   <TableCell>
-                    {s.roles.length > 0 ? (
-                      s.roles.map(r => (
-                        <Badge key={r} className="mr-1">
-                          {r}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground">
-                        Sin rol
-                      </span>
-                    )}
+                    {s.roles.map(r => (
+                      <Badge key={r} className="mr-1">{r}</Badge>
+                    ))}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-
-          {socios.length === 0 && (
-            <p className="text-sm text-muted-foreground mt-4">
-              No hay socios para mostrar
-            </p>
-          )}
         </CardContent>
       </Card>
 
-      {/* MODAL NUEVO SOCIO */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuevo Socio</DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleCreateSocio} className="space-y-4">
-            {error && <Alert variant="destructive">{error}</Alert>}
+          {error && <p className="text-red-600">{error}</p>}
 
+          <div className="space-y-3">
             <div>
               <Label>Nombre</Label>
-              <Input
-                value={form.nombre}
-                onChange={e =>
-                  setForm({ ...form, nombre: e.target.value })
-                }
-                required
-              />
+              <Input onChange={e => setForm({ ...form, nombre: e.target.value })} />
             </div>
 
             <div>
               <Label>Email</Label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={e =>
-                  setForm({ ...form, email: e.target.value })
-                }
-                required
-              />
+              <Input onChange={e => setForm({ ...form, email: e.target.value })} />
             </div>
 
             <div>
               <Label>RUT</Label>
-              <Input
-                value={form.rut}
-                onChange={e =>
-                  setForm({ ...form, rut: e.target.value })
-                }
-                required
-              />
+              <Input onChange={e => setForm({ ...form, rut: e.target.value })} />
             </div>
 
             <div>
               <Label>Password</Label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={e =>
-                  setForm({ ...form, password: e.target.value })
-                }
-                required
-              />
+              <Input type="password" onChange={e => setForm({ ...form, password: e.target.value })} />
             </div>
 
-            <div>
-              <Label>Roles</Label>
-              <div className="space-y-2">
-                {['socio', 'director', 'administrador'].map(r => (
-                  <div key={r} className="flex items-center space-x-2">
-                    <Checkbox
-                      checked={form.roles.includes(r)}
-                      onCheckedChange={() => toggleRole(r)}
-                    />
-                    <span className="capitalize">{r}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-1">
+              {['socio', 'director', 'administrador'].map(r => (
+                <label key={r} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={form.roles.includes(r)}
+                    onCheckedChange={() =>
+                      setForm(f => ({
+                        ...f,
+                        roles: f.roles.includes(r)
+                          ? f.roles.filter(x => x !== r)
+                          : [...f.roles, r]
+                      }))
+                    }
+                  />
+                  {r}
+                </label>
+              ))}
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Creando...' : 'Crear Socio'}
-              </Button>
-            </div>
-          </form>
+            <Button onClick={handleCreateSocio}>
+              Crear Socio
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
