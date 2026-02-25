@@ -15,20 +15,19 @@ import {
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
-import { Alert } from '../components/ui/alert'
 
 export default function SociosPage() {
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
-  const [error, setError] = useState('')
   const [form, setForm] = useState({
     nombre: '',
     email: '',
-    password: '',
     rut: '',
-    roles: ['socio']
+    password: '',
+    roles: ['socio'],
   })
+  const [error, setError] = useState('')
 
   useEffect(() => {
     loadSocios()
@@ -36,29 +35,22 @@ export default function SociosPage() {
 
   const loadSocios = async () => {
     setLoading(true)
-    try {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id,nombre,email,rut')
-        .order('created_at', { ascending: false })
 
-      const { data: roles } = await supabase
-        .from('roles')
-        .select('user_id,role_name')
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, nombre, email, rut')
 
-      const merged = profiles.map(p => ({
-        ...p,
-        roles: roles
-          .filter(r => r.user_id === p.id)
-          .map(r => r.role_name)
-      }))
+    const { data: roles } = await supabase
+      .from('roles')
+      .select('user_id, role_name')
 
-      setSocios(merged)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
+    const merged = profiles.map(p => ({
+      ...p,
+      roles: roles.filter(r => r.user_id === p.id).map(r => r.role_name),
+    }))
+
+    setSocios(merged)
+    setLoading(false)
   }
 
   const toggleRole = (role) => {
@@ -70,7 +62,7 @@ export default function SociosPage() {
     }))
   }
 
-  const handleCreateSocio = async () => {
+  const handleCreate = async () => {
     setError('')
 
     try {
@@ -79,28 +71,32 @@ export default function SociosPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form)
+          body: JSON.stringify(form),
         }
       )
 
-      if (!res.ok) throw new Error()
+      const json = await res.json()
+
+      if (!res.ok) {
+        throw new Error(json.error || 'Error creando socio')
+      }
 
       setOpen(false)
       setForm({
         nombre: '',
         email: '',
-        password: '',
         rut: '',
-        roles: ['socio']
+        password: '',
+        roles: ['socio'],
       })
       loadSocios()
-    } catch {
-      setError('Error creando socio')
+    } catch (e) {
+      setError(e.message)
     }
   }
 
   if (loading) {
-    return <Spinner className="mx-auto mt-10" />
+    return <Spinner className="mx-auto mt-12" />
   }
 
   return (
@@ -142,14 +138,13 @@ export default function SociosPage() {
         </CardContent>
       </Card>
 
-      {/* MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuevo Socio</DialogTitle>
           </DialogHeader>
 
-          {error && <Alert variant="destructive">{error}</Alert>}
+          {error && <p className="text-red-500">{error}</p>}
 
           <Label>Nombre</Label>
           <Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} />
@@ -161,20 +156,18 @@ export default function SociosPage() {
           <Input value={form.rut} onChange={e => setForm({ ...form, rut: e.target.value })} />
 
           <Label>Password</Label>
-          <Input type="password" value={form.password}
-            onChange={e => setForm({ ...form, password: e.target.value })} />
+          <Input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
 
-          <Label>Roles</Label>
-          {['socio','director','administrador'].map(r => (
-            <div key={r} className="flex gap-2 items-center">
-              <Checkbox checked={form.roles.includes(r)} onCheckedChange={() => toggleRole(r)} />
-              <span>{r}</span>
-            </div>
-          ))}
+          <div className="space-y-1 mt-2">
+            {['socio', 'director', 'administrador'].map(r => (
+              <label key={r} className="flex items-center gap-2">
+                <Checkbox checked={form.roles.includes(r)} onCheckedChange={() => toggleRole(r)} />
+                {r}
+              </label>
+            ))}
+          </div>
 
-          <Button className="mt-4" onClick={handleCreateSocio}>
-            Crear Socio
-          </Button>
+          <Button className="mt-4" onClick={handleCreate}>Crear Socio</Button>
         </DialogContent>
       </Dialog>
     </div>
