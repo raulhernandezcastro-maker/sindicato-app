@@ -1,49 +1,32 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent
+  Card, CardHeader, CardTitle, CardContent
 } from '../components/ui/card'
 import { Spinner } from '../components/ui/spinner'
 import { Badge } from '../components/ui/badge'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '../components/ui/table'
 import { Button } from '../components/ui/button'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
+  Dialog, DialogContent, DialogHeader, DialogTitle
 } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
 import { Alert } from '../components/ui/alert'
 
-const EDGE_FUNCTION_URL =
-  'https://ncbvillobdmthjtvxtsm.supabase.co/functions/v1/bright-service'
-
 export default function SociosPage() {
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
-
   const [open, setOpen] = useState(false)
-  const [formError, setFormError] = useState('')
-  const [saving, setSaving] = useState(false)
-
+  const [error, setError] = useState('')
   const [form, setForm] = useState({
     nombre: '',
     email: '',
-    rut: '',
     password: '',
+    rut: '',
     roles: ['socio']
   })
 
@@ -51,24 +34,17 @@ export default function SociosPage() {
     loadSocios()
   }, [])
 
-  /* =========================
-     CARGA DE SOCIOS
-     ========================= */
   const loadSocios = async () => {
     setLoading(true)
     try {
-      const { data: profiles, error: profilesError } = await supabase
+      const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, nombre, email, rut')
+        .select('id,nombre,email,rut')
         .order('created_at', { ascending: false })
 
-      if (profilesError) throw profilesError
-
-      const { data: roles, error: rolesError } = await supabase
+      const { data: roles } = await supabase
         .from('roles')
-        .select('user_id, role_name')
-
-      if (rolesError) throw rolesError
+        .select('user_id,role_name')
 
       const merged = profiles.map(p => ({
         ...p,
@@ -78,95 +54,58 @@ export default function SociosPage() {
       }))
 
       setSocios(merged)
-    } catch (err) {
-      console.error('Error cargando socios:', err)
-      setSocios([])
+    } catch (e) {
+      console.error(e)
     } finally {
       setLoading(false)
     }
   }
 
-  /* =========================
-     FORM HANDLERS
-     ========================= */
   const toggleRole = (role) => {
-    setForm(prev => ({
-      ...prev,
-      roles: prev.roles.includes(role)
-        ? prev.roles.filter(r => r !== role)
-        : [...prev.roles, role]
+    setForm(f => ({
+      ...f,
+      roles: f.roles.includes(role)
+        ? f.roles.filter(r => r !== role)
+        : [...f.roles, role]
     }))
   }
 
-  const handleCreateSocio = async (e) => {
-    e.preventDefault()
-    setFormError('')
-    setSaving(true)
+  const handleCreateSocio = async () => {
+    setError('')
 
     try {
-      const {
-        data: { session }
-      } = await supabase.auth.getSession()
+      const res = await fetch(
+        'https://ncbvillobdmthjtvxtsm.supabase.co/functions/v1/bright-service',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form)
+        }
+      )
 
-      if (!session?.access_token) {
-        throw new Error('Sesión no válida')
-      }
+      if (!res.ok) throw new Error()
 
-      const res = await fetch(EDGE_FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          nombre: form.nombre,
-          email: form.email,
-          password: form.password,
-          rut: form.rut,
-          roles: form.roles
-        })
-      })
-
-      const data = await res.json()
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Error creando socio')
-      }
-
-      // refrescar grilla
-      await loadSocios()
-
-      // reset
+      setOpen(false)
       setForm({
         nombre: '',
         email: '',
-        rut: '',
         password: '',
+        rut: '',
         roles: ['socio']
       })
-      setOpen(false)
-    } catch (err) {
-      console.error(err)
-      setFormError(err.message || 'Failed to fetch')
-    } finally {
-      setSaving(false)
+      loadSocios()
+    } catch {
+      setError('Error creando socio')
     }
   }
 
-  /* =========================
-     UI
-     ========================= */
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Spinner className="w-8 h-8" />
-      </div>
-    )
+    return <Spinner className="mx-auto mt-10" />
   }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between">
         <h1 className="text-3xl font-bold">Gestión de Socios</h1>
         <Button onClick={() => setOpen(true)}>+ Nuevo Socio</Button>
       </div>
@@ -192,115 +131,50 @@ export default function SociosPage() {
                   <TableCell>{s.email}</TableCell>
                   <TableCell>{s.rut || '-'}</TableCell>
                   <TableCell>
-                    {s.roles.length > 0 ? (
-                      s.roles.map(r => (
-                        <Badge key={r} className="mr-1">
-                          {r}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground">Sin rol</span>
-                    )}
+                    {s.roles.map(r => (
+                      <Badge key={r} className="mr-1">{r}</Badge>
+                    ))}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-
-          {socios.length === 0 && (
-            <p className="text-sm text-muted-foreground mt-4">
-              No hay socios para mostrar
-            </p>
-          )}
         </CardContent>
       </Card>
 
-      {/* MODAL NUEVO SOCIO */}
+      {/* MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuevo Socio</DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleCreateSocio} className="space-y-4">
-            {formError && (
-              <Alert variant="destructive">{formError}</Alert>
-            )}
+          {error && <Alert variant="destructive">{error}</Alert>}
 
-            <div>
-              <Label>Nombre</Label>
-              <Input
-                value={form.nombre}
-                onChange={e =>
-                  setForm({ ...form, nombre: e.target.value })
-                }
-                required
-              />
-            </div>
+          <Label>Nombre</Label>
+          <Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} />
 
-            <div>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={e =>
-                  setForm({ ...form, email: e.target.value })
-                }
-                required
-              />
-            </div>
+          <Label>Email</Label>
+          <Input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
 
-            <div>
-              <Label>RUT</Label>
-              <Input
-                value={form.rut}
-                onChange={e =>
-                  setForm({ ...form, rut: e.target.value })
-                }
-                required
-              />
-            </div>
+          <Label>RUT</Label>
+          <Input value={form.rut} onChange={e => setForm({ ...form, rut: e.target.value })} />
 
-            <div>
-              <Label>Password</Label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={e =>
-                  setForm({ ...form, password: e.target.value })
-                }
-                required
-              />
-            </div>
+          <Label>Password</Label>
+          <Input type="password" value={form.password}
+            onChange={e => setForm({ ...form, password: e.target.value })} />
 
-            <div>
-              <Label>Roles</Label>
-              <div className="space-y-2">
-                {['socio', 'director', 'administrador'].map(r => (
-                  <div key={r} className="flex items-center space-x-2">
-                    <Checkbox
-                      checked={form.roles.includes(r)}
-                      onCheckedChange={() => toggleRole(r)}
-                    />
-                    <span className="capitalize">{r}</span>
-                  </div>
-                ))}
-              </div>
+          <Label>Roles</Label>
+          {['socio','director','administrador'].map(r => (
+            <div key={r} className="flex gap-2 items-center">
+              <Checkbox checked={form.roles.includes(r)} onCheckedChange={() => toggleRole(r)} />
+              <span>{r}</span>
             </div>
+          ))}
 
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Creando...' : 'Crear Socio'}
-              </Button>
-            </div>
-          </form>
+          <Button className="mt-4" onClick={handleCreateSocio}>
+            Crear Socio
+          </Button>
         </DialogContent>
       </Dialog>
     </div>
