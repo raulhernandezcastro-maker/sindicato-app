@@ -31,10 +31,8 @@ export default function SociosPage() {
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // 🔹 modal
   const [open, setOpen] = useState(false)
 
-  // 🔹 form
   const [form, setForm] = useState({
     nombre: '',
     email: '',
@@ -70,7 +68,7 @@ export default function SociosPage() {
 
       setSocios(joined)
     } catch (err) {
-      console.error(err)
+      console.error('Error cargando socios:', err)
     } finally {
       setLoading(false)
     }
@@ -90,11 +88,23 @@ export default function SociosPage() {
     setSaving(true)
 
     try {
+      // 🔑 OBTENER TOKEN REAL
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+
+      if (!session) {
+        throw new Error('No hay sesión activa')
+      }
+
       const res = await fetch(
         'https://ncbvillobdmthjtvxtsm.supabase.co/functions/v1/bright-service',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`
+          },
           body: JSON.stringify(form)
         }
       )
@@ -116,8 +126,8 @@ export default function SociosPage() {
 
       await loadSocios()
     } catch (err) {
-      console.error(err)
-      setError('Error creando socio')
+      console.error('Error creando socio:', err)
+      setError(err.message || 'Error creando socio')
     } finally {
       setSaving(false)
     }
@@ -172,7 +182,6 @@ export default function SociosPage() {
         </CardContent>
       </Card>
 
-      {/* MODAL NUEVO SOCIO */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
