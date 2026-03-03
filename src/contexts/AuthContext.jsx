@@ -114,12 +114,15 @@ export const AuthProvider = ({ children }) => {
   /* =========================
      PRIORIDAD REAL DE ROLES
      administrador > director > socio
+     Un usuario puede tener múltiples roles.
+     isAdministrador y isDirector pueden ser true al mismo tiempo
+     si el usuario tiene ambos roles, pero para efectos de permisos
+     el administrador tiene la máxima prioridad.
      ========================= */
 
   const isAdministrador = roles.includes('administrador')
-  const isDirector = !isAdministrador && roles.includes('director')
-  const isSocio =
-    !isAdministrador && !isDirector && roles.includes('socio')
+  const isDirector = roles.includes('director')
+  const isSocio = roles.includes('socio')
 
   /* =========================
      AUTH ACTIONS
