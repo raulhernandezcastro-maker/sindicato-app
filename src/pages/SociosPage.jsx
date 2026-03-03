@@ -107,17 +107,32 @@ export default function SociosPage() {
     try {
       // Llamar a la Edge Function usando el cliente de Supabase
       // (maneja el JWT automáticamente)
-      const { data, error: fnError } = await supabase.functions.invoke('bright-service', {
-        body: JSON.stringify(form),
-        headers: { 'Content-Type': 'application/json' }
+      // Obtener token de sesión
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+      if (!accessToken) throw new Error('No hay sesión activa. Vuelve a iniciar sesión.')
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/bright-service`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          nombre: form.nombre,
+          email: form.email,
+          rut: form.rut,
+          password: form.password,
+          roles: form.roles,
+        })
       })
 
-      if (fnError) {
-        // Mostrar el error completo para diagnóstico
-        const detalle = fnError.message || JSON.stringify(fnError)
-        throw new Error('Error Edge Function: ' + detalle)
-      }
-      if (data?.error) throw new Error(data.error)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
 
       setOpen(false)
       setForm(EMPTY_FORM)
