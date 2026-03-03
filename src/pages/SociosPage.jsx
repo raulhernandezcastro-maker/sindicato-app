@@ -108,10 +108,15 @@ export default function SociosPage() {
       // Llamar a la Edge Function usando el cliente de Supabase
       // (maneja el JWT automáticamente)
       const { data, error: fnError } = await supabase.functions.invoke('bright-service', {
-        body: form
+        body: JSON.stringify(form),
+        headers: { 'Content-Type': 'application/json' }
       })
 
-      if (fnError) throw new Error(fnError.message || 'Error en la función')
+      if (fnError) {
+        // Mostrar el error completo para diagnóstico
+        const detalle = fnError.message || JSON.stringify(fnError)
+        throw new Error('Error Edge Function: ' + detalle)
+      }
       if (data?.error) throw new Error(data.error)
 
       setOpen(false)
