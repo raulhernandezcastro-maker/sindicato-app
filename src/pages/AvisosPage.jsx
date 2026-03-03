@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { AppLayout } from '../components/layout/AppLayout'
 import { Card, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
@@ -47,7 +46,8 @@ export default function AvisosPage() {
       .insert({
         titulo,
         contenido,
-        creado_por: user.id,
+        autor_id: user.id,
+        tipo: 'general',
       })
       .select()
       .single()
@@ -71,8 +71,7 @@ export default function AvisosPage() {
   }
 
   return (
-    <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between">
           <h1 className="text-3xl font-bold">Avisos</h1>
 
@@ -132,6 +131,5 @@ export default function AvisosPage() {
           ))
         )}
       </div>
-    </AppLayout>
   )
 }
