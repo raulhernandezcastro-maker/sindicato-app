@@ -8,12 +8,17 @@ import TablaCuotasConfirmadas from "../components/cuotas/TablaCuotasConfirmadas"
 
 export default function CuotasPage() {
   const [periodo, setPeriodo] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleProcesado = () => {
+    setRefreshKey(k => k + 1);
+  };
 
   return (
     <div className="space-y-8">
 
       {/* 🔢 RESUMEN DE CUOTAS */}
-      <ResumenCuotas />
+      <ResumenCuotas key={refreshKey} />
 
       {/* 📌 TÍTULO */}
       <div>
@@ -23,7 +28,7 @@ export default function CuotasPage() {
         </p>
       </div>
 
-      {/* 📅 PERÍODO (solo para carga) */}
+      {/* 📅 PERÍODO (para carga y preview) */}
       <div>
         <label className="font-medium">
           Período a cargar
@@ -39,16 +44,16 @@ export default function CuotasPage() {
       </div>
 
       {/* 📥 CARGA EXCEL */}
-      <CargaCuotasExcel periodo={periodo} />
+      <CargaCuotasExcel periodo={periodo} onProcesado={handleProcesado} />
 
-      {/* 👀 PREVIEW DE PENDIENTES */}
-      <PreviewCuotas />
+      {/* 👀 PREVIEW DE PENDIENTES — recibe periodo */}
+      <PreviewCuotas periodo={periodo} key={`preview-${refreshKey}`} />
 
       {/* ✅ CONFIRMACIÓN */}
-      <ConfirmarCuotas />
+      <ConfirmarCuotas onFinish={handleProcesado} />
 
       {/* 📊 HISTÓRICO DE CUOTAS CONFIRMADAS */}
-      <TablaCuotasConfirmadas />
+      <TablaCuotasConfirmadas key={`tabla-${refreshKey}`} />
 
     </div>
   );
