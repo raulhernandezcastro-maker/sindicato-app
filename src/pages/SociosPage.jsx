@@ -27,20 +27,21 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
 
+const EMPTY_FORM = {
+  nombre: '',
+  email: '',
+  rut: '',
+  password: '',
+  roles: ['socio']
+}
+
 export default function SociosPage() {
   const [socios, setSocios] = useState([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  const [form, setForm] = useState({
-    nombre: '',
-    email: '',
-    rut: '',
-    password: '',
-    roles: ['socio']
-  })
+  const [form, setForm] = useState(EMPTY_FORM)
 
   useEffect(() => {
     loadSocios()
@@ -49,17 +50,23 @@ export default function SociosPage() {
   const loadSocios = async () => {
     setLoading(true)
 
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, nombre, email, rut')
+
+    if (profilesError) {
+      console.error('Error cargando socios:', profilesError)
+      setLoading(false)
+      return
+    }
 
     const { data: roles } = await supabase
       .from('roles')
       .select('user_id, role_name')
 
-    const joined = profiles.map(p => ({
+    const joined = (profiles || []).map(p => ({
       ...p,
-      roles: roles
+      roles: (roles || [])
         .filter(r => r.user_id === p.id)
         .map(r => r.role_name)
     }))
@@ -69,6 +76,8 @@ export default function SociosPage() {
   }
 
   const toggleRole = (role) => {
+    // El rol socio es obligatorio y no se puede desmarcar
+    if (role === 'socio') return
     setForm(prev => ({
       ...prev,
       roles: prev.roles.includes(role)
@@ -77,8 +86,22 @@ export default function SociosPage() {
     }))
   }
 
+  const validateForm = () => {
+    if (!form.nombre.trim()) return 'El nombre es obligatorio'
+    if (!form.email.trim()) return 'El email es obligatorio'
+    if (!form.rut.trim()) return 'El RUT es obligatorio'
+    if (!form.password || form.password.length < 6) return 'La contraseña debe tener al menos 6 caracteres'
+    return null
+  }
+
   const handleCreateSocio = async () => {
     setError('')
+    const validationError = validateForm()
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -96,23 +119,22 @@ export default function SociosPage() {
 
       const data = await res.json()
 
-      if (!res.ok) throw new Error(data.error)
+      if (!res.ok) throw new Error(data.error || data.message || `Error ${res.status}`)
 
       setOpen(false)
-      setForm({
-        nombre: '',
-        email: '',
-        rut: '',
-        password: '',
-        roles: ['socio']
-      })
-
+      setForm(EMPTY_FORM)
       await loadSocios()
     } catch (err) {
-      setError(err.message || 'Error creando socio')
+      setError(err.message || 'Error creando socio. Verifica que el RUT y email no estén duplicados.')
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleClose = () => {
+    setOpen(false)
+    setError('')
+    setForm(EMPTY_FORM)
   }
 
   if (loading) {
@@ -123,7 +145,7 @@ export default function SociosPage() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Gestión de Socios</h1>
-        <Button onClick={() => setOpen(true)}>+ Nuevo Socio</Button>
+        <Button onClick={() => { setError(''); setOpen(true) }}>+ Nuevo Socio</Button>
       </div>
 
       <Card>
@@ -138,57 +160,98 @@ export default function SociosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {socios.map(s => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.nombre}</TableCell>
-                  <TableCell>{s.email}</TableCell>
-                  <TableCell>{s.rut}</TableCell>
-                  <TableCell>
-                    {s.roles.map(r => (
-                      <Badge key={r}>{r}</Badge>
-                    ))}
+              {socios.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                    No hay socios registrados
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                socios.map(s => (
+                  <TableRow key={s.id}>
+                    <TableCell>{s.nombre}</TableCell>
+                    <TableCell>{s.email}</TableCell>
+                    <TableCell>{s.rut}</TableCell>
+                    <TableCell className="flex gap-1 flex-wrap">
+                      {s.roles.map(r => (
+                        <Badge key={r}>{r}</Badge>
+                      ))}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuevo Socio</DialogTitle>
           </DialogHeader>
 
-          {error && <p className="text-red-500">{error}</p>}
+          <div className="space-y-3">
+            {error && <p className="text-red-500 text-sm">{error}</p>}
 
-          <Label>Nombre</Label>
-          <Input onChange={e => setForm({ ...form, nombre: e.target.value })} />
-
-          <Label>Email</Label>
-          <Input onChange={e => setForm({ ...form, email: e.target.value })} />
-
-          <Label>RUT</Label>
-          <Input onChange={e => setForm({ ...form, rut: e.target.value })} />
-
-          <Label>Password</Label>
-          <Input type="password" onChange={e => setForm({ ...form, password: e.target.value })} />
-
-          <Label>Roles</Label>
-          {['socio', 'director', 'administrador'].map(r => (
-            <div key={r} className="flex gap-2">
-              <Checkbox
-                checked={form.roles.includes(r)}
-                onCheckedChange={() => toggleRole(r)}
+            <div>
+              <Label>Nombre *</Label>
+              <Input
+                value={form.nombre}
+                onChange={e => setForm({ ...form, nombre: e.target.value })}
+                placeholder="Nombre completo"
               />
-              {r}
             </div>
-          ))}
 
-          <Button onClick={handleCreateSocio} disabled={saving}>
-            {saving ? 'Creando…' : 'Crear Socio'}
-          </Button>
+            <div>
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                placeholder="correo@ejemplo.com"
+              />
+            </div>
+
+            <div>
+              <Label>RUT * (sin puntos, con guión. Ej: 12345678-9)</Label>
+              <Input
+                value={form.rut}
+                onChange={e => setForm({ ...form, rut: e.target.value })}
+                placeholder="12345678-9"
+              />
+            </div>
+
+            <div>
+              <Label>Contraseña * (mín. 6 caracteres)</Label>
+              <Input
+                type="password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>Roles</Label>
+              <div className="space-y-2 mt-2">
+                {['socio', 'director', 'administrador'].map(r => (
+                  <div key={r} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={form.roles.includes(r)}
+                      onCheckedChange={() => toggleRole(r)}
+                      disabled={r === 'socio'} // socio siempre está marcado
+                    />
+                    <span className="capitalize">{r}</span>
+                    {r === 'socio' && <span className="text-xs text-muted-foreground">(obligatorio)</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Button onClick={handleCreateSocio} disabled={saving} className="w-full">
+              {saving ? 'Creando…' : 'Crear Socio'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
