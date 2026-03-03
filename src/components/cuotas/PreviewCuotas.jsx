@@ -28,10 +28,14 @@ export default function PreviewCuotas({ periodo }) {
   const load = async () => {
     setLoading(true)
 
+    // Convertir YYYY-MM a YYYY-MM-01 para que coincida con lo guardado
+    const periodoDate = `${periodo}-01`
+
     const { data, error } = await supabase
       .from('cuotas_importacion')
       .select('*')
-      .eq('periodo', periodo)
+      .eq('periodo', periodoDate)
+      .in('estado', ['pendiente', 'sin_socio', 'error'])
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -89,6 +93,7 @@ export default function PreviewCuotas({ periodo }) {
               <TableHead>Periodo</TableHead>
               <TableHead>Monto</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Observación</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -100,7 +105,18 @@ export default function PreviewCuotas({ periodo }) {
                 <TableCell>{r.periodo}</TableCell>
                 <TableCell>${r.valor_pagado}</TableCell>
                 <TableCell>
-                  <Badge>{r.estado}</Badge>
+                  <Badge
+                    variant={
+                      r.estado === 'error' ? 'destructive'
+                      : r.estado === 'sin_socio' ? 'outline'
+                      : 'secondary'
+                    }
+                  >
+                    {r.estado === 'sin_socio' ? 'sin socio' : r.estado}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {r.observacion || '-'}
                 </TableCell>
               </TableRow>
             ))}
