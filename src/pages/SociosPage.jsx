@@ -105,13 +105,20 @@ export default function SociosPage() {
     setSaving(true)
 
     try {
+      // Obtener el token de sesión del usuario logueado
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+
+      if (!accessToken) throw new Error('No hay sesión activa. Vuelve a iniciar sesión.')
+
       const res = await fetch(
         'https://ncbvillobdmthjtvxtsm.supabase.co/functions/v1/bright-service',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify(form)
         }
