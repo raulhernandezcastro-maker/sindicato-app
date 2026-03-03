@@ -107,11 +107,6 @@ export default function SociosPage() {
     try {
       // Llamar a la Edge Function usando el cliente de Supabase
       // (maneja el JWT automáticamente)
-      // Obtener token de sesión
-      const { data: sessionData } = await supabase.auth.getSession()
-      const accessToken = sessionData?.session?.access_token
-      if (!accessToken) throw new Error('No hay sesión activa. Vuelve a iniciar sesión.')
-
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -120,7 +115,7 @@ export default function SociosPage() {
         headers: {
           'Content-Type': 'application/json',
           'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
         },
         body: JSON.stringify({
           nombre: form.nombre,
