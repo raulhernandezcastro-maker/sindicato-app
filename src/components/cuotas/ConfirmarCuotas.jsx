@@ -9,8 +9,13 @@ export default function ConfirmarCuotas({ onFinish }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [resultado, setResultado] = useState(null)
+  const ejecutandoRef = React.useRef(false)
 
   const confirmarCuotas = async () => {
+    // Guard para evitar doble ejecución (React StrictMode)
+    if (ejecutandoRef.current) return
+    ejecutandoRef.current = true
+
     setLoading(true)
     setError('')
     setSuccess('')
@@ -96,6 +101,7 @@ export default function ConfirmarCuotas({ onFinish }) {
       setError('Error al confirmar cuotas: ' + err.message)
     } finally {
       setLoading(false)
+      ejecutandoRef.current = false
     }
   }
 
