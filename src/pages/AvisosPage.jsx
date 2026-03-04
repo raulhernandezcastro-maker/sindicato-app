@@ -46,8 +46,7 @@ export default function AvisosPage() {
       .insert({
         titulo,
         contenido,
-        autor_id: user.id,
-        tipo: 'general',
+        creado_por: user.id,
       })
       .select()
       .single()
