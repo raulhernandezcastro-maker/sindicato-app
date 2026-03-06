@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent
 } from '../components/ui/card'
 import { Spinner } from '../components/ui/spinner'
@@ -23,12 +21,21 @@ import {
   DialogHeader,
   DialogTitle
 } from '../components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
 
 // Normaliza RUT: sin puntos, sin guión, sin espacios, en minúsculas
-// Ej: "12.345.678-9" → "123456789"
 const normalizarRut = (rut) =>
   String(rut || '').replace(/\./g, '').replace(/-/g, '').trim().toLowerCase()
 
@@ -48,6 +55,11 @@ export default function SociosPage() {
   const [error, setError] = useState('')
   const [form, setForm] = useState(EMPTY_FORM)
 
+  // Estado para confirmar cambio de estado
+  const [socioSeleccionado, setSocioSeleccionado] = useState(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [togglingId, setTogglingId] = useState(null)
+
   useEffect(() => {
     loadSocios()
   }, [])
@@ -57,7 +69,7 @@ export default function SociosPage() {
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, nombre, email, rut')
+      .select('id, nombre, email, rut, estado')
 
     if (profilesError) {
       console.error('Error cargando socios:', profilesError)
@@ -76,12 +88,17 @@ export default function SociosPage() {
         .map(r => r.role_name)
     }))
 
+    // Ordenar: activos primero, luego inactivos, ambos alfabéticamente
+    joined.sort((a, b) => {
+      if (a.estado === b.estado) return a.nombre.localeCompare(b.nombre)
+      return a.estado === 'activo' ? -1 : 1
+    })
+
     setSocios(joined)
     setLoading(false)
   }
 
   const toggleRole = (role) => {
-    // El rol socio es obligatorio y no se puede desmarcar
     if (role === 'socio') return
     setForm(prev => ({
       ...prev,
@@ -110,8 +127,6 @@ export default function SociosPage() {
     setSaving(true)
 
     try {
-      // Llamar a la Edge Function usando el cliente de Supabase
-      // (maneja el JWT automáticamente)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -144,15 +159,43 @@ export default function SociosPage() {
     }
   }
 
+  // Abre el diálogo de confirmación antes de cambiar el estado
+  const pedirConfirmacionEstado = (socio) => {
+    setSocioSeleccionado(socio)
+    setConfirmOpen(true)
+  }
+
+  // Cambia el estado activo/inactivo del socio
+  const handleToggleEstado = async () => {
+    if (!socioSeleccionado) return
+    const nuevoEstado = socioSeleccionado.estado === 'activo' ? 'inactivo' : 'activo'
+    setTogglingId(socioSeleccionado.id)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ estado: nuevoEstado })
+      .eq('id', socioSeleccionado.id)
+
+    if (!error) {
+      setSocios(prev => prev.map(s =>
+        s.id === socioSeleccionado.id ? { ...s, estado: nuevoEstado } : s
+      ))
+    } else {
+      console.error('Error cambiando estado:', error)
+    }
+
+    setTogglingId(null)
+    setConfirmOpen(false)
+    setSocioSeleccionado(null)
+  }
+
   const handleClose = () => {
     setOpen(false)
     setError('')
     setForm(EMPTY_FORM)
   }
 
-  if (loading) {
-    return <Spinner />
-  }
+  if (loading) return <Spinner />
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -170,18 +213,23 @@ export default function SociosPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>RUT</TableHead>
                 <TableHead>Roles</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Acción</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {socios.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
                     No hay socios registrados
                   </TableCell>
                 </TableRow>
               ) : (
                 socios.map(s => (
-                  <TableRow key={s.id}>
+                  <TableRow
+                    key={s.id}
+                    className={s.estado === 'inactivo' ? 'opacity-50' : ''}
+                  >
                     <TableCell>{s.nombre}</TableCell>
                     <TableCell>{s.email}</TableCell>
                     <TableCell>{s.rut}</TableCell>
@@ -189,6 +237,21 @@ export default function SociosPage() {
                       {s.roles.map(r => (
                         <Badge key={r}>{r}</Badge>
                       ))}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={s.estado === 'activo' ? 'default' : 'secondary'}>
+                        {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={togglingId === s.id}
+                        onClick={() => pedirConfirmacionEstado(s)}
+                      >
+                        {s.estado === 'activo' ? 'Dar de baja' : 'Reactivar'}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -198,6 +261,33 @@ export default function SociosPage() {
         </CardContent>
       </Card>
 
+      {/* ── Diálogo confirmar cambio de estado ── */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {socioSeleccionado?.estado === 'activo'
+                ? '¿Dar de baja a este socio?'
+                : '¿Reactivar a este socio?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {socioSeleccionado?.estado === 'activo'
+                ? `${socioSeleccionado?.nombre} quedará como Inactivo. Sus datos y cuotas se conservarán, pero no podrá acceder a la app.`
+                : `${socioSeleccionado?.nombre} volverá a estar Activo y podrá acceder a la app.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSocioSeleccionado(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleToggleEstado}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Diálogo crear nuevo socio ── */}
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent>
           <DialogHeader>
@@ -252,7 +342,7 @@ export default function SociosPage() {
                     <Checkbox
                       checked={form.roles.includes(r)}
                       onCheckedChange={() => toggleRole(r)}
-                      disabled={r === 'socio'} // socio siempre está marcado
+                      disabled={r === 'socio'}
                     />
                     <span className="capitalize">{r}</span>
                     {r === 'socio' && <span className="text-xs text-muted-foreground">(obligatorio)</span>}
