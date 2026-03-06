@@ -74,7 +74,7 @@ export default function AvisosPage() {
 
       {/* ── Encabezado ── */}
       <div className="flex items-center justify-between px-4 py-3 rounded-lg"
-           style={{ backgroundColor: '#006729' }}>
+           style={{ backgroundColor: '#2d7a4f' }}>
         <div className="flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-white" />
           <h1 className="text-xl font-bold text-white">Avisos</h1>
@@ -109,7 +109,7 @@ export default function AvisosPage() {
                     rows={4}
                   />
                 </div>
-                <Button disabled={saving} style={{ backgroundColor: '#006729' }}>
+                <Button disabled={saving} style={{ backgroundColor: '#2d7a4f' }}>
                   {saving ? 'Publicando...' : 'Publicar Aviso'}
                 </Button>
               </form>
@@ -134,7 +134,7 @@ export default function AvisosPage() {
               <div
                 className="relative max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-3 shadow-md"
                 style={{
-                  backgroundColor: idx === 0 ? '#006729' : '#7CBE80',
+                  backgroundColor: idx === 0 ? '#2d7a4f' : '#7CBE80',
                   color: idx === 0 ? 'white' : '#003d18',
                 }}
               >
@@ -164,7 +164,7 @@ export default function AvisosPage() {
                 <div
                   className="absolute -left-2 top-0 w-0 h-0"
                   style={{
-                    borderTop: `8px solid ${idx === 0 ? '#006729' : '#7CBE80'}`,
+                    borderTop: `8px solid ${idx === 0 ? '#2d7a4f' : '#7CBE80'}`,
                     borderLeft: '8px solid transparent',
                   }}
                 />
