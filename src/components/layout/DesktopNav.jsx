@@ -42,7 +42,7 @@ export function DesktopNav() {
 
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen border-r fixed left-0 top-0"
-           style={{ backgroundColor: '#006729' }}>
+           style={{ backgroundColor: '#2d7a4f' }}>
 
       {/* ── Logo + nombre sindicato ── */}
       <div className="p-4 border-b border-green-700 flex flex-col items-center gap-2">
