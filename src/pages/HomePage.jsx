@@ -89,7 +89,7 @@ export default function HomePage() {
   // Título de sección con los colores del sindicato
   const SectionTitle = ({ icon: Icon, title }) => (
     <div className="flex items-center gap-2 px-4 py-2 rounded-t-lg"
-         style={{ backgroundColor: '#006729' }}>
+         style={{ backgroundColor: '#2d7a4f' }}>
       <Icon className="w-4 h-4 text-white" />
       <span className="font-semibold text-white text-sm">{title}</span>
     </div>
@@ -102,7 +102,7 @@ export default function HomePage() {
       <div className="flex items-center gap-4">
         <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain rounded-full hidden md:block" />
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#006729' }}>
+          <h1 className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>
             Sindicato Interempresas Liberty Seguros
           </h1>
           <p className="text-muted-foreground text-sm">Bienvenido al portal del sindicato</p>
@@ -149,7 +149,7 @@ export default function HomePage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm hover:underline"
-                        style={{ color: '#006729' }}
+                        style={{ color: '#2d7a4f' }}
                       >
                         {doc.titulo}
                       </a>
@@ -163,7 +163,7 @@ export default function HomePage() {
           {/* ── Directores ── */}
           <div className="rounded-lg border overflow-hidden md:col-span-2">
             <div className="flex items-center justify-between px-4 py-2 rounded-t-lg"
-                 style={{ backgroundColor: '#006729' }}>
+                 style={{ backgroundColor: '#2d7a4f' }}>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-white" />
                 <span className="font-semibold text-white text-sm">Directorio</span>
@@ -196,7 +196,7 @@ export default function HomePage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 text-xs mt-1 font-medium"
-                          style={{ color: '#006729' }}
+                          style={{ color: '#2d7a4f' }}
                         >
                           <Phone className="w-3 h-3" />
                           {dir.telefono}
@@ -255,7 +255,7 @@ export default function HomePage() {
               onClick={guardarDirector}
               disabled={savingDir || !dirForm.nombre.trim() || !dirForm.telefono.trim()}
               className="w-full"
-              style={{ backgroundColor: '#006729' }}
+              style={{ backgroundColor: '#2d7a4f' }}
             >
               {savingDir ? 'Guardando...' : editando ? 'Guardar cambios' : 'Agregar Director'}
             </Button>
