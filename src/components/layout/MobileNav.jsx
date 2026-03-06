@@ -41,7 +41,7 @@ export function MobileNav() {
     <>
       {/* ── Barra superior móvil ── */}
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-14 border-b md:hidden"
-              style={{ backgroundColor: '#006729' }}>
+              style={{ backgroundColor: '#2d7a4f' }}>
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain rounded-full" />
           <span className="text-white text-sm font-semibold leading-tight">
@@ -69,7 +69,7 @@ export function MobileNav() {
           />
           {/* Panel */}
           <div className="absolute left-0 top-0 bottom-0 w-72 flex flex-col shadow-xl"
-               style={{ backgroundColor: '#006729' }}>
+               style={{ backgroundColor: '#2d7a4f' }}>
 
             {/* Header del panel */}
             <div className="flex items-center justify-between p-4 border-b border-green-700">
@@ -128,7 +128,7 @@ export function MobileNav() {
 
       {/* ── Barra inferior con accesos rápidos ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t md:hidden"
-           style={{ backgroundColor: '#006729' }}>
+           style={{ backgroundColor: '#2d7a4f' }}>
         <div className="flex items-center justify-around h-16">
           {barLinks.map(({ to, icon: Icon, label }) => {
             const isActive = location.pathname === to
