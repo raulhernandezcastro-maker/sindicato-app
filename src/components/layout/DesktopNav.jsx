@@ -1,14 +1,8 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Home,
-  FileText,
-  FolderOpen,
-  User,
-  Users,
-  DollarSign,
-  LayoutDashboard,
-  LogOut
+  Home, FileText, FolderOpen, User, Users,
+  DollarSign, LayoutDashboard, LogOut
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
@@ -19,65 +13,56 @@ export function DesktopNav() {
   const location = useLocation()
   const { isAdministrador, isDirector, signOut, profile } = useAuth()
 
-  /* ================= LINKS POR ROL ================= */
-
-  // SOCIO: solo contenido informativo
   const socioLinks = [
-    { to: '/', icon: Home, label: 'Inicio' },
-    { to: '/avisos', icon: FileText, label: 'Avisos' },
-    { to: '/documentos', icon: FolderOpen, label: 'Documentos' },
-    { to: '/perfil', icon: User, label: 'Mi Perfil' },
+    { to: '/',           icon: Home,            label: 'Inicio' },
+    { to: '/avisos',     icon: FileText,        label: 'Avisos' },
+    { to: '/documentos', icon: FolderOpen,      label: 'Documentos' },
+    { to: '/perfil',     icon: User,            label: 'Mi Perfil' },
   ]
-
-  // DIRECTOR: agrega gestión (sin socios)
   const directorLinks = [
     ...socioLinks,
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Panel de Gestión' },
-    { to: '/cuotas', icon: DollarSign, label: 'Cuotas' },
+    { to: '/dashboard',  icon: LayoutDashboard, label: 'Panel de Gestión' },
+    { to: '/cuotas',     icon: DollarSign,      label: 'Cuotas' },
   ]
-
-  // ADMINISTRADOR: agrega gestión de socios
   const adminLinks = [
     ...directorLinks,
-    { to: '/socios', icon: Users, label: 'Gestión de Socios' },
+    { to: '/socios',     icon: Users,           label: 'Gestión de Socios' },
   ]
 
-  const links = isAdministrador
-    ? adminLinks
-    : isDirector
-    ? directorLinks
-    : socioLinks
-
-  /* ================= LOGOUT ================= */
+  const links = isAdministrador ? adminLinks : isDirector ? directorLinks : socioLinks
 
   const handleLogout = async () => {
-    try {
-      await signOut()
-      window.location.href = '/login'
-    } catch (error) {
-      console.error('Logout error:', error)
-    }
+    try { await signOut() } catch (e) { console.error(e) }
   }
 
   const getInitials = (nombre) => {
     if (!nombre) return 'U'
-    return nombre
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
+    return nombre.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen bg-background border-r fixed left-0 top-0">
-      <div className="p-6 border-b">
-        <h1 className="text-xl font-bold text-primary">Sindicato</h1>
-        <p className="text-xs text-muted-foreground">
-          Rol: {isAdministrador ? 'Administrador' : isDirector ? 'Director' : 'Socio'}
-        </p>
+    <aside className="hidden md:flex flex-col w-64 h-screen border-r fixed left-0 top-0"
+           style={{ backgroundColor: '#006729' }}>
+
+      {/* ── Logo + nombre sindicato ── */}
+      <div className="p-4 border-b border-green-700 flex flex-col items-center gap-2">
+        <img
+          src="/logo.png"
+          alt="Logo Sindicato"
+          className="w-20 h-20 object-contain rounded-full"
+        />
+        <div className="text-center">
+          <p className="text-xs font-medium text-green-100 leading-tight">
+            Sindicato Interempresas<br />Liberty Seguros
+          </p>
+          <p className="text-xs mt-1 px-2 py-0.5 rounded-full inline-block"
+             style={{ backgroundColor: '#7CBE80', color: '#003d18' }}>
+            {isAdministrador ? 'Administrador' : isDirector ? 'Director' : 'Socio'}
+          </p>
+        </div>
       </div>
 
+      {/* ── Links de navegación ── */}
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="space-y-1 px-3">
           {links.map(({ to, icon: Icon, label }) => {
@@ -89,9 +74,10 @@ export function DesktopNav() {
                 className={cn(
                   'flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    ? 'text-white font-semibold'
+                    : 'text-green-100 hover:text-white hover:bg-green-700'
                 )}
+                style={isActive ? { backgroundColor: '#7CBE80', color: '#003d18' } : {}}
               >
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{label}</span>
@@ -101,21 +87,27 @@ export function DesktopNav() {
         </nav>
       </div>
 
-      <div className="p-4 border-t space-y-3">
+      {/* ── Usuario + cerrar sesión ── */}
+      <div className="p-4 border-t border-green-700 space-y-3">
         <div className="flex items-center space-x-3 px-2">
           <Avatar>
             <AvatarImage src={profile?.foto_url} />
-            <AvatarFallback>{getInitials(profile?.nombre)}</AvatarFallback>
+            <AvatarFallback style={{ backgroundColor: '#7CBE80', color: '#003d18' }}>
+              {getInitials(profile?.nombre)}
+            </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{profile?.nombre}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {profile?.email}
-            </p>
+            <p className="text-sm font-medium truncate text-white">{profile?.nombre}</p>
+            <p className="text-xs truncate text-green-200">{profile?.email}</p>
           </div>
         </div>
 
-        <Button variant="outline" className="w-full" onClick={handleLogout}>
+        <Button
+          variant="outline"
+          className="w-full border-green-300 text-white hover:bg-green-700 hover:text-white"
+          style={{ borderColor: '#7CBE80' }}
+          onClick={handleLogout}
+        >
           <LogOut className="w-4 h-4 mr-2" />
           Cerrar Sesión
         </Button>
