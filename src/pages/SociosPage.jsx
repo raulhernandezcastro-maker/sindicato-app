@@ -34,6 +34,7 @@ import {
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
+import { Search } from 'lucide-react'
 
 // Normaliza RUT: sin puntos, sin guión, sin espacios, en minúsculas
 const normalizarRut = (rut) =>
@@ -54,6 +55,9 @@ export default function SociosPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState(EMPTY_FORM)
+
+  // Búsqueda
+  const [busqueda, setBusqueda] = useState('')
 
   // Estado para confirmar cambio de estado
   const [socioSeleccionado, setSocioSeleccionado] = useState(null)
@@ -197,11 +201,42 @@ export default function SociosPage() {
 
   if (loading) return <Spinner />
 
+  // Filtrar socios en tiempo real por RUT o Nombre
+  const sociosFiltrados = busqueda.trim()
+    ? socios.filter(s => {
+        const q = busqueda.toLowerCase().trim()
+        return (
+          (s.nombre && s.nombre.toLowerCase().includes(q)) ||
+          (s.rut && s.rut.toLowerCase().includes(q))
+        )
+      })
+    : socios
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Gestión de Socios</h1>
         <Button onClick={() => { setError(''); setOpen(true) }}>+ Nuevo Socio</Button>
+      </div>
+
+      {/* ── Buscador ── */}
+      <div className="flex items-center gap-3 p-3 rounded-lg border bg-white shadow-sm">
+        <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+        <input
+          type="text"
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre o RUT..."
+          className="flex-1 text-sm outline-none bg-transparent"
+        />
+        {busqueda && (
+          <button
+            onClick={() => setBusqueda('')}
+            className="text-muted-foreground hover:text-foreground text-xs"
+          >
+            ✕ Limpiar
+          </button>
+        )}
       </div>
 
       <Card>
@@ -218,14 +253,14 @@ export default function SociosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {socios.length === 0 ? (
+              {sociosFiltrados.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                    No hay socios registrados
+                    {busqueda ? `No se encontraron socios para "${busqueda}"` : 'No hay socios registrados'}
                   </TableCell>
                 </TableRow>
               ) : (
-                socios.map(s => (
+                sociosFiltrados.map(s => (
                   <TableRow
                     key={s.id}
                     className={s.estado === 'inactivo' ? 'opacity-50' : ''}
