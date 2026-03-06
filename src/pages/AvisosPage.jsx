@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, MessageCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Card, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
@@ -13,49 +12,41 @@ import { Alert } from '../components/ui/alert'
 
 export default function AvisosPage() {
   const { user, isAdministrador, isDirector } = useAuth()
-  const [avisos, setAvisos] = useState([])
+  const [avisos, setAvisos]   = useState([])
   const [loading, setLoading] = useState(true)
-  const [open, setOpen] = useState(false)
-  const [titulo, setTitulo] = useState('')
+  const [open, setOpen]       = useState(false)
+  const [titulo, setTitulo]   = useState('')
   const [contenido, setContenido] = useState('')
-  const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [error, setError]     = useState('')
+  const [saving, setSaving]   = useState(false)
 
   const canManage = isAdministrador || isDirector
 
-  useEffect(() => {
-    loadAvisos()
-  }, [])
+  useEffect(() => { loadAvisos() }, [])
 
   const loadAvisos = async () => {
     const { data } = await supabase
       .from('avisos')
       .select('*')
       .order('created_at', { ascending: false })
-
     setAvisos(data || [])
     setLoading(false)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!titulo.trim() || !contenido.trim()) {
+      setError('Completa el título y el contenido')
+      return
+    }
     setSaving(true)
-
     const { data, error } = await supabase
       .from('avisos')
-      .insert({
-        titulo,
-        contenido,
-        creado_por: user.id,
-      })
+      .insert({ titulo, contenido, creado_por: user.id })
       .select()
       .single()
 
-    if (error) {
-      setError(error.message)
-      setSaving(false)
-      return
-    }
+    if (error) { setError(error.message); setSaving(false); return }
 
     setAvisos([data, ...avisos])
     setOpen(false)
@@ -69,66 +60,127 @@ export default function AvisosPage() {
     setAvisos(avisos.filter(a => a.id !== id))
   }
 
+  const formatFecha = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    return d.toLocaleDateString('es-CL', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+  }
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex justify-between">
-          <h1 className="text-3xl font-bold">Avisos</h1>
+    <div className="max-w-2xl mx-auto space-y-4">
 
-          {canManage && (
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Aviso
-                </Button>
-              </DialogTrigger>
-
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Crear Aviso</DialogTitle>
-                </DialogHeader>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {error && <Alert variant="destructive">{error}</Alert>}
-
-                  <div>
-                    <Label>Título</Label>
-                    <Input value={titulo} onChange={e => setTitulo(e.target.value)} />
-                  </div>
-
-                  <div>
-                    <Label>Contenido</Label>
-                    <Textarea value={contenido} onChange={e => setContenido(e.target.value)} />
-                  </div>
-
-                  <Button disabled={saving}>
-                    {saving ? 'Guardando...' : 'Publicar'}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
+      {/* ── Encabezado ── */}
+      <div className="flex items-center justify-between px-4 py-3 rounded-lg"
+           style={{ backgroundColor: '#006729' }}>
+        <div className="flex items-center gap-2">
+          <MessageCircle className="w-5 h-5 text-white" />
+          <h1 className="text-xl font-bold text-white">Avisos</h1>
         </div>
 
-        {loading ? (
-          <Spinner />
-        ) : (
-          avisos.map(a => (
-            <Card key={a.id}>
-              <CardContent>
-                <div className="flex justify-between">
-                  <h3 className="font-semibold">{a.titulo}</h3>
-                  {canManage && (
-                    <Button variant="ghost" onClick={() => handleDelete(a.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
+        {canManage && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="text-white border-white hover:bg-green-700"
+                      style={{ backgroundColor: '#7CBE80', color: '#003d18' }}>
+                <Plus className="w-4 h-4 mr-1" />
+                Nuevo
+              </Button>
+            </DialogTrigger>
+
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Crear Aviso</DialogTitle>
+              </DialogHeader>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && <Alert variant="destructive">{error}</Alert>}
+                <div>
+                  <Label>Título</Label>
+                  <Input value={titulo} onChange={e => setTitulo(e.target.value)} />
                 </div>
-                <p className="text-sm">{a.contenido}</p>
-              </CardContent>
-            </Card>
-          ))
+                <div>
+                  <Label>Contenido</Label>
+                  <Textarea
+                    value={contenido}
+                    onChange={e => setContenido(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <Button disabled={saving} style={{ backgroundColor: '#006729' }}>
+                  {saving ? 'Publicando...' : 'Publicar Aviso'}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
+
+      {/* ── Lista de avisos estilo chat ── */}
+      {loading ? (
+        <div className="flex justify-center py-12"><Spinner /></div>
+      ) : avisos.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          No hay avisos publicados aún
+        </div>
+      ) : (
+        <div className="space-y-3 px-2">
+          {avisos.map((a, idx) => (
+            <div key={a.id} className="flex flex-col items-start">
+
+              {/* Burbuja de mensaje */}
+              <div
+                className="relative max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-3 shadow-md"
+                style={{
+                  backgroundColor: idx === 0 ? '#006729' : '#7CBE80',
+                  color: idx === 0 ? 'white' : '#003d18',
+                }}
+              >
+                {/* Título del aviso */}
+                <p className="font-semibold text-sm mb-1">{a.titulo}</p>
+
+                {/* Contenido */}
+                <p className="text-sm whitespace-pre-line leading-relaxed">
+                  {a.contenido}
+                </p>
+
+                {/* Fecha + botón eliminar */}
+                <div className="flex items-center justify-between mt-2 gap-4">
+                  <span className="text-xs opacity-70">{formatFecha(a.created_at)}</span>
+                  {canManage && (
+                    <button
+                      onClick={() => handleDelete(a.id)}
+                      className="opacity-60 hover:opacity-100 transition-opacity"
+                      title="Eliminar aviso"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Triángulo de burbuja */}
+                <div
+                  className="absolute -left-2 top-0 w-0 h-0"
+                  style={{
+                    borderTop: `8px solid ${idx === 0 ? '#006729' : '#7CBE80'}`,
+                    borderLeft: '8px solid transparent',
+                  }}
+                />
+              </div>
+
+              {/* Indicador "NUEVO" para el más reciente */}
+              {idx === 0 && (
+                <span className="mt-1 ml-1 text-xs font-bold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: '#FFD700', color: '#333' }}>
+                  NUEVO
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
