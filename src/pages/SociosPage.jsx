@@ -27,6 +27,11 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
 
+// Normaliza RUT: sin puntos, sin guión, sin espacios, en minúsculas
+// Ej: "12.345.678-9" → "123456789"
+const normalizarRut = (rut) =>
+  String(rut || '').replace(/\./g, '').replace(/-/g, '').trim().toLowerCase()
+
 const EMPTY_FORM = {
   nombre: '',
   email: '',
@@ -120,7 +125,7 @@ export default function SociosPage() {
         body: JSON.stringify({
           nombre: form.nombre,
           email: form.email,
-          rut: form.rut,
+          rut: normalizarRut(form.rut),
           password: form.password,
           roles: form.roles,
         })
