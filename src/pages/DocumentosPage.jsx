@@ -1,26 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, FolderOpen } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Card, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Spinner } from '../components/ui/spinner'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
+  Dialog, DialogContent, DialogDescription,
+  DialogHeader, DialogTitle, DialogTrigger
 } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue
 } from '../components/ui/select'
 import { Alert } from '../components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
@@ -39,9 +32,7 @@ export default function DocumentosPage() {
 
   const canManage = isAdministrador || isDirector
 
-  useEffect(() => {
-    loadDocumentos()
-  }, [])
+  useEffect(() => { loadDocumentos() }, [])
 
   const loadDocumentos = async () => {
     try {
@@ -49,7 +40,6 @@ export default function DocumentosPage() {
         .from('documentos')
         .select('*')
         .order('created_at', { ascending: false })
-
       if (error) throw error
       setDocumentos(data || [])
     } catch (err) {
@@ -59,59 +49,38 @@ export default function DocumentosPage() {
     }
   }
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0]
-    setSelectedFile(file)
-  }
+  const handleFileChange = (e) => setSelectedFile(e.target.files?.[0])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError('')
     setFormLoading(true)
 
-    if (!selectedFile) {
-      setFormError('Selecciona un archivo')
-      setFormLoading(false)
-      return
-    }
-
-    if (!user?.id) {
-      setFormError('Usuario no autenticado')
-      setFormLoading(false)
-      return
-    }
+    if (!selectedFile) { setFormError('Selecciona un archivo'); setFormLoading(false); return }
+    if (!user?.id)     { setFormError('Usuario no autenticado'); setFormLoading(false); return }
 
     try {
       const ext = selectedFile.name.split('.').pop()
       const safeTitle = formData.titulo.replace(/\s+/g, '_').toLowerCase()
       const filePath = `${Date.now()}_${safeTitle}.${ext}`
 
-      // 1️⃣ Subir archivo
       const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, selectedFile)
-
+        .from('documents').upload(filePath, selectedFile)
       if (uploadError) throw uploadError
 
-      // 2️⃣ Obtener URL pública
       const { data: publicUrlData } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath)
+        .from('documents').getPublicUrl(filePath)
 
-      const publicUrl = publicUrlData.publicUrl
-
-      // 3️⃣ Guardar registro
       const { data, error } = await supabase
         .from('documentos')
         .insert({
           titulo: formData.titulo,
           categoria: formData.categoria,
           archivo_path: filePath,
-          archivo_url: publicUrl,
+          archivo_url: publicUrlData.publicUrl,
           subido_por: user.id,
         })
-        .select()
-        .single()
+        .select().single()
 
       if (error) throw error
 
@@ -120,7 +89,6 @@ export default function DocumentosPage() {
       setFormData({ titulo: '', categoria: 'estatutos' })
       setSelectedFile(null)
     } catch (err) {
-      console.error(err)
       setFormError(err.message || 'Error al subir el documento')
     } finally {
       setFormLoading(false)
@@ -129,67 +97,54 @@ export default function DocumentosPage() {
 
   const handleDelete = async (documento) => {
     if (!window.confirm('¿Eliminar este documento?')) return
-
     try {
-      const { error } = await supabase
-        .from('documentos')
-        .delete()
-        .eq('id', documento.id)
-
+      const { error } = await supabase.from('documentos').delete().eq('id', documento.id)
       if (error) throw error
-
       setDocumentos(documentos.filter(d => d.id !== documento.id))
     } catch (err) {
-      console.error(err)
       alert('Error eliminando documento')
     }
   }
 
-  const documentosPorCategoria = (categoria) =>
-    documentos.filter(d => d.categoria === categoria)
+  const documentosPorCategoria = (cat) => documentos.filter(d => d.categoria === cat)
 
   const DocumentosList = ({ categoria }) => {
     const docs = documentosPorCategoria(categoria)
-
     if (docs.length === 0) {
       return (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">No hay documentos</p>
+            <p className="text-muted-foreground">No hay documentos en esta categoría</p>
           </CardContent>
         </Card>
       )
     }
-
     return (
       <div className="space-y-3">
         {docs.map(doc => (
-          <Card key={doc.id}>
-            <CardContent className="pt-6">
-              <div className="flex justify-between items-center">
-                <h3 className="font-semibold">{doc.titulo}</h3>
-
-                <div className="flex space-x-2">
-                  <Button size="sm" asChild>
-                    <a
-                      href={doc.archivo_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Ver
-                    </a>
+          <Card key={doc.id} className="overflow-hidden">
+            {/* Cabecera con color */}
+            <div className="px-4 py-2 flex items-center justify-between"
+                 style={{ backgroundColor: '#7CBE80' }}>
+              <span className="text-sm font-semibold" style={{ color: '#003d18' }}>
+                {doc.titulo}
+              </span>
+              <span className="text-xs" style={{ color: '#003d18', opacity: 0.7 }}>
+                {doc.created_at ? new Date(doc.created_at).toLocaleDateString('es-CL') : ''}
+              </span>
+            </div>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex gap-2">
+                <Button size="sm" asChild style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
+                  <a href={doc.archivo_url} target="_blank" rel="noopener noreferrer">
+                    Ver documento
+                  </a>
+                </Button>
+                {canManage && (
+                  <Button size="sm" variant="destructive" onClick={() => handleDelete(doc)}>
+                    <Trash2 className="w-4 h-4" />
                   </Button>
-
-                  {canManage && (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(doc)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -200,56 +155,48 @@ export default function DocumentosPage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Documentos</h1>
-          <p className="text-muted-foreground">Documentación oficial</p>
+
+      {/* ── Encabezado ── */}
+      <div className="flex items-center justify-between px-4 py-3 rounded-lg"
+           style={{ backgroundColor: '#2d7a4f' }}>
+        <div className="flex items-center gap-2">
+          <FolderOpen className="w-5 h-5 text-white" />
+          <div>
+            <h1 className="text-xl font-bold text-white">Documentos</h1>
+            <p className="text-xs text-green-100">Documentación oficial del sindicato</p>
+          </div>
         </div>
 
         {canManage && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Subir Documento
+              <Button size="sm" style={{ backgroundColor: '#7CBE80', color: '#003d18' }}>
+                <Plus className="w-4 h-4 mr-1" />
+                Subir
               </Button>
             </DialogTrigger>
-
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Subir Documento</DialogTitle>
-                <DialogDescription>
-                  Completa los datos
-                </DialogDescription>
+                <DialogDescription>Completa los datos del documento</DialogDescription>
               </DialogHeader>
-
               <form onSubmit={handleSubmit} className="space-y-4">
-                {formError && (
-                  <Alert variant="destructive">{formError}</Alert>
-                )}
-
+                {formError && <Alert variant="destructive">{formError}</Alert>}
                 <div>
                   <Label>Título</Label>
                   <Input
                     value={formData.titulo}
-                    onChange={(e) =>
-                      setFormData({ ...formData, titulo: e.target.value })
-                    }
+                    onChange={e => setFormData({ ...formData, titulo: e.target.value })}
                     required
                   />
                 </div>
-
                 <div>
                   <Label>Categoría</Label>
                   <Select
                     value={formData.categoria}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, categoria: v })
-                    }
+                    onValueChange={v => setFormData({ ...formData, categoria: v })}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="estatutos">Estatutos</SelectItem>
                       <SelectItem value="actas">Actas</SelectItem>
@@ -257,26 +204,15 @@ export default function DocumentosPage() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div>
                   <Label>Archivo (PDF)</Label>
-                  <Input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileChange}
-                    required
-                  />
+                  <Input type="file" accept=".pdf" onChange={handleFileChange} required />
                 </div>
-
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDialogOpen(false)}
-                  >
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit">
+                  <Button type="submit" style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
                     {formLoading ? 'Subiendo...' : 'Subir'}
                   </Button>
                 </div>
@@ -287,26 +223,27 @@ export default function DocumentosPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Spinner className="w-8 h-8" />
-        </div>
+        <div className="flex justify-center py-12"><Spinner className="w-8 h-8" /></div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="estatutos">Estatutos</TabsTrigger>
-            <TabsTrigger value="actas">Actas</TabsTrigger>
-            <TabsTrigger value="beneficios">Beneficios</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3"
+                    style={{ backgroundColor: '#e8f5ec' }}>
+            <TabsTrigger value="estatutos"
+              style={activeTab === 'estatutos' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
+              Estatutos
+            </TabsTrigger>
+            <TabsTrigger value="actas"
+              style={activeTab === 'actas' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
+              Actas
+            </TabsTrigger>
+            <TabsTrigger value="beneficios"
+              style={activeTab === 'beneficios' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
+              Beneficios
+            </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="estatutos">
-            <DocumentosList categoria="estatutos" />
-          </TabsContent>
-          <TabsContent value="actas">
-            <DocumentosList categoria="actas" />
-          </TabsContent>
-          <TabsContent value="beneficios">
-            <DocumentosList categoria="beneficios" />
-          </TabsContent>
+          <TabsContent value="estatutos"><DocumentosList categoria="estatutos" /></TabsContent>
+          <TabsContent value="actas"><DocumentosList categoria="actas" /></TabsContent>
+          <TabsContent value="beneficios"><DocumentosList categoria="beneficios" /></TabsContent>
         </Tabs>
       )}
     </div>
