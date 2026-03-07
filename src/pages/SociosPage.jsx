@@ -161,10 +161,22 @@ export default function SociosPage() {
     if (!socioSeleccionado) return
     const nuevoEstado = socioSeleccionado.estado === 'activo' ? 'inactivo' : 'activo'
     setTogglingId(socioSeleccionado.id)
-    const { error } = await supabase.from('profiles').update({ estado: nuevoEstado }).eq('id', socioSeleccionado.id)
-    if (!error) {
-      setSocios(prev => prev.map(s => s.id === socioSeleccionado.id ? { ...s, estado: nuevoEstado } : s))
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ estado: nuevoEstado })
+      .eq('id', socioSeleccionado.id)
+      .select('id, estado')
+      .single()
+
+    if (error) {
+      console.error('Error cambiando estado:', error)
+      alert(`Error al cambiar el estado: ${error.message}`)
+    } else {
+      // Recargar lista completa desde Supabase para garantizar consistencia
+      await loadSocios()
     }
+
     setTogglingId(null)
     setConfirmOpen(false)
     setSocioSeleccionado(null)
