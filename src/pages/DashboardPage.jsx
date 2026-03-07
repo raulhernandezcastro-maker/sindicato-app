@@ -40,18 +40,13 @@ export default function DashboardPage() {
         supabase.from('documentos').select('id', { count: 'exact' }),
       ])
 
-      // Aportantes: profiles con rol aportante (no director ni admin)
-      const { data: rolesData } = await supabase.from('roles').select('user_id, role_name')
-      const rolesMap = {}
-      ;(rolesData || []).forEach(r => {
-        if (!rolesMap[r.user_id]) rolesMap[r.user_id] = []
-        rolesMap[r.user_id].push(r.role_name)
-      })
-      const aportantes = Object.values(rolesMap).filter(roles =>
-        roles.includes('socio') && !roles.includes('director') && !roles.includes('administrador')
-      ).length
+      // Aportantes: rol específico 'aportante' en tabla roles
+      const { count: aportantes } = await supabase
+        .from('roles')
+        .select('user_id', { count: 'exact' })
+        .eq('role_name', 'aportante')
 
-      setStats({ sociosActivos: activos || 0, sociosInactivos: inactivos || 0, aportantes, totalAvisos: totalAvisos || 0, totalDocumentos: totalDocumentos || 0 })
+      setStats({ sociosActivos: activos || 0, sociosInactivos: inactivos || 0, aportantes: aportantes || 0, totalAvisos: totalAvisos || 0, totalDocumentos: totalDocumentos || 0 })
     } catch (err) {
       console.error('Error cargando estadísticas:', err)
     } finally {
