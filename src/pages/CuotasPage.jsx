@@ -1,60 +1,61 @@
-import { useState } from "react";
-
-import ResumenCuotas from "../components/cuotas/ResumenCuotas";
-import CargaCuotasExcel from "../components/cuotas/CargaCuotasExcel";
-import PreviewCuotas from "../components/cuotas/PreviewCuotas";
-import ConfirmarCuotas from "../components/cuotas/ConfirmarCuotas";
-import TablaCuotasConfirmadas from "../components/cuotas/TablaCuotasConfirmadas";
+import { useState } from 'react'
+import { DollarSign, Calendar } from 'lucide-react'
+import ResumenCuotas from '../components/cuotas/ResumenCuotas'
+import CargaCuotasExcel from '../components/cuotas/CargaCuotasExcel'
+import PreviewCuotas from '../components/cuotas/PreviewCuotas'
+import ConfirmarCuotas from '../components/cuotas/ConfirmarCuotas'
+import TablaCuotasConfirmadas from '../components/cuotas/TablaCuotasConfirmadas'
 
 export default function CuotasPage() {
-  const [periodo, setPeriodo] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [periodo, setPeriodo] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
 
-  const handleProcesado = () => {
-    setRefreshKey(k => k + 1);
-  };
+  const handleProcesado = () => setRefreshKey(k => k + 1)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-5xl mx-auto">
 
-      {/* 🔢 RESUMEN DE CUOTAS */}
-      <ResumenCuotas key={refreshKey} />
-
-      {/* 📌 TÍTULO */}
-      <div>
-        <h1 className="text-2xl font-bold">Gestión de Cuotas</h1>
-        <p className="text-muted-foreground">
-          Carga, validación y confirmación de cuotas
-        </p>
+      {/* Título */}
+      <div className="flex items-center gap-2 px-4 py-3 rounded-lg" style={{ backgroundColor: '#2d7a4f' }}>
+        <DollarSign className="w-5 h-5 text-white" />
+        <div>
+          <h1 className="text-xl font-bold text-white">Gestión de Cuotas</h1>
+          <p className="text-xs text-green-100">Carga, validación y confirmación de cuotas</p>
+        </div>
       </div>
 
-      {/* 📅 PERÍODO (para carga y preview) */}
-      <div>
-        <label className="font-medium">
-          Período a cargar
-        </label>
-        <div className="mt-2">
+      {/* Resumen */}
+      <ResumenCuotas key={refreshKey} />
+
+      {/* Período */}
+      <div className="rounded-lg border overflow-hidden shadow-sm">
+        <div className="px-4 py-2 flex items-center gap-2" style={{ backgroundColor: '#2d7a4f' }}>
+          <Calendar className="w-4 h-4 text-white" />
+          <span className="text-white text-sm font-semibold">Período a cargar</span>
+        </div>
+        <div className="p-4" style={{ backgroundColor: '#f0f9f2' }}>
           <input
             type="month"
             value={periodo}
-            onChange={(e) => setPeriodo(e.target.value)}
-            className="border rounded px-3 py-2"
+            onChange={e => setPeriodo(e.target.value)}
+            className="border rounded px-3 py-2 text-sm focus:outline-none"
+            style={{ borderColor: '#2d7a4f' }}
           />
         </div>
       </div>
 
-      {/* 📥 CARGA EXCEL */}
+      {/* Carga Excel */}
       <CargaCuotasExcel periodo={periodo} onProcesado={handleProcesado} />
 
-      {/* 👀 PREVIEW DE PENDIENTES — recibe periodo */}
+      {/* Preview */}
       <PreviewCuotas periodo={periodo} key={`preview-${refreshKey}`} />
 
-      {/* ✅ CONFIRMACIÓN */}
+      {/* Confirmación */}
       <ConfirmarCuotas onFinish={handleProcesado} />
 
-      {/* 📊 HISTÓRICO DE CUOTAS CONFIRMADAS */}
+      {/* Histórico */}
       <TablaCuotasConfirmadas key={`tabla-${refreshKey}`} />
 
     </div>
-  );
+  )
 }
