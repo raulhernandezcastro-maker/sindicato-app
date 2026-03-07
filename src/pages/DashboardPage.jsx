@@ -1,158 +1,111 @@
-import React, { useEffect, useState } from 'react'
-import { Users, FileText, FolderOpen, TrendingUp } from 'lucide-react'
+import React, { useEffect, useState, useCallback } from 'react'
+import { Users, UserCheck, UserX, FileText, FolderOpen, LayoutDashboard, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Spinner } from '../components/ui/spinner'
 
+const StatCard = ({ title, value, icon: Icon, color, bg, loading }) => (
+  <div className="rounded-lg border overflow-hidden shadow-sm">
+    <div className="px-4 py-2 flex items-center gap-2" style={{ backgroundColor: '#2d7a4f' }}>
+      <Icon className="w-4 h-4 text-white" />
+      <span className="text-white text-xs font-semibold">{title}</span>
+    </div>
+    <div className="px-4 py-5 flex items-center justify-between" style={{ backgroundColor: '#f0f9f2' }}>
+      {loading
+        ? <div className="h-9 w-12 bg-green-100 rounded animate-pulse" />
+        : <span className="text-4xl font-bold" style={{ color }}>{value}</span>
+      }
+      <div className="p-3 rounded-full" style={{ backgroundColor: bg }}>
+        <Icon className="w-6 h-6" style={{ color }} />
+      </div>
+    </div>
+  </div>
+)
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState({
-    totalSocios: 0,
-    sociosActivos: 0,
-    totalAvisos: 0,
-    totalDocumentos: 0,
-  })
+  const [stats, setStats] = useState({ sociosActivos: 0, sociosInactivos: 0, aportantes: 0, totalAvisos: 0, totalDocumentos: 0 })
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadStats()
-  }, [])
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       setLoading(true)
+      const [
+        { count: activos },
+        { count: inactivos },
+        { count: totalAvisos },
+        { count: totalDocumentos },
+      ] = await Promise.all([
+        supabase.from('profiles').select('id', { count: 'exact' }).eq('estado', 'activo'),
+        supabase.from('profiles').select('id', { count: 'exact' }).eq('estado', 'inactivo'),
+        supabase.from('avisos').select('id', { count: 'exact' }),
+        supabase.from('documentos').select('id', { count: 'exact' }),
+      ])
 
-      // ✅ TOTAL SOCIOS (todos los profiles)
-      const { count: totalSocios, error: sociosError } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact' })
-
-      if (sociosError) throw sociosError
-
-      // ✅ SOCIOS ACTIVOS = TOTAL SOCIOS (no existe estado aún)
-      const sociosActivos = totalSocios || 0
-
-      // ✅ TOTAL AVISOS
-      const { count: totalAvisos } = await supabase
-        .from('avisos')
-        .select('id', { count: 'exact' })
-
-      // ✅ TOTAL DOCUMENTOS
-      const { count: totalDocumentos } = await supabase
-        .from('documentos')
-        .select('id', { count: 'exact' })
-
-      setStats({
-        totalSocios: totalSocios || 0,
-        sociosActivos,
-        totalAvisos: totalAvisos || 0,
-        totalDocumentos: totalDocumentos || 0,
+      // Aportantes: profiles con rol aportante (no director ni admin)
+      const { data: rolesData } = await supabase.from('roles').select('user_id, role_name')
+      const rolesMap = {}
+      ;(rolesData || []).forEach(r => {
+        if (!rolesMap[r.user_id]) rolesMap[r.user_id] = []
+        rolesMap[r.user_id].push(r.role_name)
       })
+      const aportantes = Object.values(rolesMap).filter(roles =>
+        roles.includes('socio') && !roles.includes('director') && !roles.includes('administrador')
+      ).length
+
+      setStats({ sociosActivos: activos || 0, sociosInactivos: inactivos || 0, aportantes, totalAvisos: totalAvisos || 0, totalDocumentos: totalDocumentos || 0 })
     } catch (err) {
       console.error('Error cargando estadísticas:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const statCards = [
-    {
-      title: 'Total de Socios',
-      value: stats.totalSocios,
-      icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
-    },
-    {
-      title: 'Socios Activos',
-      value: stats.sociosActivos,
-      icon: TrendingUp,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
-    },
-    {
-      title: 'Avisos Publicados',
-      value: stats.totalAvisos,
-      icon: FileText,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100',
-    },
-    {
-      title: 'Documentos',
-      value: stats.totalDocumentos,
-      icon: FolderOpen,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100',
-    },
+  useEffect(() => { loadStats() }, [loadStats])
+
+  const total = stats.sociosActivos + stats.sociosInactivos
+  const tasaActividad = total > 0 ? Math.round((stats.sociosActivos / total) * 100) : 0
+
+  const cards = [
+    { title: 'Socios Activos',    value: stats.sociosActivos,   icon: UserCheck,  color: '#2d7a4f', bg: '#d4edda' },
+    { title: 'Socios Inactivos',  value: stats.sociosInactivos, icon: UserX,      color: '#c0392b', bg: '#fde8e8' },
+    { title: 'Aportantes',        value: stats.aportantes,      icon: Users,      color: '#1a5276', bg: '#d6eaf8' },
+    { title: 'Avisos Publicados', value: stats.totalAvisos,     icon: FileText,   color: '#6c3483', bg: '#e8daef' },
+    { title: 'Documentos',        value: stats.totalDocumentos, icon: FolderOpen, color: '#d35400', bg: '#fdebd0' },
   ]
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold">Panel de Gestión</h1>
-        <p className="text-muted-foreground">
-          Estadísticas generales del sindicato
-        </p>
+
+      <div className="flex items-center gap-2 px-4 py-3 rounded-lg" style={{ backgroundColor: '#2d7a4f' }}>
+        <LayoutDashboard className="w-5 h-5 text-white" />
+        <div>
+          <h1 className="text-xl font-bold text-white">Panel de Gestión</h1>
+          <p className="text-xs text-green-100">Estadísticas generales del sindicato</p>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Spinner className="w-8 h-8" />
-        </div>
-      ) : (
-        <>
-          {/* TARJETAS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {statCards.map(({ title, value, icon: Icon, color, bgColor }) => (
-              <Card key={title}>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        {title}
-                      </p>
-                      <p className="text-3xl font-bold mt-2">{value}</p>
-                    </div>
-                    <div className={`p-3 rounded-full ${bgColor}`}>
-                      <Icon className={`w-6 h-6 ${color}`} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {cards.map(c => <StatCard key={c.title} {...c} loading={loading} />)}
+      </div>
+
+      {!loading && (
+        <div className="rounded-lg border overflow-hidden shadow-sm">
+          <div className="px-4 py-2 flex items-center gap-2" style={{ backgroundColor: '#2d7a4f' }}>
+            <TrendingUp className="w-4 h-4 text-white" />
+            <span className="text-white text-sm font-semibold">Resumen General</span>
+          </div>
+          <div className="p-5 space-y-1" style={{ backgroundColor: '#f0f9f2' }}>
+            {[
+              { label: 'Total de Socios',    value: total },
+              { label: 'Tasa de Actividad',  value: `${tasaActividad}%` },
+              { label: 'Total de Contenido', value: stats.totalAvisos + stats.totalDocumentos },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-center justify-between py-2 border-b last:border-0">
+                <span className="font-medium text-sm">{label}</span>
+                <span className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>{value}</span>
+              </div>
             ))}
           </div>
-
-          {/* RESUMEN GENERAL */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Resumen General</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b">
-                  <span className="font-medium">Tasa de Actividad</span>
-                  <span className="text-2xl font-bold">
-                    {stats.totalSocios > 0
-                      ? Math.round(
-                          (stats.sociosActivos / stats.totalSocios) * 100
-                        )
-                      : 0}
-                    %
-                  </span>
-                </div>
-                <div className="flex items-center justify-between pb-3 border-b">
-                  <span className="font-medium">Socios Inactivos</span>
-                  <span className="text-2xl font-bold">0</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Total de Contenido</span>
-                  <span className="text-2xl font-bold">
-                    {stats.totalAvisos + stats.totalDocumentos}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </>
+        </div>
       )}
     </div>
   )
