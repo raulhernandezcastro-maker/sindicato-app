@@ -1,159 +1,95 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import {
-  Card,
-  CardContent
-} from '../components/ui/card'
+import { Card, CardContent } from '../components/ui/card'
 import { Spinner } from '../components/ui/spinner'
 import { Badge } from '../components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '../components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
 import { Button } from '../components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '../components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../components/ui/alert-dialog'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
-import { Search } from 'lucide-react'
+import { Search, Users, Pencil, Plus } from 'lucide-react'
 
-// Normaliza RUT: sin puntos, sin guión, sin espacios, en minúsculas
 const normalizarRut = (rut) =>
   String(rut || '').replace(/\./g, '').replace(/-/g, '').trim().toLowerCase()
 
-const EMPTY_FORM = {
-  nombre: '',
-  email: '',
-  rut: '',
-  password: '',
-  roles: ['socio']
-}
+const EMPTY_FORM = { nombre: '', email: '', rut: '', password: '', roles: ['socio'] }
 
 export default function SociosPage() {
-  const [socios, setSocios] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [form, setForm] = useState(EMPTY_FORM)
+  const [socios, setSocios]           = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [busqueda, setBusqueda]       = useState('')
 
-  // Búsqueda
-  const [busqueda, setBusqueda] = useState('')
+  // Crear
+  const [openCrear, setOpenCrear]     = useState(false)
+  const [saving, setSaving]           = useState(false)
+  const [error, setError]             = useState('')
+  const [form, setForm]               = useState(EMPTY_FORM)
 
-  // Estado para confirmar cambio de estado
+  // Editar
+  const [openEditar, setOpenEditar]   = useState(false)
+  const [editForm, setEditForm]       = useState({})
+  const [savingEdit, setSavingEdit]   = useState(false)
+  const [errorEdit, setErrorEdit]     = useState('')
+
+  // Baja / reactivar
   const [socioSeleccionado, setSocioSeleccionado] = useState(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [togglingId, setTogglingId] = useState(null)
+  const [togglingId, setTogglingId]   = useState(null)
 
-  useEffect(() => {
-    loadSocios()
-  }, [])
+  useEffect(() => { loadSocios() }, [])
 
   const loadSocios = async () => {
     setLoading(true)
-
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, nombre, email, rut, estado')
-
-    if (profilesError) {
-      console.error('Error cargando socios:', profilesError)
-      setLoading(false)
-      return
-    }
-
-    const { data: roles } = await supabase
-      .from('roles')
-      .select('user_id, role_name')
-
+    const { data: profiles } = await supabase.from('profiles').select('id, nombre, email, rut, estado')
+    const { data: roles }    = await supabase.from('roles').select('user_id, role_name')
     const joined = (profiles || []).map(p => ({
       ...p,
-      roles: (roles || [])
-        .filter(r => r.user_id === p.id)
-        .map(r => r.role_name)
+      roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role_name)
     }))
-
-    // Ordenar: activos primero, luego inactivos, ambos alfabéticamente
     joined.sort((a, b) => {
-      if (a.estado === b.estado) return a.nombre.localeCompare(b.nombre)
+      if (a.estado === b.estado) return (a.nombre || '').localeCompare(b.nombre || '')
       return a.estado === 'activo' ? -1 : 1
     })
-
     setSocios(joined)
     setLoading(false)
   }
 
+  /* ── CREAR ── */
   const toggleRole = (role) => {
     if (role === 'socio') return
     setForm(prev => ({
       ...prev,
-      roles: prev.roles.includes(role)
-        ? prev.roles.filter(r => r !== role)
-        : [...prev.roles, role]
+      roles: prev.roles.includes(role) ? prev.roles.filter(r => r !== role) : [...prev.roles, role]
     }))
   }
 
   const validateForm = () => {
-    if (!form.nombre.trim()) return 'El nombre es obligatorio'
-    if (!form.email.trim()) return 'El email es obligatorio'
-    if (!form.rut.trim()) return 'El RUT es obligatorio'
+    if (!form.nombre.trim())  return 'El nombre es obligatorio'
+    if (!form.email.trim())   return 'El email es obligatorio'
+    if (!form.rut.trim())     return 'El RUT es obligatorio'
     if (!form.password || form.password.length < 6) return 'La contraseña debe tener al menos 6 caracteres'
     return null
   }
 
   const handleCreateSocio = async () => {
     setError('')
-    const validationError = validateForm()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-
+    const err = validateForm()
+    if (err) { setError(err); return }
     setSaving(true)
-
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseUrl    = import.meta.env.VITE_SUPABASE_URL
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-      const res = await fetch(`${supabaseUrl}/functions/v1/bright-service`, {
+      const res  = await fetch(`${supabaseUrl}/functions/v1/bright-service`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({
-          nombre: form.nombre,
-          email: form.email,
-          rut: normalizarRut(form.rut),
-          password: form.password,
-          roles: form.roles,
-        })
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` },
+        body: JSON.stringify({ nombre: form.nombre, email: form.email, rut: normalizarRut(form.rut), password: form.password, roles: form.roles })
       })
-
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
-
-      setOpen(false)
+      setOpenCrear(false)
       setForm(EMPTY_FORM)
       await loadSocios()
     } catch (err) {
@@ -163,64 +99,106 @@ export default function SociosPage() {
     }
   }
 
-  // Abre el diálogo de confirmación antes de cambiar el estado
-  const pedirConfirmacionEstado = (socio) => {
-    setSocioSeleccionado(socio)
-    setConfirmOpen(true)
+  /* ── EDITAR ── */
+  const abrirEditar = (socio) => {
+    setErrorEdit('')
+    setEditForm({
+      id:     socio.id,
+      nombre: socio.nombre || '',
+      email:  socio.email  || '',
+      rut:    socio.rut    || '',
+      roles:  [...socio.roles],
+      newPassword: '',
+    })
+    setOpenEditar(true)
   }
 
-  // Cambia el estado activo/inactivo del socio
+  const toggleRoleEdit = (role) => {
+    if (role === 'socio') return
+    setEditForm(prev => ({
+      ...prev,
+      roles: prev.roles.includes(role) ? prev.roles.filter(r => r !== role) : [...prev.roles, role]
+    }))
+  }
+
+  const handleGuardarEdicion = async () => {
+    setErrorEdit('')
+    if (!editForm.nombre.trim()) { setErrorEdit('El nombre es obligatorio'); return }
+    if (!editForm.email.trim())  { setErrorEdit('El email es obligatorio'); return }
+    if (editForm.newPassword && editForm.newPassword.length < 6) { setErrorEdit('La contraseña debe tener al menos 6 caracteres'); return }
+    setSavingEdit(true)
+    try {
+      // 1. Actualizar profile
+      const { error: profileErr } = await supabase
+        .from('profiles')
+        .update({ nombre: editForm.nombre, rut: normalizarRut(editForm.rut) })
+        .eq('id', editForm.id)
+      if (profileErr) throw profileErr
+
+      // 2. Actualizar roles: borrar los actuales y reinsertar
+      await supabase.from('roles').delete().eq('user_id', editForm.id)
+      const rolesInsert = editForm.roles.map(r => ({ user_id: editForm.id, role_name: r }))
+      await supabase.from('roles').insert(rolesInsert)
+
+      // 3. Cambiar contraseña si se ingresó una nueva (requiere Edge Function o admin API)
+      // Se omite por ahora ya que requiere privilegios de servicio
+
+      setSocios(prev => prev.map(s =>
+        s.id === editForm.id ? { ...s, nombre: editForm.nombre, rut: normalizarRut(editForm.rut), roles: editForm.roles } : s
+      ))
+      setOpenEditar(false)
+    } catch (err) {
+      setErrorEdit(err.message || 'Error al guardar cambios')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  /* ── BAJA / REACTIVAR ── */
+  const pedirConfirmacion = (socio) => { setSocioSeleccionado(socio); setConfirmOpen(true) }
+
   const handleToggleEstado = async () => {
     if (!socioSeleccionado) return
     const nuevoEstado = socioSeleccionado.estado === 'activo' ? 'inactivo' : 'activo'
     setTogglingId(socioSeleccionado.id)
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ estado: nuevoEstado })
-      .eq('id', socioSeleccionado.id)
-
+    const { error } = await supabase.from('profiles').update({ estado: nuevoEstado }).eq('id', socioSeleccionado.id)
     if (!error) {
-      setSocios(prev => prev.map(s =>
-        s.id === socioSeleccionado.id ? { ...s, estado: nuevoEstado } : s
-      ))
-    } else {
-      console.error('Error cambiando estado:', error)
+      setSocios(prev => prev.map(s => s.id === socioSeleccionado.id ? { ...s, estado: nuevoEstado } : s))
     }
-
     setTogglingId(null)
     setConfirmOpen(false)
     setSocioSeleccionado(null)
   }
 
-  const handleClose = () => {
-    setOpen(false)
-    setError('')
-    setForm(EMPTY_FORM)
-  }
-
   if (loading) return <Spinner />
 
-  // Filtrar socios en tiempo real por RUT o Nombre
   const sociosFiltrados = busqueda.trim()
     ? socios.filter(s => {
         const q = busqueda.toLowerCase().trim()
-        return (
-          (s.nombre && s.nombre.toLowerCase().includes(q)) ||
-          (s.rut && s.rut.toLowerCase().includes(q))
-        )
+        return (s.nombre?.toLowerCase().includes(q)) || (s.rut?.toLowerCase().includes(q))
       })
     : socios
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Gestión de Socios</h1>
-        <Button onClick={() => { setError(''); setOpen(true) }}>+ Nuevo Socio</Button>
+    <div className="max-w-6xl mx-auto space-y-4">
+
+      {/* Título */}
+      <div className="flex items-center justify-between px-4 py-3 rounded-lg" style={{ backgroundColor: '#2d7a4f' }}>
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5 text-white" />
+          <div>
+            <h1 className="text-xl font-bold text-white">Gestión de Socios</h1>
+            <p className="text-xs text-green-100">{socios.length} socios registrados</p>
+          </div>
+        </div>
+        <Button size="sm" onClick={() => { setError(''); setOpenCrear(true) }}
+                style={{ backgroundColor: '#7CBE80', color: '#003d18' }}>
+          <Plus className="w-4 h-4 mr-1" /> Nuevo Socio
+        </Button>
       </div>
 
-      {/* ── Buscador ── */}
-      <div className="flex items-center gap-3 p-3 rounded-lg border bg-white shadow-sm">
+      {/* Buscador */}
+      <div className="flex items-center gap-3 px-3 py-2 rounded-lg border bg-white shadow-sm">
         <Search className="w-4 h-4 text-muted-foreground shrink-0" />
         <input
           type="text"
@@ -230,63 +208,69 @@ export default function SociosPage() {
           className="flex-1 text-sm outline-none bg-transparent"
         />
         {busqueda && (
-          <button
-            onClick={() => setBusqueda('')}
-            className="text-muted-foreground hover:text-foreground text-xs"
-          >
+          <button onClick={() => setBusqueda('')} className="text-xs text-muted-foreground hover:text-foreground">
             ✕ Limpiar
           </button>
         )}
       </div>
 
-      <Card>
-        <CardContent>
+      {/* Tabla */}
+      <Card className="overflow-hidden">
+        <div className="px-4 py-2" style={{ backgroundColor: '#7CBE80' }}>
+          <div className="grid grid-cols-6 text-xs font-semibold" style={{ color: '#003d18' }}>
+            <span>Nombre</span>
+            <span>Email</span>
+            <span>RUT</span>
+            <span>Roles</span>
+            <span>Estado</span>
+            <span>Acciones</span>
+          </div>
+        </div>
+        <CardContent className="p-0">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>RUT</TableHead>
-                <TableHead>Roles</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Acción</TableHead>
-              </TableRow>
-            </TableHeader>
             <TableBody>
               {sociosFiltrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     {busqueda ? `No se encontraron socios para "${busqueda}"` : 'No hay socios registrados'}
                   </TableCell>
                 </TableRow>
               ) : (
                 sociosFiltrados.map(s => (
-                  <TableRow
-                    key={s.id}
-                    className={s.estado === 'inactivo' ? 'opacity-50' : ''}
-                  >
-                    <TableCell>{s.nombre}</TableCell>
-                    <TableCell>{s.email}</TableCell>
-                    <TableCell>{s.rut}</TableCell>
-                    <TableCell className="flex gap-1 flex-wrap">
-                      {s.roles.map(r => (
-                        <Badge key={r}>{r}</Badge>
-                      ))}
+                  <TableRow key={s.id} className={s.estado === 'inactivo' ? 'opacity-50' : ''}>
+                    <TableCell className="font-medium">{s.nombre}</TableCell>
+                    <TableCell className="text-sm">{s.email}</TableCell>
+                    <TableCell className="text-sm">{s.rut}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {s.roles.map(r => (
+                          <Badge key={r} style={{ backgroundColor: '#2d7a4f', color: 'white', fontSize: '10px' }}>{r}</Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={s.estado === 'activo' ? 'default' : 'secondary'}>
+                      <Badge style={{
+                        backgroundColor: s.estado === 'activo' ? '#d4edda' : '#fde8e8',
+                        color: s.estado === 'activo' ? '#2d7a4f' : '#c0392b',
+                        fontSize: '11px'
+                      }}>
                         {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={togglingId === s.id}
-                        onClick={() => pedirConfirmacionEstado(s)}
-                      >
-                        {s.estado === 'activo' ? 'Dar de baja' : 'Reactivar'}
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="sm" onClick={() => abrirEditar(s)}
+                                className="h-7 px-2" title="Editar socio">
+                          <Pencil className="w-3 h-3" />
+                        </Button>
+                        <Button variant="outline" size="sm"
+                                disabled={togglingId === s.id}
+                                onClick={() => pedirConfirmacion(s)}
+                                className="h-7 px-2 text-xs"
+                                style={{ color: s.estado === 'activo' ? '#c0392b' : '#2d7a4f' }}>
+                          {s.estado === 'activo' ? 'Dar de baja' : 'Reactivar'}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -296,102 +280,91 @@ export default function SociosPage() {
         </CardContent>
       </Card>
 
-      {/* ── Diálogo confirmar cambio de estado ── */}
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {socioSeleccionado?.estado === 'activo'
-                ? '¿Dar de baja a este socio?'
-                : '¿Reactivar a este socio?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {socioSeleccionado?.estado === 'activo'
-                ? `${socioSeleccionado?.nombre} quedará como Inactivo. Sus datos y cuotas se conservarán, pero no podrá acceder a la app.`
-                : `${socioSeleccionado?.nombre} volverá a estar Activo y podrá acceder a la app.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSocioSeleccionado(null)}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleToggleEstado}>
-              Confirmar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* ── Diálogo crear nuevo socio ── */}
-      <Dialog open={open} onOpenChange={handleClose}>
+      {/* ── Diálogo CREAR ── */}
+      <Dialog open={openCrear} onOpenChange={v => { if (!v) { setOpenCrear(false); setError(''); setForm(EMPTY_FORM) } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuevo Socio</DialogTitle>
           </DialogHeader>
-
           <div className="space-y-3">
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-
-            <div>
-              <Label>Nombre *</Label>
-              <Input
-                value={form.nombre}
-                onChange={e => setForm({ ...form, nombre: e.target.value })}
-                placeholder="Nombre completo"
-              />
-            </div>
-
-            <div>
-              <Label>Email *</Label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-                placeholder="correo@ejemplo.com"
-              />
-            </div>
-
-            <div>
-              <Label>RUT * (sin puntos, con guión. Ej: 12345678-9)</Label>
-              <Input
-                value={form.rut}
-                onChange={e => setForm({ ...form, rut: e.target.value })}
-                placeholder="12345678-9"
-              />
-            </div>
-
-            <div>
-              <Label>Contraseña * (mín. 6 caracteres)</Label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-              />
-            </div>
-
+            {error && <p className="text-red-500 text-sm bg-red-50 p-2 rounded">{error}</p>}
+            <div><Label>Nombre *</Label><Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Nombre completo" /></div>
+            <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="correo@ejemplo.com" /></div>
+            <div><Label>RUT * (sin puntos, con guión)</Label><Input value={form.rut} onChange={e => setForm({ ...form, rut: e.target.value })} placeholder="12345678-9" /></div>
+            <div><Label>Contraseña * (mín. 6 caracteres)</Label><Input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /></div>
             <div>
               <Label>Roles</Label>
               <div className="space-y-2 mt-2">
                 {['socio', 'director', 'administrador'].map(r => (
                   <div key={r} className="flex items-center gap-2">
-                    <Checkbox
-                      checked={form.roles.includes(r)}
-                      onCheckedChange={() => toggleRole(r)}
-                      disabled={r === 'socio'}
-                    />
-                    <span className="capitalize">{r}</span>
+                    <Checkbox checked={form.roles.includes(r)} onCheckedChange={() => toggleRole(r)} disabled={r === 'socio'} />
+                    <span className="capitalize text-sm">{r}</span>
                     {r === 'socio' && <span className="text-xs text-muted-foreground">(obligatorio)</span>}
                   </div>
                 ))}
               </div>
             </div>
-
-            <Button onClick={handleCreateSocio} disabled={saving} className="w-full">
+            <Button onClick={handleCreateSocio} disabled={saving} className="w-full" style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
               {saving ? 'Creando…' : 'Crear Socio'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Diálogo EDITAR ── */}
+      <Dialog open={openEditar} onOpenChange={v => { if (!v) setOpenEditar(false) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Socio</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {errorEdit && <p className="text-red-500 text-sm bg-red-50 p-2 rounded">{errorEdit}</p>}
+            <div><Label>Nombre *</Label><Input value={editForm.nombre || ''} onChange={e => setEditForm({ ...editForm, nombre: e.target.value })} /></div>
+            <div>
+              <Label>Email</Label>
+              <Input value={editForm.email || ''} disabled className="bg-gray-50 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground mt-1">El email no puede modificarse desde aquí</p>
+            </div>
+            <div><Label>RUT</Label><Input value={editForm.rut || ''} onChange={e => setEditForm({ ...editForm, rut: e.target.value })} placeholder="12345678-9" /></div>
+            <div>
+              <Label>Roles</Label>
+              <div className="space-y-2 mt-2">
+                {['socio', 'director', 'administrador'].map(r => (
+                  <div key={r} className="flex items-center gap-2">
+                    <Checkbox checked={(editForm.roles || []).includes(r)} onCheckedChange={() => toggleRoleEdit(r)} disabled={r === 'socio'} />
+                    <span className="capitalize text-sm">{r}</span>
+                    {r === 'socio' && <span className="text-xs text-muted-foreground">(obligatorio)</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Button onClick={handleGuardarEdicion} disabled={savingEdit} className="w-full" style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
+              {savingEdit ? 'Guardando…' : 'Guardar Cambios'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Diálogo confirmar baja/reactivación ── */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {socioSeleccionado?.estado === 'activo' ? '¿Dar de baja a este socio?' : '¿Reactivar a este socio?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {socioSeleccionado?.estado === 'activo'
+                ? `${socioSeleccionado?.nombre} quedará como Inactivo. Sus datos se conservarán.`
+                : `${socioSeleccionado?.nombre} volverá a estar Activo.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSocioSeleccionado(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleToggleEstado} style={{ backgroundColor: '#2d7a4f' }}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   )
 }
