@@ -105,7 +105,7 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>
             Sindicato Interempresas Liberty Seguros
           </h1>
-          <p className="text-muted-foreground text-sm">Bienvenido al portal del sindicato</p>
+          <p className="text-muted-foreground text-sm">Bienvenido al portal del Sindicato</p>
         </div>
       </div>
 
