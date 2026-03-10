@@ -40,20 +40,39 @@ export function MobileNav() {
   return (
     <>
       {/* ── Barra superior móvil ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-14 border-b md:hidden"
-              style={{ backgroundColor: '#2d7a4f' }}>
-        <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain rounded-full" />
-          <span className="text-white text-sm font-semibold leading-tight">
-            Sindicato Liberty
-          </span>
+      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 border-b md:hidden"
+              style={{ backgroundColor: '#2d7a4f', minHeight: '56px' }}>
+        {/* Logo + nombre sindicato */}
+        <div className="flex items-center gap-2 min-w-0">
+          <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain rounded-full shrink-0" />
+          <div className="min-w-0">
+            <p className="text-white text-xs font-bold leading-tight truncate">
+              Sindicato Interempresas
+            </p>
+            <p className="text-green-100 text-xs leading-tight truncate">
+              Liberty Seguros
+            </p>
+          </div>
         </div>
-        <button
-          onClick={() => setMenuOpen(true)}
-          className="text-white p-1 rounded"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
+
+        {/* Nombre usuario + rol */}
+        <div className="flex items-center gap-2 shrink-0 ml-2">
+          <div className="text-right">
+            <p className="text-white text-xs font-semibold leading-tight truncate max-w-[110px]">
+              {profile?.nombre?.split(' ')[0]} {profile?.nombre?.split(' ')[2] || ''}
+            </p>
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: '#7CBE80', color: '#003d18' }}>
+              {isAdministrador ? 'Admin' : isDirector ? 'Director' : 'Socio'}
+            </span>
+          </div>
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="text-white p-1 rounded shrink-0"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
       </header>
 
       {/* ── Offset para el contenido bajo la barra superior ── */}
