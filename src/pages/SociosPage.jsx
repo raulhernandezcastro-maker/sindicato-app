@@ -307,7 +307,7 @@ export default function SociosPage() {
             <div>
               <Label>Roles</Label>
               <div className="space-y-2 mt-2">
-                {['socio', 'director', 'administrador'].map(r => (
+                {['socio', 'aportante', 'director', 'administrador'].map(r => (
                   <div key={r} className="flex items-center gap-2">
                     <Checkbox checked={form.roles.includes(r)} onCheckedChange={() => toggleRole(r)} disabled={r === 'socio'} />
                     <span className="capitalize text-sm">{r}</span>
@@ -341,7 +341,7 @@ export default function SociosPage() {
             <div>
               <Label>Roles</Label>
               <div className="space-y-2 mt-2">
-                {['socio', 'director', 'administrador'].map(r => (
+                {['socio', 'aportante', 'director', 'administrador'].map(r => (
                   <div key={r} className="flex items-center gap-2">
                     <Checkbox checked={(editForm.roles || []).includes(r)} onCheckedChange={() => toggleRoleEdit(r)} disabled={r === 'socio'} />
                     <span className="capitalize text-sm">{r}</span>
