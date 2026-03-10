@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Users, UserCheck, UserX, FileText, FolderOpen, LayoutDashboard, TrendingUp, PieChart } from 'lucide-react'
+import { Users, UserCheck, FileText, FolderOpen, LayoutDashboard, TrendingUp, PieChart, UserX } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Spinner } from '../components/ui/spinner'
 
@@ -24,8 +24,7 @@ const StatCard = ({ title, value, icon: Icon, color, bg, loading }) => (
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalSocios: 0, totalDirectores: 0, totalAportantes: 0, totalUsuarios: 0,
-    sociosActivos: 0, sociosInactivos: 0,
-    totalAvisos: 0, totalDocumentos: 0,
+    sociosInactivos: 0, totalAvisos: 0, totalDocumentos: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -35,17 +34,19 @@ export default function DashboardPage() {
 
       const [
         { data: rolesData },
+        { data: perfilesData },
         { count: totalAvisos },
         { count: totalDocumentos },
-        { count: sociosActivos },
-        { count: sociosInactivos },
       ] = await Promise.all([
         supabase.from('roles').select('user_id, role_name'),
+        supabase.from('profiles').select('id, estado'),
         supabase.from('avisos').select('id', { count: 'exact' }),
         supabase.from('documentos').select('id', { count: 'exact' }),
-        supabase.from('profiles').select('id', { count: 'exact' }).eq('estado', 'activo'),
-        supabase.from('profiles').select('id', { count: 'exact' }).eq('estado', 'inactivo'),
       ])
+
+      // Mapa de estado por user_id
+      const estadoMap = {}
+      ;(perfilesData || []).forEach(p => { estadoMap[p.id] = p.estado })
 
       // Agrupar roles por usuario
       const rolesMap = {}
@@ -54,22 +55,31 @@ export default function DashboardPage() {
         rolesMap[r.user_id].push(r.role_name)
       })
 
-      // Contar sin solapamiento
-      // Socios: tienen 'socio' pero NO 'director' ni 'aportante'
-      // Directores: tienen 'director'
-      // Aportantes: tienen 'aportante'
-      let totalSocios = 0, totalDirectores = 0, totalAportantes = 0
-      Object.values(rolesMap).forEach(roles => {
-        if (roles.includes('director'))   totalDirectores++
-        else if (roles.includes('aportante')) totalAportantes++
-        else if (roles.includes('socio')) totalSocios++
+      // Contar solo ACTIVOS para los recuadros principales
+      // Inactivos: solo dato informativo
+      let totalSocios = 0, totalDirectores = 0, totalAportantes = 0, sociosInactivos = 0
+
+      Object.entries(rolesMap).forEach(([userId, roles]) => {
+        const activo = estadoMap[userId] === 'activo'
+
+        if (!activo) {
+          // Solo contamos inactivos como dato informativo
+          sociosInactivos++
+          return
+        }
+
+        // Activos: clasificar sin solapamiento
+        if (roles.includes('director'))        totalDirectores++
+        else if (roles.includes('aportante'))  totalAportantes++
+        else if (roles.includes('socio'))      totalSocios++
       })
+
+      // Total Usuarios activos = Socios + Directores + Aportantes
       const totalUsuarios = totalSocios + totalDirectores + totalAportantes
 
       setStats({
         totalSocios, totalDirectores, totalAportantes, totalUsuarios,
-        sociosActivos: sociosActivos || 0,
-        sociosInactivos: sociosInactivos || 0,
+        sociosInactivos,
         totalAvisos: totalAvisos || 0,
         totalDocumentos: totalDocumentos || 0,
       })
@@ -82,15 +92,23 @@ export default function DashboardPage() {
 
   useEffect(() => { loadStats() }, [loadStats])
 
+  // Socios Activos = Socios + Directores (ambos son socios vigentes)
+  const sociosActivos = stats.totalSocios + stats.totalDirectores
+
   const porcentajeSocios = stats.totalUsuarios > 0
     ? Math.round((stats.totalSocios / stats.totalUsuarios) * 100)
     : 0
 
-  const cards = [
-    { title: 'Total Socios',           value: stats.totalSocios,     icon: UserCheck, color: '#2d7a4f', bg: '#d4edda' },
-    { title: 'Total Socios Directores',value: stats.totalDirectores, icon: Users,     color: '#1a5276', bg: '#d6eaf8' },
-    { title: 'Total Aportantes',       value: stats.totalAportantes, icon: UserX,     color: '#6c3483', bg: '#e8daef' },
-    { title: 'Total Usuarios',         value: stats.totalUsuarios,   icon: Users,     color: '#d35400', bg: '#fdebd0' },
+  const cardsUsuarios = [
+    { title: 'Total Socios',            value: stats.totalSocios,     icon: UserCheck, color: '#2d7a4f', bg: '#d4edda' },
+    { title: 'Total Socios Directores', value: stats.totalDirectores, icon: Users,     color: '#1a5276', bg: '#d6eaf8' },
+    { title: 'Total Aportantes',        value: stats.totalAportantes, icon: Users,     color: '#6c3483', bg: '#e8daef' },
+    { title: 'Total Usuarios',          value: stats.totalUsuarios,   icon: Users,     color: '#d35400', bg: '#fdebd0' },
+  ]
+
+  const cardsContenido = [
+    { title: 'Avisos Publicados', value: stats.totalAvisos,     icon: FileText,   color: '#1a5276', bg: '#d6eaf8' },
+    { title: 'Documentos',        value: stats.totalDocumentos, icon: FolderOpen, color: '#d35400', bg: '#fdebd0' },
   ]
 
   return (
@@ -105,9 +123,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Tarjetas principales */}
+      {/* Tarjetas de usuarios */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map(c => <StatCard key={c.title} {...c} loading={loading} />)}
+        {cardsUsuarios.map(c => <StatCard key={c.title} {...c} loading={loading} />)}
+      </div>
+
+      {/* Tarjetas de contenido */}
+      <div className="grid grid-cols-2 gap-4">
+        {cardsContenido.map(c => <StatCard key={c.title} {...c} loading={loading} />)}
       </div>
 
       {/* Resumen */}
@@ -118,20 +141,27 @@ export default function DashboardPage() {
             <span className="text-white text-sm font-semibold">Resumen General</span>
           </div>
           <div className="p-5 space-y-1" style={{ backgroundColor: '#f0f9f2' }}>
-            {[
-              { label: 'Socios Activos',    value: stats.sociosActivos,   color: '#2d7a4f' },
-              { label: 'Socios Inactivos',  value: stats.sociosInactivos, color: '#c0392b' },
-              { label: 'Avisos Publicados', value: stats.totalAvisos,     color: '#6c3483' },
-              { label: 'Documentos',        value: stats.totalDocumentos, color: '#d35400' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="flex items-center justify-between py-2 border-b last:border-0">
-                <span className="font-medium text-sm">{label}</span>
-                <span className="text-2xl font-bold" style={{ color }}>{value}</span>
+
+            {/* Socios Activos = Socios + Directores */}
+            <div className="flex items-center justify-between py-2 border-b">
+              <div>
+                <span className="font-medium text-sm">Socios Activos</span>
+                <span className="text-xs text-muted-foreground ml-2">(Socios + Directores)</span>
               </div>
-            ))}
+              <span className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>{sociosActivos}</span>
+            </div>
+
+            {/* Inactivos — solo informativo */}
+            <div className="flex items-center justify-between py-2 border-b">
+              <div>
+                <span className="font-medium text-sm">Socios Inactivos</span>
+                <span className="text-xs text-muted-foreground ml-2">(solo informativo)</span>
+              </div>
+              <span className="text-2xl font-bold" style={{ color: '#c0392b' }}>{stats.sociosInactivos}</span>
+            </div>
 
             {/* Porcentaje de Socios */}
-            <div className="mt-4 pt-3 border-t">
+            <div className="pt-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <PieChart className="w-4 h-4" style={{ color: '#2d7a4f' }} />
@@ -140,7 +170,6 @@ export default function DashboardPage() {
                 </div>
                 <span className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>{porcentajeSocios}%</span>
               </div>
-              {/* Barra de progreso */}
               <div className="w-full h-3 rounded-full bg-gray-200 overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-500"
                      style={{ width: `${porcentajeSocios}%`, backgroundColor: '#2d7a4f' }} />
@@ -150,6 +179,7 @@ export default function DashboardPage() {
                 <span>{stats.totalUsuarios} usuarios totales</span>
               </div>
             </div>
+
           </div>
         </div>
       )}
