@@ -228,18 +228,18 @@ export default function SociosPage() {
 
       {/* Tabla */}
       <Card className="overflow-hidden">
-        <div className="px-4 py-2" style={{ backgroundColor: '#7CBE80' }}>
-          <div className="grid grid-cols-6 text-xs font-semibold" style={{ color: '#003d18' }}>
-            <span>Nombre</span>
-            <span>Email</span>
-            <span>RUT</span>
-            <span>Roles</span>
-            <span>Estado</span>
-            <span>Acciones</span>
-          </div>
-        </div>
         <CardContent className="p-0">
           <Table>
+            <TableHeader>
+              <TableRow style={{ backgroundColor: '#7CBE80' }}>
+                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Nombre</TableHead>
+                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Email</TableHead>
+                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>RUT</TableHead>
+                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Roles</TableHead>
+                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Estado</TableHead>
+                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {sociosFiltrados.length === 0 ? (
                 <TableRow>
