@@ -75,8 +75,6 @@ export function MobileNav() {
         </div>
       </header>
 
-      {/* ── Offset para el contenido bajo la barra superior ── */}
-      <div className="h-14 md:hidden" />
 
       {/* ── Menú lateral deslizante (drawer) ── */}
       {menuOpen && (
@@ -175,8 +173,6 @@ export function MobileNav() {
         </div>
       </nav>
 
-      {/* ── Offset inferior para el contenido ── */}
-      <div className="h-16 md:hidden" />
     </>
   )
 }
