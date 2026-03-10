@@ -98,16 +98,16 @@ export default function HomePage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
 
-   // {/* ── Encabezado ── */}
-   //   <div className="flex items-center gap-4">
-   //     <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain rounded-full hidden md:block" />
-   //     <div>
-   //       <h1 className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>
-   //         Sindicato Interempresas Liberty Seguros
-   //       </h1>
-   //       <p className="text-muted-foreground text-sm">Bienvenido al portal del Sindicato</p>
-   //     </div>
-   //   </div>
+    {/* ── Encabezado ── */}
+      <div className="flex items-center gap-4">
+        <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain rounded-full hidden md:block" />
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>
+            Sindicato Interempresas Liberty Seguros
+          </h1>
+          <p className="text-muted-foreground text-sm">Bienvenido al portal del Sindicato</p>
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="w-8 h-8" /></div>
