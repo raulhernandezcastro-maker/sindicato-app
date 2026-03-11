@@ -44,7 +44,7 @@ export function MobileNav() {
               style={{ backgroundColor: '#2d7a4f', minHeight: '64px' }}>
         {/* Logo + nombre sindicato */}
         <div className="flex items-center gap-2 min-w-0">
-          <img src="/logo.png" alt="Logo" className="w-11 h-11 object-contain rounded-full shrink-0" />
+          <img src="/logo.png" alt="Logo" className="w-15 h-15 object-contain rounded-full shrink-0" />
           <div className="min-w-0">
             <p className="text-white text-sm font-bold leading-tight truncate">
               Sindicato Interempresas
