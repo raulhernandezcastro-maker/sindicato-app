@@ -6,13 +6,13 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
-import { FileText, FolderOpen, Users, Phone, Plus, Pencil, Trash2 } from 'lucide-react'
+import { FileText, Gift, Users, Phone, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function HomePage() {
   const { isAdministrador } = useAuth()
   const [ultimoAviso, setUltimoAviso]   = useState(null)
-  const [documentos, setDocumentos]     = useState([])
+  const [sliderIdx, setSliderIdx]        = useState(0)
   const [directores, setDirectores]     = useState([])
   const [loading, setLoading]           = useState(true)
 
@@ -27,13 +27,11 @@ export default function HomePage() {
   const loadHomeData = async () => {
     try {
       setLoading(true)
-      const [{ data: avisos }, { data: docs }, { data: dirs }] = await Promise.all([
+      const [{ data: avisos }, { data: dirs }] = await Promise.all([
         supabase.from('avisos').select('*').order('created_at', { ascending: false }).limit(1),
-        supabase.from('documentos').select('*').order('created_at', { ascending: false }).limit(5),
         supabase.from('directivos').select('*').order('created_at', { ascending: true }),
       ])
       setUltimoAviso(avisos?.[0] || null)
-      setDocumentos(docs || [])
       setDirectores(dirs || [])
     } catch (err) {
       console.error('Error cargando inicio:', err)
@@ -95,8 +93,31 @@ export default function HomePage() {
     </div>
   )
 
+
+  const BENEFICIOS = [
+    { src: '/beneficio_bono_navidad.png',     alt: 'Bono Navidad' },
+    { src: '/beneficio_jubilacion.png',        alt: 'Indemnización por Jubilación' },
+    { src: '/beneficio_indemnizacion.png',     alt: 'Indemnización' },
+    { src: '/beneficio_seguro_vida.png',       alt: 'Seguro de Vida' },
+    { src: '/beneficio_bono_antiguedad.png',   alt: 'Bono Antigüedad' },
+  ]
+
+  const prevSlide = () => setSliderIdx(i => (i - 1 + BENEFICIOS.length) % BENEFICIOS.length)
+  const nextSlide = () => setSliderIdx(i => (i + 1) % BENEFICIOS.length)
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+
+      {/* ── Encabezado ── */}
+      <div className="flex items-center gap-4">
+        <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain rounded-full hidden md:block" />
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>
+            Sindicato Interempresas Liberty Seguros
+          </h1>
+          <p className="text-muted-foreground text-sm">Bienvenido al portal del sindicato</p>
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="w-8 h-8" /></div>
@@ -123,29 +144,46 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* ── Últimos Documentos ── */}
+          {/* ── Slider Beneficios ── */}
           <div className="rounded-lg border overflow-hidden">
-            <SectionTitle icon={FolderOpen} title="Últimos Documentos" />
-            <div className="p-4" style={{ backgroundColor: '#f0f9f2' }}>
-              {documentos.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No hay documentos disponibles</p>
-              ) : (
-                <ul className="space-y-2">
-                  {documentos.map(doc => (
-                    <li key={doc.id}>
-                      <a
-                        href={doc.archivo_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm hover:underline"
-                        style={{ color: '#2d7a4f' }}
-                      >
-                        {doc.titulo}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <SectionTitle icon={Gift} title="Beneficios del Sindicato" />
+            <div className="relative" style={{ backgroundColor: '#f0f9f2' }}>
+              {/* Imagen */}
+              <div className="relative overflow-hidden" style={{ paddingBottom: '75%' }}>
+                <img
+                  key={sliderIdx}
+                  src={BENEFICIOS[sliderIdx].src}
+                  alt={BENEFICIOS[sliderIdx].alt}
+                  className="absolute inset-0 w-full h-full object-contain p-2"
+                  style={{ transition: 'opacity 0.3s ease' }}
+                />
+              </div>
+              {/* Controles */}
+              <button
+                onClick={prevSlide}
+                className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full p-1.5 shadow-md"
+                style={{ backgroundColor: 'rgba(45,122,79,0.85)' }}
+              >
+                <ChevronLeft className="w-5 h-5 text-white" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full p-1.5 shadow-md"
+                style={{ backgroundColor: 'rgba(45,122,79,0.85)' }}
+              >
+                <ChevronRight className="w-5 h-5 text-white" />
+              </button>
+              {/* Indicadores */}
+              <div className="flex justify-center gap-1.5 py-2">
+                {BENEFICIOS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSliderIdx(i)}
+                    className="w-2 h-2 rounded-full transition-all"
+                    style={{ backgroundColor: i === sliderIdx ? '#2d7a4f' : '#b0d4bc' }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
