@@ -1,11 +1,11 @@
 {
-  "name": "Sindicato de Trabajadores",
-  "short_name": "Sindicato",
-  "description": "Aplicación oficial del Sindicato de Trabajadores",
+  "name": "Sindicato Interempresas Liberty Seguros",
+  "short_name": "Sindicato Liberty",
+  "description": "Aplicación oficial del Sindicato Interempresas Liberty Seguros",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "theme_color": "#2d7a4f",
   "orientation": "portrait-primary",
   "icons": [
     {
