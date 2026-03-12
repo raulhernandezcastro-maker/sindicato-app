@@ -158,6 +158,22 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Recarga el perfil y roles del usuario actual sin cerrar sesión
+  const refreshProfile = async () => {
+    if (!user?.id) return
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles').select('*').eq('id', user.id).single()
+      if (profileData) setProfile(profileData)
+
+      const { data: rolesData } = await supabase
+        .from('roles').select('role_name').eq('user_id', user.id)
+      if (rolesData) setRoles(rolesData.map(r => r.role_name))
+    } catch (err) {
+      console.error('[AUTH] refreshProfile error:', err)
+    }
+  }
+
   const value = {
     user,
     profile,
@@ -166,6 +182,7 @@ export const AuthProvider = ({ children }) => {
 
     signIn,
     signOut,
+    refreshProfile,
 
     isAdministrador,
     isDirector,
