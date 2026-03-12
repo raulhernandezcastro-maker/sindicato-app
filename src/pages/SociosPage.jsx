@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Card, CardContent } from '../components/ui/card'
 import { Spinner } from '../components/ui/spinner'
@@ -18,6 +19,7 @@ const normalizarRut = (rut) =>
 const EMPTY_FORM = { nombre: '', email: '', rut: '', password: '', roles: ['socio'] }
 
 export default function SociosPage() {
+  const { isAdministrador } = useAuth()
   const [socios, setSocios]           = useState([])
   const [loading, setLoading]         = useState(true)
   const [busqueda, setBusqueda]       = useState('')
@@ -237,7 +239,7 @@ export default function SociosPage() {
                 <TableHead style={{ color: '#003d18', fontWeight: 700 }}>RUT</TableHead>
                 <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Roles</TableHead>
                 <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Estado</TableHead>
-                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Acciones</TableHead>
+                {isAdministrador && <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Acciones</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -269,7 +271,7 @@ export default function SociosPage() {
                         {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    {isAdministrador && <TableCell>
                       <div className="flex gap-1">
                         <Button variant="outline" size="sm" onClick={() => abrirEditar(s)}
                                 className="h-7 px-2" title="Editar socio">
@@ -283,7 +285,7 @@ export default function SociosPage() {
                           {s.estado === 'activo' ? 'Dar de baja' : 'Reactivar'}
                         </Button>
                       </div>
-                    </TableCell>
+                    </TableCell>}
                   </TableRow>
                 ))
               )}
