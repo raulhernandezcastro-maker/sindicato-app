@@ -41,14 +41,26 @@ export default function PerfilPage() {
 
   /* ── Perfil ── */
   const handleProfileUpdate = async (e) => {
-    e.preventDefault(); clearMessages(); setSavingProfile(true)
-    const { error } = await supabase
-      .from('profiles')
-      .update({ nombre: formData.nombre, telefono: formData.telefono })
-      .eq('id', user.id)
-    if (error) { setError('Error al actualizar el perfil') }
-    else { setSuccess('Perfil actualizado correctamente'); refreshProfile?.().catch(() => {}) }
-    setSavingProfile(false)
+    e.preventDefault()
+    clearMessages()
+    setSavingProfile(true)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ nombre: formData.nombre, telefono: formData.telefono })
+        .eq('id', user.id)
+      if (error) {
+        setError('Error al actualizar el perfil: ' + error.message)
+      } else {
+        setSuccess('Perfil actualizado correctamente')
+        // Recargar perfil en contexto sin cerrar sesión
+        if (refreshProfile) await refreshProfile()
+      }
+    } catch (err) {
+      setError('Error inesperado al guardar')
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
   /* ── Contraseña ── */
