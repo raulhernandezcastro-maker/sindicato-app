@@ -63,11 +63,12 @@ export default function DashboardPage() {
         const activo = estadoMap[userId] === 'activo'
 
         if (!activo) {
-          // Solo contamos inactivos como dato informativo
           sociosInactivos++
           return
         }
 
+        // Administrador no se cuenta en ningún grupo de socios
+        if (roles.includes('administrador'))   return
         // Activos: clasificar sin solapamiento
         if (roles.includes('director'))        totalDirectores++
         else if (roles.includes('aportante'))  totalAportantes++
