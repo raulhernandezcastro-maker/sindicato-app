@@ -107,16 +107,12 @@ export const AuthProvider = ({ children }) => {
   }
 
   const signOut = async () => {
-    signingOut.current = true   // bloquear onAuthStateChange
-    try {
-      await supabase.auth.signOut()
-    } catch (err) {
-      console.error('[AUTH] SignOut error:', err)
-    }
+    signingOut.current = true
     setUser(null)
     setProfile(null)
     setRoles([])
-    window.location.href = '/login'
+    await supabase.auth.signOut()
+    signingOut.current = false
   }
 
   const refreshProfile = async () => {
