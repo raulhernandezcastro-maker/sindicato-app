@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 
-// Páginas (default export)
 import HomePage from './pages/HomePage'
 import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
@@ -17,45 +16,23 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Login */}
+        {/* Login — único sin protección */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Layout principal */}
+        {/* Layout principal — todas las rutas protegidas */}
         <Route element={<AppLayout />}>
-          {/* Público */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/avisos" element={<AvisosPage />} />
-          <Route path="/documentos" element={<DocumentosPage />} />
-          <Route path="/perfil" element={<PerfilPage />} />
 
-          {/* Director / Administrador */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute allowDirector>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* Todos los usuarios logueados */}
+          <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+          <Route path="/avisos" element={<ProtectedRoute><AvisosPage /></ProtectedRoute>} />
+          <Route path="/documentos" element={<ProtectedRoute><DocumentosPage /></ProtectedRoute>} />
+          <Route path="/perfil" element={<ProtectedRoute><PerfilPage /></ProtectedRoute>} />
 
-          <Route
-            path="/cuotas"
-            element={
-              <ProtectedRoute allowDirector>
-                <CuotasPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* Director y Administrador */}
+          <Route path="/dashboard" element={<ProtectedRoute allowDirector><DashboardPage /></ProtectedRoute>} />
+          <Route path="/cuotas" element={<ProtectedRoute allowDirector><CuotasPage /></ProtectedRoute>} />
+          <Route path="/socios" element={<ProtectedRoute allowDirector><SociosPage /></ProtectedRoute>} />
 
-          {/* Administrador y Director (Director solo lectura) */}
-          <Route
-            path="/socios"
-            element={
-              <ProtectedRoute allowDirector>
-                <SociosPage />
-              </ProtectedRoute>
-            }
-          />
         </Route>
 
         {/* Fallback */}
