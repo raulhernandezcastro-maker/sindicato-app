@@ -205,10 +205,12 @@ export default function SociosPage() {
             <p className="text-xs text-green-100">{socios.length} socios registrados</p>
           </div>
         </div>
-        <Button size="sm" onClick={() => { setError(''); setOpenCrear(true) }}
-                style={{ backgroundColor: '#7CBE80', color: '#003d18' }}>
-          <Plus className="w-4 h-4 mr-1" /> Nuevo Socio
-        </Button>
+        {isAdministrador && (
+          <Button size="sm" onClick={() => { setError(''); setOpenCrear(true) }}
+                  style={{ backgroundColor: '#7CBE80', color: '#003d18' }}>
+            <Plus className="w-4 h-4 mr-1" /> Nuevo Socio
+          </Button>
+        )}
       </div>
 
       {/* Buscador */}
