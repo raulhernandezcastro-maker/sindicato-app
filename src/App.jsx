@@ -47,11 +47,11 @@ export default function App() {
             }
           />
 
-          {/* Solo Administrador */}
+          {/* Administrador y Director (Director solo lectura) */}
           <Route
             path="/socios"
             element={
-              <ProtectedRoute allowAdmin>
+              <ProtectedRoute allowDirector>
                 <SociosPage />
               </ProtectedRoute>
             }
