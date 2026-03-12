@@ -20,7 +20,7 @@ export default function AvisosPage() {
   const [error, setError]     = useState('')
   const [saving, setSaving]   = useState(false)
 
-  const canManage = isAdministrador || isDirector
+  const canManage = isAdministrador
 
   useEffect(() => { loadAvisos() }, [])
 
