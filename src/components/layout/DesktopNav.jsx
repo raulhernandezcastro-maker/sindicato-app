@@ -27,7 +27,6 @@ export function DesktopNav() {
   ]
   const adminLinks = [
     ...directorLinks,
-    { to: '/socios',     icon: Users,           label: 'Gestión de Socios' },
   ]
 
   const links = isAdministrador ? adminLinks : isDirector ? directorLinks : socioLinks
