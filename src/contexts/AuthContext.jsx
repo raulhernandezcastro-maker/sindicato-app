@@ -100,7 +100,6 @@ export const AuthProvider = ({ children }) => {
         } else {
           clearAuth()
           if (isMounted) setLoading(false)
-          window.location.replace('/login')
           return
         }
 
@@ -145,9 +144,13 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
-      // onAuthStateChange se encarga de limpiar el estado y redirigir
     } catch (err) {
       console.error('[AUTH] SignOut error:', err)
+    } finally {
+      setUser(null)
+      setProfile(null)
+      setRoles([])
+      window.location.href = '/login'
     }
   }
 
