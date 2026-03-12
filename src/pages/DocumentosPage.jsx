@@ -30,7 +30,7 @@ export default function DocumentosPage() {
   const [formLoading, setFormLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('estatutos')
 
-  const canManage = isAdministrador || isDirector
+  const canManage = isAdministrador
 
   useEffect(() => { loadDocumentos() }, [])
 
