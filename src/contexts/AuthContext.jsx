@@ -99,6 +99,9 @@ export const AuthProvider = ({ children }) => {
           await loadUserData(session.user.id)
         } else {
           clearAuth()
+          if (isMounted) setLoading(false)
+          window.location.replace('/login')
+          return
         }
 
         if (isMounted) setLoading(false)
@@ -141,18 +144,8 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
-      setLoading(true)
-
       await supabase.auth.signOut()
-
-      clearTimeout(() => {}) // evita micro race en algunos navegadores
-
-      setUser(null)
-      setProfile(null)
-      setRoles([])
-
-      // 🔑 salida real, sin sesión pegada
-      window.location.replace('/login')
+      // onAuthStateChange se encarga de limpiar el estado y redirigir
     } catch (err) {
       console.error('[AUTH] SignOut error:', err)
     }
