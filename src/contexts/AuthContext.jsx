@@ -11,19 +11,18 @@ const AuthContext = createContext(null)
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext)
-  if (!ctx) {
-    throw new Error('useAuth must be used inside AuthProvider')
-  }
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
   return ctx
 }
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
+  const [user, setUser]       = useState(null)
   const [profile, setProfile] = useState(null)
-  const [roles, setRoles] = useState([])
+  const [roles, setRoles]     = useState([])
   const [loading, setLoading] = useState(true)
 
-  const initialized = useRef(false)
+  const initialized  = useRef(false)
+  const signingOut   = useRef(false)   // ← bandera para ignorar eventos durante signOut
 
   useEffect(() => {
     let isMounted = true
@@ -37,30 +36,17 @@ export const AuthProvider = ({ children }) => {
 
     const loadUserData = async (userId) => {
       try {
-        // Perfil
         const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single()
-
+          .from('profiles').select('*').eq('id', userId).single()
         if (profileError) throw profileError
         if (isMounted) setProfile(profileData)
 
-        // Roles
         const { data: rolesData, error: rolesError } = await supabase
-          .from('roles')
-          .select('role_name')
-          .eq('user_id', userId)
-
+          .from('roles').select('role_name').eq('user_id', userId)
         if (rolesError) throw rolesError
 
         const roleNames = (rolesData || []).map(r => r.role_name)
         if (isMounted) setRoles(roleNames)
-
-        // 🔎 LOGS SEGUROS (NO ROMPEN LA APP)
-        console.log('[AUTH] UID:', userId)
-        console.log('[AUTH] ROLES:', roleNames)
       } catch (err) {
         console.error('[AUTH] Error loading profile/roles:', err)
         clearAuth()
@@ -70,9 +56,7 @@ export const AuthProvider = ({ children }) => {
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession()
-
         if (!isMounted) return
-
         if (data?.session?.user) {
           setUser(data.session.user)
           await loadUserData(data.session.user.id)
@@ -92,15 +76,14 @@ export const AuthProvider = ({ children }) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        if (!initialized.current) return
+        // Ignorar eventos si aún no inicializó o si estamos en signOut
+        if (!initialized.current || signingOut.current) return
 
         if (session?.user) {
           setUser(session.user)
           await loadUserData(session.user.id)
         } else {
           clearAuth()
-          if (isMounted) setLoading(false)
-          return
         }
 
         if (isMounted) setLoading(false)
@@ -113,48 +96,29 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  /* =========================
-     PRIORIDAD REAL DE ROLES
-     administrador > director > socio
-     Un usuario puede tener múltiples roles.
-     isAdministrador y isDirector pueden ser true al mismo tiempo
-     si el usuario tiene ambos roles, pero para efectos de permisos
-     el administrador tiene la máxima prioridad.
-     ========================= */
-
   const isAdministrador = roles.includes('administrador')
-  const isDirector = roles.includes('director')
-  const isSocio = roles.includes('socio')
-
-  /* =========================
-     AUTH ACTIONS
-     ========================= */
+  const isDirector      = roles.includes('director')
+  const isSocio         = roles.includes('socio')
 
   const signIn = async (email, password) => {
-    const { data, error } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
-
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     return data
   }
 
   const signOut = async () => {
+    signingOut.current = true   // bloquear onAuthStateChange
     try {
       await supabase.auth.signOut()
     } catch (err) {
       console.error('[AUTH] SignOut error:', err)
-    } finally {
-      setUser(null)
-      setProfile(null)
-      setRoles([])
-      window.location.href = '/login'
     }
+    setUser(null)
+    setProfile(null)
+    setRoles([])
+    window.location.href = '/login'
   }
 
-  // Recarga el perfil y roles del usuario actual sin cerrar sesión
   const refreshProfile = async () => {
     if (!user?.id) return
     try {
@@ -171,18 +135,9 @@ export const AuthProvider = ({ children }) => {
   }
 
   const value = {
-    user,
-    profile,
-    roles,
-    loading,
-
-    signIn,
-    signOut,
-    refreshProfile,
-
-    isAdministrador,
-    isDirector,
-    isSocio
+    user, profile, roles, loading,
+    signIn, signOut, refreshProfile,
+    isAdministrador, isDirector, isSocio
   }
 
   return (
