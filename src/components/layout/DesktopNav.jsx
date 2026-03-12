@@ -23,6 +23,7 @@ export function DesktopNav() {
     ...socioLinks,
     { to: '/dashboard',  icon: LayoutDashboard, label: 'Panel de Gestión' },
     { to: '/cuotas',     icon: DollarSign,      label: 'Cuotas' },
+    { to: '/socios',     icon: Users,           label: 'Gestión de Socios' },
   ]
   const adminLinks = [
     ...directorLinks,
