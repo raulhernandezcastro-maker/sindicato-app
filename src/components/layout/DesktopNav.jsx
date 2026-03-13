@@ -2,7 +2,7 @@ import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Home, FileText, FolderOpen, User, Users,
-  DollarSign, LayoutDashboard, LogOut
+  DollarSign, LayoutDashboard, LogOut, HelpCircle
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
