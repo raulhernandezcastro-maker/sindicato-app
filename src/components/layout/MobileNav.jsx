@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Home, FileText, FolderOpen, User, Users,
-  DollarSign, LayoutDashboard, LogOut, Menu, X
+  DollarSign, LayoutDashboard, LogOut, HelpCircle, Menu, X
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
