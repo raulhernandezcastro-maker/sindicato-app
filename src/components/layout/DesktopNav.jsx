@@ -18,6 +18,7 @@ export function DesktopNav() {
     { to: '/avisos',     icon: FileText,        label: 'Avisos' },
     { to: '/documentos', icon: FolderOpen,      label: 'Documentos' },
     { to: '/perfil',     icon: User,            label: 'Mi Perfil' },
+    { to: '/faq',        icon: HelpCircle,      label: 'Preguntas Frecuentes' },
   ]
   const directorLinks = [
     ...socioLinks,
