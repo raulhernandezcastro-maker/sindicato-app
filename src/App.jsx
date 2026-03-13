@@ -11,6 +11,7 @@ import PerfilPage from './pages/PerfilPage'
 import SociosPage from './pages/SociosPage'
 import CuotasPage from './pages/CuotasPage'
 import LoginPage from './pages/LoginPage'
+import FAQPage from './pages/FAQPage'
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/avisos" element={<ProtectedRoute><AvisosPage /></ProtectedRoute>} />
           <Route path="/documentos" element={<ProtectedRoute><DocumentosPage /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProtectedRoute><PerfilPage /></ProtectedRoute>} />
+          <Route path="/faq" element={<ProtectedRoute><FAQPage /></ProtectedRoute>} />
 
           {/* Director y Administrador */}
           <Route path="/dashboard" element={<ProtectedRoute allowDirector><DashboardPage /></ProtectedRoute>} />
