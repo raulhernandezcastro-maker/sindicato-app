@@ -17,6 +17,7 @@ export function MobileNav() {
     { to: '/avisos',     icon: FileText,        label: 'Avisos' },
     { to: '/documentos', icon: FolderOpen,      label: 'Documentos' },
     { to: '/perfil',     icon: User,            label: 'Perfil' },
+    { to: '/faq',        icon: HelpCircle,      label: 'Preguntas' },
   ]
   const directorLinks = [
     ...socioLinks,
