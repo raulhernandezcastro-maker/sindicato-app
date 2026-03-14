@@ -28,7 +28,7 @@ export default function DocumentosPage() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [formError, setFormError] = useState('')
   const [formLoading, setFormLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('estatutos')
+  const [activeTab, setActiveTab] = useState('beneficios')
 
   const canManage = isAdministrador
 
@@ -228,22 +228,22 @@ export default function DocumentosPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3"
                     style={{ backgroundColor: '#e8f5ec' }}>
-            <TabsTrigger value="estatutos"
-              style={activeTab === 'estatutos' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
-              Estatutos
+            <TabsTrigger value="beneficios"
+              style={activeTab === 'beneficios' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
+              Beneficios
             </TabsTrigger>
             <TabsTrigger value="actas"
               style={activeTab === 'actas' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
               Leyes Laborales
             </TabsTrigger>
-            <TabsTrigger value="beneficios"
-              style={activeTab === 'beneficios' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
-              Beneficios
+            <TabsTrigger value="estatutos"
+              style={activeTab === 'estatutos' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
+              Estatutos
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="estatutos"><DocumentosList categoria="estatutos" /></TabsContent>
-          <TabsContent value="actas"><DocumentosList categoria="actas" /></TabsContent>
           <TabsContent value="beneficios"><DocumentosList categoria="beneficios" /></TabsContent>
+          <TabsContent value="actas"><DocumentosList categoria="actas" /></TabsContent>
+          <TabsContent value="estatutos"><DocumentosList categoria="estatutos" /></TabsContent>
         </Tabs>
       )}
     </div>
