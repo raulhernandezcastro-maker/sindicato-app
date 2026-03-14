@@ -153,32 +153,36 @@ export default function TablaCuotasConfirmadas() {
       <Card className="overflow-hidden">
         {/* Filtros */}
         <div className="p-4 space-y-3" style={{ backgroundColor: '#f0f9f2' }}>
-          <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
+          {/* Fila 1: Período + Tipo */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold block mb-1" style={{ color: '#2d7a4f' }}>Período</label>
               <input type="month" value={periodo} onChange={e => setPeriodo(e.target.value)}
-                     className="border rounded px-3 py-1.5 text-sm focus:outline-none"
+                     className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none"
                      style={{ borderColor: '#2d7a4f' }} />
             </div>
             <div>
               <label className="text-xs font-semibold block mb-1" style={{ color: '#2d7a4f' }}>Tipo</label>
               <select value={tipo} onChange={e => setTipo(e.target.value)}
-                      className="border rounded px-3 py-1.5 text-sm focus:outline-none"
+                      className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none"
                       style={{ borderColor: '#2d7a4f' }}>
                 <option value="">Todos</option>
                 <option value="SOCIO">Socio</option>
                 <option value="APORTANTE">Aportante</option>
               </select>
             </div>
-            <div>
+          </div>
+          {/* Fila 2: Buscar + Limpiar */}
+          <div className="flex gap-3 items-end">
+            <div className="flex-1">
               <label className="text-xs font-semibold block mb-1" style={{ color: '#2d7a4f' }}>Buscar RUT o Nombre</label>
               <input type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)}
                      placeholder="Ej: 12345678 o Juan"
-                     className="border rounded px-3 py-1.5 text-sm w-48 focus:outline-none"
+                     className="w-full border rounded px-3 py-1.5 text-sm focus:outline-none"
                      style={{ borderColor: '#2d7a4f' }} />
             </div>
             <button onClick={limpiarFiltros}
-                    className="px-4 py-1.5 rounded text-sm font-medium border transition-colors hover:bg-green-50"
+                    className="px-4 py-1.5 rounded text-sm font-medium border transition-colors hover:bg-green-50 shrink-0"
                     style={{ borderColor: '#2d7a4f', color: '#2d7a4f' }}>
               Limpiar filtros
             </button>
