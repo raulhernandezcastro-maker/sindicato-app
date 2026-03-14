@@ -145,7 +145,7 @@ export default function HomePage() {
 
           {/* ── Slider Beneficios ── */}
           <div className="rounded-lg border overflow-hidden">
-            <SectionTitle icon={Gift} title="Beneficios del Sindicato" />
+            <SectionTitle icon={Gift} title="Convenios del Sindicato" />
             <div className="relative" style={{ backgroundColor: '#f0f9f2' }}>
               {/* Imagen */}
               <div className="relative overflow-hidden" style={{ paddingBottom: '75%' }}>
