@@ -74,6 +74,21 @@ export const AuthProvider = ({ children }) => {
 
     init()
 
+    // Cuando el usuario vuelve a la pestaña, verificar sesión
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        const { data } = await supabase.auth.getSession()
+        if (data?.session?.user) {
+          setUser(data.session.user)
+        } else {
+          setUser(null)
+          setProfile(null)
+          setRoles([])
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         // Ignorar eventos si aún no inicializó o si estamos en signOut
@@ -93,6 +108,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       isMounted = false
       authListener?.subscription?.unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
