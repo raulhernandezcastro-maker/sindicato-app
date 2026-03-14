@@ -61,7 +61,7 @@ export default function ResumenCuotas() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <Card>
         <CardContent className="p-6">
           <p className="text-sm text-muted-foreground">Cuotas Pendientes</p>
