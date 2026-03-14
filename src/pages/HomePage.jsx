@@ -95,11 +95,10 @@ export default function HomePage() {
 
 
   const BENEFICIOS = [
-    { src: '/beneficio_bono_navidad.png',     alt: 'Bono Navidad' },
-    { src: '/beneficio_jubilacion.png',        alt: 'Indemnización por Jubilación' },
-    { src: '/beneficio_indemnizacion.png',     alt: 'Indemnización' },
-    { src: '/beneficio_seguro_vida.png',       alt: 'Seguro de Vida' },
-    { src: '/beneficio_bono_antiguedad.png',   alt: 'Bono Antigüedad' },
+    { src: '/beneficio_bono_navidad.png',     alt: 'Coopeuch' },
+    { src: '/beneficio_jubilacion.png',        alt: 'Ópticas Bustorf' },
+    { src: '/beneficio_indemnizacion.png',     alt: 'Funeraria Iván Martínez' },
+    { src: '/beneficio_seguro_vida.png',       alt: 'Clínica Donover' },
   ]
 
   const prevSlide = () => setSliderIdx(i => (i - 1 + BENEFICIOS.length) % BENEFICIOS.length)
@@ -108,7 +107,18 @@ export default function HomePage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
 
-     {loading ? (
+      {/* ── Encabezado ── */}
+      <div className="flex items-center gap-4">
+        <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain rounded-full hidden md:block" />
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>
+            Sindicato Interempresas Liberty Seguros
+          </h1>
+          <p className="text-muted-foreground text-sm">Bienvenido al portal del sindicato</p>
+        </div>
+      </div>
+
+      {loading ? (
         <div className="flex justify-center py-12"><Spinner className="w-8 h-8" /></div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -135,7 +145,7 @@ export default function HomePage() {
 
           {/* ── Slider Beneficios ── */}
           <div className="rounded-lg border overflow-hidden">
-            <SectionTitle icon={Gift} title="Algunos beneficios del Sindicato" />
+            <SectionTitle icon={Gift} title="Beneficios del Sindicato" />
             <div className="relative" style={{ backgroundColor: '#f0f9f2' }}>
               {/* Imagen */}
               <div className="relative overflow-hidden" style={{ paddingBottom: '75%' }}>
