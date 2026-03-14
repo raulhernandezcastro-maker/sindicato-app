@@ -199,7 +199,7 @@ export default function DocumentosPage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="estatutos">Estatutos</SelectItem>
-                      <SelectItem value="actas">Actas</SelectItem>
+                      <SelectItem value="actas">Leyes Laborales</SelectItem>
                       <SelectItem value="beneficios">Beneficios</SelectItem>
                     </SelectContent>
                   </Select>
@@ -234,7 +234,7 @@ export default function DocumentosPage() {
             </TabsTrigger>
             <TabsTrigger value="actas"
               style={activeTab === 'actas' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
-              Actas
+              Leyes Laborales
             </TabsTrigger>
             <TabsTrigger value="beneficios"
               style={activeTab === 'beneficios' ? { backgroundColor: '#2d7a4f', color: 'white' } : {}}>
