@@ -112,9 +112,8 @@ export default function HomePage() {
         <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain rounded-full hidden md:block" />
         <div>
           <h1 className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>
-            Sindicato Interempresas Liberty Seguros
+            Bienvenido al Portal del Sindicato
           </h1>
-          <p className="text-muted-foreground text-sm">Bienvenido al portal del sindicato</p>
         </div>
       </div>
 
@@ -145,7 +144,7 @@ export default function HomePage() {
 
           {/* ── Slider Beneficios ── */}
           <div className="rounded-lg border overflow-hidden">
-            <SectionTitle icon={Gift} title="Convenios del Sindicato" />
+            <SectionTitle icon={Gift} title="Beneficios del Sindicato" />
             <div className="relative" style={{ backgroundColor: '#f0f9f2' }}>
               {/* Imagen */}
               <div className="relative overflow-hidden" style={{ paddingBottom: '75%' }}>
