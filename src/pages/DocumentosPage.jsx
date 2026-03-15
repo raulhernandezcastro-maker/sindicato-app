@@ -61,7 +61,14 @@ export default function DocumentosPage() {
 
     try {
       const ext = selectedFile.name.split('.').pop()
-      const safeTitle = formData.titulo.replace(/\s+/g, '_').toLowerCase()
+      // Limpiar nombre: tildes, ñ, paréntesis, espacios y caracteres especiales
+      const safeTitle = formData.titulo
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // eliminar tildes
+        .replace(/ñ/g, 'n').replace(/Ñ/g, 'N')              // reemplazar ñ
+        .replace(/[()\[\]{},;:!?¿¡'"]/g, '')               // eliminar símbolos
+        .replace(/\s+/g, '_')                               // espacios → guión bajo
+        .replace(/[^a-zA-Z0-9_\-]/g, '')                   // solo alfanuméricos
+        .toLowerCase()
       const filePath = `${Date.now()}_${safeTitle}.${ext}`
 
       const { error: uploadError } = await supabase.storage
