@@ -61,11 +61,14 @@ export default function SociosPage() {
 
   /* ── CREAR ── */
   const toggleRole = (role) => {
-    if (role === 'socio') return
-    setForm(prev => ({
-      ...prev,
-      roles: prev.roles.includes(role) ? prev.roles.filter(r => r !== role) : [...prev.roles, role]
-    }))
+    setForm(prev => {
+      const newRoles = prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role]
+      // Al menos un rol debe estar seleccionado
+      if (newRoles.length === 0) return prev
+      return { ...prev, roles: newRoles }
+    })
   }
 
   const validateForm = () => {
@@ -116,7 +119,6 @@ export default function SociosPage() {
   }
 
   const toggleRoleEdit = (role) => {
-    if (role === 'socio') return
     setEditForm(prev => ({
       ...prev,
       roles: prev.roles.includes(role) ? prev.roles.filter(r => r !== role) : [...prev.roles, role]
@@ -313,7 +315,7 @@ export default function SociosPage() {
               <div className="space-y-2 mt-2">
                 {['socio', 'aportante', 'director', 'administrador'].map(r => (
                   <div key={r} className="flex items-center gap-2">
-                    <Checkbox checked={form.roles.includes(r)} onCheckedChange={() => toggleRole(r)} disabled={r === 'socio'} />
+                    <Checkbox checked={form.roles.includes(r)} onCheckedChange={() => toggleRole(r)} />
                     <span className="capitalize text-sm">{r}</span>
                     {r === 'socio' && <span className="text-xs text-muted-foreground">(obligatorio)</span>}
                   </div>
@@ -347,7 +349,7 @@ export default function SociosPage() {
               <div className="space-y-2 mt-2">
                 {['socio', 'aportante', 'director', 'administrador'].map(r => (
                   <div key={r} className="flex items-center gap-2">
-                    <Checkbox checked={(editForm.roles || []).includes(r)} onCheckedChange={() => toggleRoleEdit(r)} disabled={r === 'socio'} />
+                    <Checkbox checked={(editForm.roles || []).includes(r)} onCheckedChange={() => toggleRoleEdit(r)} />
                     <span className="capitalize text-sm">{r}</span>
                     {r === 'socio' && <span className="text-xs text-muted-foreground">(obligatorio)</span>}
                   </div>
