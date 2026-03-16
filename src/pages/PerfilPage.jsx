@@ -9,12 +9,14 @@ import { Label } from '../components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
 import { Alert } from '../components/ui/alert'
 import { Badge } from '../components/ui/badge'
+import WhatsAppButton from '../components/ui/WhatsAppButton'
 
 const SectionHeader = ({ icon: Icon, title }) => (
   <div className="flex items-center gap-2 px-4 py-2 rounded-t-lg"
        style={{ backgroundColor: '#2d7a4f' }}>
     <Icon className="w-4 h-4 text-white" />
     <span className="font-semibold text-white text-sm">{title}</span>
+      <WhatsAppButton />
   </div>
 )
 
