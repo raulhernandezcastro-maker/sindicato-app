@@ -62,11 +62,17 @@ export default function SociosPage() {
   /* ── CREAR ── */
   const toggleRole = (role) => {
     setForm(prev => {
-      const newRoles = prev.roles.includes(role)
-        ? prev.roles.filter(r => r !== role)
-        : [...prev.roles, role]
-      // Al menos un rol debe estar seleccionado
-      if (newRoles.length === 0) return prev
+      let newRoles = [...prev.roles]
+      if (newRoles.includes(role)) {
+        // No desmarcar si es el único rol
+        if (newRoles.length === 1) return prev
+        newRoles = newRoles.filter(r => r !== role)
+      } else {
+        // Socio y Aportante son mutuamente excluyentes
+        if (role === 'aportante') newRoles = newRoles.filter(r => r !== 'socio')
+        if (role === 'socio')     newRoles = newRoles.filter(r => r !== 'aportante')
+        newRoles.push(role)
+      }
       return { ...prev, roles: newRoles }
     })
   }
@@ -85,11 +91,16 @@ export default function SociosPage() {
     if (err) { setError(err); return }
     setSaving(true)
     try {
-      const supabaseUrl    = import.meta.env.VITE_SUPABASE_URL
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
       const res  = await fetch(`${supabaseUrl}/functions/v1/bright-service`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ nombre: form.nombre, email: form.email, rut: normalizarRut(form.rut), password: form.password, roles: form.roles })
       })
       const data = await res.json()
@@ -119,10 +130,18 @@ export default function SociosPage() {
   }
 
   const toggleRoleEdit = (role) => {
-    setEditForm(prev => ({
-      ...prev,
-      roles: prev.roles.includes(role) ? prev.roles.filter(r => r !== role) : [...prev.roles, role]
-    }))
+    setEditForm(prev => {
+      let newRoles = [...(prev.roles || [])]
+      if (newRoles.includes(role)) {
+        if (newRoles.length === 1) return prev
+        newRoles = newRoles.filter(r => r !== role)
+      } else {
+        if (role === 'aportante') newRoles = newRoles.filter(r => r !== 'socio')
+        if (role === 'socio')     newRoles = newRoles.filter(r => r !== 'aportante')
+        newRoles.push(role)
+      }
+      return { ...prev, roles: newRoles }
+    })
   }
 
   const handleGuardarEdicion = async () => {
@@ -317,7 +336,7 @@ export default function SociosPage() {
                   <div key={r} className="flex items-center gap-2">
                     <Checkbox checked={form.roles.includes(r)} onCheckedChange={() => toggleRole(r)} />
                     <span className="capitalize text-sm">{r}</span>
-                    {r === 'socio' && <span className="text-xs text-muted-foreground">(obligatorio)</span>}
+                    
                   </div>
                 ))}
               </div>
@@ -351,7 +370,7 @@ export default function SociosPage() {
                   <div key={r} className="flex items-center gap-2">
                     <Checkbox checked={(editForm.roles || []).includes(r)} onCheckedChange={() => toggleRoleEdit(r)} />
                     <span className="capitalize text-sm">{r}</span>
-                    {r === 'socio' && <span className="text-xs text-muted-foreground">(obligatorio)</span>}
+                    
                   </div>
                 ))}
               </div>
