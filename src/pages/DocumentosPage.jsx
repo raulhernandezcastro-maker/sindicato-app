@@ -17,6 +17,7 @@ import {
 } from '../components/ui/select'
 import { Alert } from '../components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
+import WhatsAppButton from '../components/ui/WhatsAppButton'
 
 export default function DocumentosPage() {
   const { isAdministrador, isDirector, user } = useAuth()
@@ -156,6 +157,7 @@ export default function DocumentosPage() {
             </CardContent>
           </Card>
         ))}
+      <WhatsAppButton />
       </div>
     )
   }
