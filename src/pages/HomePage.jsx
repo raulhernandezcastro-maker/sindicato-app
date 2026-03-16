@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
 import { FileText, Gift, Users, Phone, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import WhatsAppButton from '../components/ui/WhatsAppButton'
 
 export default function HomePage() {
   const { isAdministrador } = useAuth()
@@ -90,6 +91,7 @@ export default function HomePage() {
          style={{ backgroundColor: '#2d7a4f' }}>
       <Icon className="w-4 h-4 text-white" />
       <span className="font-semibold text-white text-sm">{title}</span>
+      <WhatsAppButton />
     </div>
   )
 
@@ -144,7 +146,7 @@ export default function HomePage() {
 
           {/* ── Slider Beneficios ── */}
           <div className="rounded-lg border overflow-hidden">
-            <SectionTitle icon={Gift} title="Convenios del Sindicato" />
+            <SectionTitle icon={Gift} title="Beneficios del Sindicato" />
             <div className="relative" style={{ backgroundColor: '#f0f9f2' }}>
               {/* Imagen */}
               <div className="relative overflow-hidden" style={{ paddingBottom: '75%' }}>
