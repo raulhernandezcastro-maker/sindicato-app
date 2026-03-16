@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '../components/ui/label'
 import { Input } from '../components/ui/input'
 import { Spinner } from '../components/ui/spinner'
+import WhatsAppButton from '../components/ui/WhatsAppButton'
 
 const EMPTY_FORM = { pregunta: '', respuesta: '' }
 
@@ -184,6 +185,7 @@ export default function FAQPage() {
                               className="h-7 px-2 text-xs text-red-500 border-red-200 hover:bg-red-50">
                         <Trash2 className="w-3 h-3 mr-1" /> Eliminar
                       </Button>
+      <WhatsAppButton />
                     </div>
                   )}
                 </div>
@@ -261,4 +263,3 @@ export default function FAQPage() {
     </div>
   )
 }
-
