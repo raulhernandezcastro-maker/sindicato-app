@@ -260,6 +260,8 @@ export default function FAQPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <WhatsAppButton />
+
     </div>
   )
 }
