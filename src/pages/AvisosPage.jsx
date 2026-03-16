@@ -9,6 +9,7 @@ import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
 import { Spinner } from '../components/ui/spinner'
 import { Alert } from '../components/ui/alert'
+import WhatsAppButton from '../components/ui/WhatsAppButton'
 
 export default function AvisosPage() {
   const { user, isAdministrador, isDirector } = useAuth()
@@ -179,6 +180,7 @@ export default function AvisosPage() {
               )}
             </div>
           ))}
+      <WhatsAppButton />
         </div>
       )}
     </div>
