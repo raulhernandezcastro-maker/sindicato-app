@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
 import { Alert } from '../components/ui/alert'
 import { Badge } from '../components/ui/badge'
 import WhatsAppButton from '../components/ui/WhatsAppButton'
+import { useNotifications } from '../hooks/useNotifications'
 
 const SectionHeader = ({ icon: Icon, title }) => (
   <div className="flex items-center gap-2 px-4 py-2 rounded-t-lg"
@@ -21,6 +22,7 @@ const SectionHeader = ({ icon: Icon, title }) => (
 )
 
 export default function PerfilPage() {
+  const { permission, requestPermission } = useNotifications()
   const { profile, roles, user, refreshProfile } = useAuth()
 
   const [formData, setFormData] = useState({ nombre: '', telefono: '' })
@@ -204,6 +206,41 @@ export default function PerfilPage() {
               {savingPassword ? 'Actualizando...' : 'Actualizar Contraseña'}
             </Button>
           </form>
+        </div>
+      </div>
+
+      {/* ── Notificaciones ── */}
+      <div className="rounded-lg border overflow-hidden shadow-sm">
+        <div className="px-4 py-3 flex items-center gap-2" style={{ backgroundColor: '#2d7a4f' }}>
+          <Bell className="w-4 h-4 text-white" />
+          <span className="text-white text-sm font-semibold">Notificaciones Push</span>
+        </div>
+        <div className="p-5" style={{ backgroundColor: '#f0f9f2' }}>
+          {permission === 'granted' ? (
+            <div className="flex items-center gap-3">
+              <BellRing className="w-5 h-5" style={{ color: '#2d7a4f' }} />
+              <div>
+                <p className="text-sm font-semibold" style={{ color: '#2d7a4f' }}>Notificaciones activadas</p>
+                <p className="text-xs text-muted-foreground">Recibirás avisos del sindicato en tu dispositivo</p>
+              </div>
+            </div>
+          ) : permission === 'denied' ? (
+            <div className="flex items-center gap-3">
+              <BellOff className="w-5 h-5 text-red-500" />
+              <div>
+                <p className="text-sm font-semibold text-red-500">Notificaciones bloqueadas</p>
+                <p className="text-xs text-muted-foreground">Ve a la configuración de tu navegador y permite las notificaciones para este sitio</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Activa las notificaciones para recibir avisos del sindicato directamente en tu dispositivo.</p>
+              <Button onClick={requestPermission} style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
+                <Bell className="w-4 h-4 mr-2" />
+                Activar Notificaciones
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
