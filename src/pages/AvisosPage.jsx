@@ -54,6 +54,22 @@ export default function AvisosPage() {
     setTitulo('')
     setContenido('')
     setSaving(false)
+
+    // Enviar notificación push a todos los socios
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ titulo, contenido }),
+      })
+    } catch (err) {
+      console.warn('[FCM] Error enviando notificaciones:', err)
+    }
   }
 
   const handleDelete = async (id) => {
