@@ -2,8 +2,12 @@ import React from 'react'
 import { Outlet } from 'react-router-dom'
 import { DesktopNav } from './DesktopNav'
 import { MobileNav } from './MobileNav'
+import { useNotifications } from '../../hooks/useNotifications'
 
 export function AppLayout() {
+  // Registrar token FCM al cargar la app
+  useNotifications()
+
   return (
     <div className="min-h-screen bg-background">
       {/* Menú lateral escritorio */}
