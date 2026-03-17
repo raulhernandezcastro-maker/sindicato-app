@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Camera, User, Lock, Shield } from 'lucide-react'
+import { Camera, User, Lock, Shield, Bell, BellOff, BellRing } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Card, CardContent } from '../components/ui/card'
