@@ -23,10 +23,10 @@ export function MobileNav() {
     ...socioLinks,
     { to: '/dashboard',  icon: LayoutDashboard, label: 'Panel' },
     { to: '/cuotas',     icon: DollarSign,      label: 'Cuotas' },
+    { to: '/socios',     icon: Users,           label: 'Socios' },
   ]
   const adminLinks = [
     ...directorLinks,
-    { to: '/socios',     icon: Users,           label: 'Socios' },
   ]
 
   const links = isAdministrador ? adminLinks : isDirector ? directorLinks : socioLinks
