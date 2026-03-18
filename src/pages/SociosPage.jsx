@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
-import { Search, Users, Pencil, Plus } from 'lucide-react'
+import { Search, Users, Pencil, Plus, Phone } from 'lucide-react'
 
 const normalizarRut = (rut) =>
   String(rut || '').replace(/\./g, '').replace(/-/g, '').trim().toLowerCase()
@@ -45,11 +45,12 @@ export default function SociosPage() {
 
   const loadSocios = async () => {
     setLoading(true)
-    const { data: profiles } = await supabase.from('profiles').select('id, nombre, email, rut, estado')
+    const { data: profiles } = await supabase.from('profiles').select('id, nombre, email, rut, estado, telefono')
     const { data: roles }    = await supabase.from('roles').select('user_id, role_name')
     const joined = (profiles || []).map(p => ({
       ...p,
-      roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role_name)
+      roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role_name),
+      telefono: p.telefono || ''
     }))
     joined.sort((a, b) => {
       if (a.estado === b.estado) return (a.nombre || '').localeCompare(b.nombre || '')
@@ -251,71 +252,66 @@ export default function SociosPage() {
         )}
       </div>
 
-      {/* Tabla */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow style={{ backgroundColor: '#7CBE80' }}>
-                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Nombre</TableHead>
-                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Email</TableHead>
-                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>RUT</TableHead>
-                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Roles</TableHead>
-                <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Estado</TableHead>
-                {isAdministrador && <TableHead style={{ color: '#003d18', fontWeight: 700 }}>Acciones</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sociosFiltrados.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    {busqueda ? `No se encontraron socios para "${busqueda}"` : 'No hay socios registrados'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sociosFiltrados.map(s => (
-                  <TableRow key={s.id} className={s.estado === 'inactivo' ? 'opacity-50' : ''}>
-                    <TableCell className="font-medium">{s.nombre}</TableCell>
-                    <TableCell className="text-sm">{s.email}</TableCell>
-                    <TableCell className="text-sm">{s.rut}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {s.roles.map(r => (
-                          <Badge key={r} style={{ backgroundColor: '#2d7a4f', color: 'white', fontSize: '10px' }}>{r}</Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge style={{
-                        backgroundColor: s.estado === 'activo' ? '#d4edda' : '#fde8e8',
-                        color: s.estado === 'activo' ? '#2d7a4f' : '#c0392b',
-                        fontSize: '11px'
-                      }}>
-                        {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                      </Badge>
-                    </TableCell>
-                    {isAdministrador && <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="outline" size="sm" onClick={() => abrirEditar(s)}
-                                className="h-7 px-2" title="Editar socio">
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button variant="outline" size="sm"
-                                disabled={togglingId === s.id}
-                                onClick={() => pedirConfirmacion(s)}
-                                className="h-7 px-2 text-xs"
-                                style={{ color: s.estado === 'activo' ? '#c0392b' : '#2d7a4f' }}>
-                          {s.estado === 'activo' ? 'Dar de baja' : 'Reactivar'}
-                        </Button>
-                      </div>
-                    </TableCell>}
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Lista de socios */}
+      <div className="space-y-2">
+        {sociosFiltrados.length === 0 ? (
+          <div className="text-center text-muted-foreground py-12">
+            {busqueda ? `No se encontraron socios para "${busqueda}"` : 'No hay socios registrados'}
+          </div>
+        ) : (
+          sociosFiltrados.map(s => (
+            <div key={s.id}
+              className="rounded-lg border bg-white shadow-sm overflow-hidden"
+              style={{ opacity: s.estado === 'inactivo' ? 0.55 : 1 }}>
+              {/* Franja superior con nombre y badges */}
+              <div className="flex items-center justify-between px-4 py-2"
+                   style={{ backgroundColor: '#f0f9f2' }}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold text-sm truncate" style={{ color: '#1a1a1a' }}>
+                    {s.nombre}
+                  </span>
+                  {s.roles.map(r => (
+                    <Badge key={r} style={{ backgroundColor: '#2d7a4f', color: 'white', fontSize: '10px' }}>{r}</Badge>
+                  ))}
+                </div>
+                <Badge style={{
+                  backgroundColor: s.estado === 'activo' ? '#d4edda' : '#fde8e8',
+                  color: s.estado === 'activo' ? '#2d7a4f' : '#c0392b',
+                  fontSize: '10px', flexShrink: 0
+                }}>
+                  {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                </Badge>
+              </div>
+              {/* Datos y acciones */}
+              <div className="flex items-center justify-between px-4 py-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-0.5 flex-1 min-w-0">
+                  <span className="text-xs text-muted-foreground truncate">📧 {s.email}</span>
+                  <span className="text-xs text-muted-foreground">🪪 {s.rut}</span>
+                  <span className="text-xs text-muted-foreground">
+                    <Phone className="w-3 h-3 inline mr-1" style={{ color: '#2d7a4f' }} />
+                    {s.telefono || <span className="italic text-gray-300">Sin teléfono</span>}
+                  </span>
+                </div>
+                {isAdministrador && (
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => abrirEditar(s)}
+                            className="h-7 px-2" title="Editar socio">
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button variant="outline" size="sm"
+                            disabled={togglingId === s.id}
+                            onClick={() => pedirConfirmacion(s)}
+                            className="h-7 px-2 text-xs"
+                            style={{ color: s.estado === 'activo' ? '#c0392b' : '#2d7a4f' }}>
+                      {s.estado === 'activo' ? 'Dar de baja' : 'Reactivar'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
 
       {/* ── Diálogo CREAR ── */}
       <Dialog open={openCrear} onOpenChange={v => { if (!v) { setOpenCrear(false); setError(''); setForm(EMPTY_FORM) } }}>
