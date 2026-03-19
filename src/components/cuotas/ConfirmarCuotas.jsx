@@ -5,14 +5,13 @@ import { Button } from '../ui/button'
 import { Alert } from '../ui/alert'
 
 export default function ConfirmarCuotas({ onFinish }) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState('')
+  const [success, setSuccess]     = useState('')
   const [resultado, setResultado] = useState(null)
   const ejecutandoRef = React.useRef(false)
 
   const confirmarCuotas = async () => {
-    // Guard para evitar doble ejecución (React StrictMode)
     if (ejecutandoRef.current) return
     ejecutandoRef.current = true
 
@@ -22,7 +21,6 @@ export default function ConfirmarCuotas({ onFinish }) {
     setResultado(null)
 
     try {
-      // Buscar cuotas pendientes con validación OK (también las que estaban sin_socio, por si ya se creó)
       const { data: filas, error } = await supabase
         .from('cuotas_importacion')
         .select('*')
@@ -37,13 +35,14 @@ export default function ConfirmarCuotas({ onFinish }) {
         return
       }
 
-      const confirmadas = []
-      const sinSocio = []
-      const errores = []
+      const confirmadas   = []
+      const sinSocio      = []
+      const tipoInvalido  = []
+      const errores       = []
 
       for (const fila of filas) {
         try {
-          // Buscar el socio por RUT en la tabla profiles
+          // 1. Buscar perfil por RUT
           const { data: profile } = await supabase
             .from('profiles')
             .select('id')
@@ -51,19 +50,56 @@ export default function ConfirmarCuotas({ onFinish }) {
             .single()
 
           if (!profile) {
-            // El socio no existe → dejar pendiente para cuando se cree
             sinSocio.push({ rut: fila.rut, nombre: fila.nombre })
             await supabase
               .from('cuotas_importacion')
               .update({
                 estado: 'sin_socio',
-                observacion: 'Socio no encontrado. Crear el socio y volver a confirmar.'
+                observacion: 'Usuario no encontrado. Crear el usuario y volver a confirmar.'
               })
               .eq('id', fila.id)
             continue
           }
 
-          // Confirmar la cuota vinculándola al profile
+          // 2. Obtener roles del usuario en el sistema
+          const { data: rolesData } = await supabase
+            .from('roles')
+            .select('role_name')
+            .eq('user_id', profile.id)
+
+          const rolesDelSistema = (rolesData || []).map(r => r.role_name)
+
+          // 3. Validar que el tipo del archivo coincida con el rol del sistema
+          // Archivo SOCIO → sistema debe tener rol 'socio' o 'director'
+          // Archivo APORTANTE → sistema debe tener rol 'aportante'
+          const tipoArchivo = (fila.tipo || '').toUpperCase()
+          let tipoValido = false
+
+          if (tipoArchivo === 'SOCIO') {
+            tipoValido = rolesDelSistema.includes('socio') || rolesDelSistema.includes('director')
+          } else if (tipoArchivo === 'APORTANTE') {
+            tipoValido = rolesDelSistema.includes('aportante')
+          }
+
+          if (!tipoValido) {
+            const rolSistema = rolesDelSistema.join(', ') || 'sin rol'
+            tipoInvalido.push({
+              rut: fila.rut,
+              nombre: fila.nombre,
+              tipoArchivo,
+              rolSistema,
+            })
+            await supabase
+              .from('cuotas_importacion')
+              .update({
+                estado: 'pendiente',
+                observacion: `Tipo no coincide: archivo dice "${tipoArchivo}" pero el sistema tiene rol "${rolSistema}". Revisar y corregir.`
+              })
+              .eq('id', fila.id)
+            continue
+          }
+
+          // 4. Confirmar la cuota
           const { error: updateError } = await supabase
             .from('cuotas_importacion')
             .update({
@@ -76,6 +112,7 @@ export default function ConfirmarCuotas({ onFinish }) {
           if (updateError) throw updateError
 
           confirmadas.push({ rut: fila.rut, nombre: fila.nombre })
+
         } catch (err) {
           errores.push({ rut: fila.rut, error: err.message })
           await supabase
@@ -85,13 +122,14 @@ export default function ConfirmarCuotas({ onFinish }) {
         }
       }
 
-      setResultado({ confirmadas, sinSocio, errores })
+      setResultado({ confirmadas, sinSocio, tipoInvalido, errores })
 
       if (confirmadas.length > 0) {
         setSuccess(`✅ ${confirmadas.length} cuota(s) confirmada(s) correctamente`)
       }
-      if (sinSocio.length > 0) {
-        setError(`⚠️ ${sinSocio.length} cuota(s) quedaron pendientes porque el socio no existe. Créalo en Gestión de Socios y vuelve a confirmar.`)
+      if (sinSocio.length > 0 || tipoInvalido.length > 0 || errores.length > 0) {
+        const total = sinSocio.length + tipoInvalido.length + errores.length
+        setError(`⚠️ ${total} cuota(s) quedaron pendientes. Revisa el detalle abajo.`)
       }
 
       if (onFinish) onFinish()
@@ -112,20 +150,53 @@ export default function ConfirmarCuotas({ onFinish }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {success && <Alert>{success}</Alert>}
-        {error && <Alert variant="destructive">{error}</Alert>}
+        {error   && <Alert variant="destructive">{error}</Alert>}
 
-        {resultado && resultado.sinSocio.length > 0 && (
+        {/* Sin socio */}
+        {resultado?.sinSocio?.length > 0 && (
           <div className="text-sm border rounded p-3 bg-yellow-50 text-yellow-800">
-            <p className="font-semibold mb-1">Socios no encontrados (cuotas en espera):</p>
-            <ul className="list-disc pl-4">
+            <p className="font-semibold mb-1">⚠️ Usuario no encontrado en el sistema ({resultado.sinSocio.length}):</p>
+            <ul className="list-disc pl-4 space-y-0.5">
               {resultado.sinSocio.map((s, i) => (
                 <li key={i}>{s.nombre} — RUT: {s.rut}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs">Crea el usuario en Gestión de Socios y vuelve a confirmar.</p>
+          </div>
+        )}
+
+        {/* Tipo no coincide */}
+        {resultado?.tipoInvalido?.length > 0 && (
+          <div className="text-sm border rounded p-3 bg-orange-50 text-orange-800">
+            <p className="font-semibold mb-1">⚠️ Tipo no coincide con el sistema ({resultado.tipoInvalido.length}):</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              {resultado.tipoInvalido.map((s, i) => (
+                <li key={i}>
+                  {s.nombre} — RUT: {s.rut}
+                  <span className="ml-1 text-xs">
+                    (Archivo: <strong>{s.tipoArchivo}</strong> / Sistema: <strong>{s.rolSistema}</strong>)
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs">Corrige el tipo en el Excel o el rol del usuario en Gestión de Socios y vuelve a confirmar.</p>
+          </div>
+        )}
+
+        {/* Errores técnicos */}
+        {resultado?.errores?.length > 0 && (
+          <div className="text-sm border rounded p-3 bg-red-50 text-red-800">
+            <p className="font-semibold mb-1">❌ Errores técnicos ({resultado.errores.length}):</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              {resultado.errores.map((s, i) => (
+                <li key={i}>{s.rut} — {s.error}</li>
               ))}
             </ul>
           </div>
         )}
 
-        <Button onClick={confirmarCuotas} disabled={loading}>
+        <Button onClick={confirmarCuotas} disabled={loading}
+                style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
           {loading ? 'Confirmando...' : 'Confirmar cuotas pendientes'}
         </Button>
       </CardContent>
