@@ -16,7 +16,7 @@ import { Search, Users, Pencil, Plus, Phone } from 'lucide-react'
 const normalizarRut = (rut) =>
   String(rut || '').replace(/\./g, '').replace(/-/g, '').trim().toLowerCase()
 
-const EMPTY_FORM = { nombre: '', email: '', rut: '', password: '', roles: ['socio'] }
+const EMPTY_FORM = { nombre: '', email: '', rut: '', password: '', telefono: '', roles: ['socio'] }
 
 export default function SociosPage() {
   const { isAdministrador } = useAuth()
@@ -102,7 +102,7 @@ export default function SociosPage() {
           'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ nombre: form.nombre, email: form.email, rut: normalizarRut(form.rut), password: form.password, roles: form.roles })
+        body: JSON.stringify({ nombre: form.nombre, email: form.email, rut: normalizarRut(form.rut), password: form.password, telefono: form.telefono, roles: form.roles })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
@@ -121,10 +121,11 @@ export default function SociosPage() {
     setErrorEdit('')
     setEditForm({
       id:     socio.id,
-      nombre: socio.nombre || '',
-      email:  socio.email  || '',
-      rut:    socio.rut    || '',
-      roles:  [...socio.roles],
+      nombre:   socio.nombre   || '',
+      email:    socio.email    || '',
+      rut:      socio.rut      || '',
+      telefono: socio.telefono || '',
+      roles:    [...socio.roles],
       newPassword: '',
     })
     setOpenEditar(true)
@@ -155,7 +156,7 @@ export default function SociosPage() {
       // 1. Actualizar profile
       const { error: profileErr } = await supabase
         .from('profiles')
-        .update({ nombre: editForm.nombre, rut: normalizarRut(editForm.rut) })
+        .update({ nombre: editForm.nombre, rut: normalizarRut(editForm.rut), telefono: editForm.telefono })
         .eq('id', editForm.id)
       if (profileErr) throw profileErr
 
@@ -252,8 +253,8 @@ export default function SociosPage() {
         )}
       </div>
 
-      {/* Lista de socios */}
-      <div className="space-y-2">
+      {/* Lista de socios con scroll */}
+      <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: '65vh' }}>
         {sociosFiltrados.length === 0 ? (
           <div className="text-center text-muted-foreground py-12">
             {busqueda ? `No se encontraron socios para "${busqueda}"` : 'No hay socios registrados'}
@@ -324,6 +325,7 @@ export default function SociosPage() {
             <div><Label>Nombre *</Label><Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Nombre completo" /></div>
             <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="correo@ejemplo.com" /></div>
             <div><Label>RUT * (sin puntos, con guión)</Label><Input value={form.rut} onChange={e => setForm({ ...form, rut: e.target.value })} placeholder="12345678-9" /></div>
+            <div><Label>Teléfono (ej: +56912345678)</Label><Input type="tel" value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} placeholder="+56912345678" /></div>
             <div><Label>Contraseña * (mín. 6 caracteres)</Label><Input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /></div>
             <div>
               <Label>Roles</Label>
@@ -359,6 +361,7 @@ export default function SociosPage() {
               <p className="text-xs text-muted-foreground mt-1">El email no puede modificarse desde aquí</p>
             </div>
             <div><Label>RUT</Label><Input value={editForm.rut || ''} onChange={e => setEditForm({ ...editForm, rut: e.target.value })} placeholder="12345678-9" /></div>
+            <div><Label>Teléfono</Label><Input type="tel" value={editForm.telefono || ''} onChange={e => setEditForm({ ...editForm, telefono: e.target.value })} placeholder="+56912345678" /></div>
             <div>
               <Label>Roles</Label>
               <div className="space-y-2 mt-2">
