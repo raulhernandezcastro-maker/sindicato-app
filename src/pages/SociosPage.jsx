@@ -225,7 +225,15 @@ export default function SociosPage() {
           <Users className="w-5 h-5 text-white" />
           <div>
             <h1 className="text-xl font-bold text-white">Gestión de Socios</h1>
-            <p className="text-xs text-green-100">{socios.length} socios registrados</p>
+            <p className="text-xs text-green-100">
+              {socios.filter(s => s.roles.includes('socio') && !s.roles.includes('director') && !s.roles.includes('administrador')).length} socios
+              {' · '}
+              {socios.filter(s => s.roles.includes('aportante')).length} aportantes
+              {' · '}
+              {socios.filter(s => s.roles.includes('director')).length} directores
+              {' · '}
+              {socios.filter(s => s.roles.includes('administrador')).length} administrador{socios.filter(s => s.roles.includes('administrador')).length !== 1 ? 'es' : ''}
+            </p>
           </div>
         </div>
         {isAdministrador && (
