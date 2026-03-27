@@ -226,13 +226,19 @@ export default function SociosPage() {
           <div>
             <h1 className="text-xl font-bold text-white">Gestión de Socios</h1>
             <p className="text-xs text-green-100">
-              {socios.filter(s => s.roles.includes('socio') && !s.roles.includes('director') && !s.roles.includes('administrador')).length} socios
+              {socios.filter(s => s.estado === 'activo' && s.roles.includes('socio') && !s.roles.includes('director') && !s.roles.includes('administrador')).length} socios
               {' · '}
-              {socios.filter(s => s.roles.includes('aportante')).length} aportantes
+              {socios.filter(s => s.estado === 'activo' && s.roles.includes('aportante')).length} aportantes
               {' · '}
-              {socios.filter(s => s.roles.includes('director')).length} directores
+              {socios.filter(s => s.estado === 'activo' && s.roles.includes('director')).length} directores
               {' · '}
-              {socios.filter(s => s.roles.includes('administrador')).length} administrador{socios.filter(s => s.roles.includes('administrador')).length !== 1 ? 'es' : ''}
+              {socios.filter(s => s.estado === 'activo' && s.roles.includes('administrador')).length} administrador{socios.filter(s => s.estado === 'activo' && s.roles.includes('administrador')).length !== 1 ? 'es' : ''}
+              {socios.filter(s => s.estado === 'inactivo').length > 0 && (
+                <span style={{ color: '#fca5a5' }}>
+                  {' · '}
+                  {socios.filter(s => s.estado === 'inactivo').length} dados de baja
+                </span>
+              )}
             </p>
           </div>
         </div>
