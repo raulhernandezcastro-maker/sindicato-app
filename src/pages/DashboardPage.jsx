@@ -24,7 +24,9 @@ const StatCard = ({ title, value, icon: Icon, color, bg, loading }) => (
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalSocios: 0, totalDirectores: 0, totalAportantes: 0, totalUsuarios: 0,
-    sociosInactivos: 0, totalAvisos: 0, totalDocumentos: 0,
+    sociosInactivos: 0,
+    inactivosSocios: 0, inactivosDirectores: 0, inactivosAportantes: 0,
+    totalAvisos: 0, totalDocumentos: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -55,32 +57,35 @@ export default function DashboardPage() {
         rolesMap[r.user_id].push(r.role_name)
       })
 
-      // Contar solo ACTIVOS para los recuadros principales
-      // Inactivos: solo dato informativo
-      let totalSocios = 0, totalDirectores = 0, totalAportantes = 0, sociosInactivos = 0
+      // Contar activos e inactivos por rol
+      let totalSocios = 0, totalDirectores = 0, totalAportantes = 0
+      let inactivosSocios = 0, inactivosDirectores = 0, inactivosAportantes = 0
 
       Object.entries(rolesMap).forEach(([userId, roles]) => {
         const activo = estadoMap[userId] === 'activo'
 
-        if (!activo) {
-          sociosInactivos++
-          return
-        }
+        // Administrador no se cuenta en ningún grupo
+        if (roles.includes('administrador')) return
 
-        // Administrador no se cuenta en ningún grupo de socios
-        if (roles.includes('administrador'))   return
-        // Activos: clasificar sin solapamiento
-        if (roles.includes('director'))        totalDirectores++
-        else if (roles.includes('aportante'))  totalAportantes++
-        else if (roles.includes('socio'))      totalSocios++
+        if (activo) {
+          if (roles.includes('director'))       totalDirectores++
+          else if (roles.includes('aportante')) totalAportantes++
+          else if (roles.includes('socio'))     totalSocios++
+        } else {
+          if (roles.includes('director'))       inactivosDirectores++
+          else if (roles.includes('aportante')) inactivosAportantes++
+          else if (roles.includes('socio'))     inactivosSocios++
+        }
       })
 
       // Total Usuarios activos = Socios + Directores + Aportantes
       const totalUsuarios = totalSocios + totalDirectores + totalAportantes
+      const sociosInactivos = inactivosSocios + inactivosDirectores + inactivosAportantes
 
       setStats({
         totalSocios, totalDirectores, totalAportantes, totalUsuarios,
         sociosInactivos,
+        inactivosSocios, inactivosDirectores, inactivosAportantes,
         totalAvisos: totalAvisos || 0,
         totalDocumentos: totalDocumentos || 0,
       })
@@ -152,11 +157,15 @@ export default function DashboardPage() {
               <span className="text-2xl font-bold" style={{ color: '#2d7a4f' }}>{sociosActivos}</span>
             </div>
 
-            {/* Inactivos — solo informativo */}
+            {/* Inactivos — desglosados por rol */}
             <div className="flex items-center justify-between py-2 border-b">
               <div>
-                <span className="font-medium text-sm">Socios Inactivos</span>
-                <span className="text-xs text-muted-foreground ml-2">(solo informativo)</span>
+                <span className="font-medium text-sm">Dados de Baja</span>
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({stats.inactivosSocios} socios
+                  {stats.inactivosDirectores > 0 && ` · ${stats.inactivosDirectores} directores`}
+                  {stats.inactivosAportantes > 0 && ` · ${stats.inactivosAportantes} aportantes`})
+                </span>
               </div>
               <span className="text-2xl font-bold" style={{ color: '#c0392b' }}>{stats.sociosInactivos}</span>
             </div>
