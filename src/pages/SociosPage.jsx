@@ -201,10 +201,23 @@ export default function SociosPage() {
         console.error('Error cambiando estado:', error)
         alert(`Error al cambiar el estado: ${error.message}`)
       } else {
-        setSocios(prev => prev.map(s =>
-          s.id === idSocio ? { ...s, estado: nuevoEstado } : s
-        ))
-        await loadSocios()
+        // Forzar recarga limpia desde Supabase
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, nombre, email, rut, estado, telefono')
+        const { data: roles } = await supabase
+          .from('roles')
+          .select('user_id, role_name')
+        const joined = (profiles || []).map(p => ({
+          ...p,
+          roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role_name),
+          telefono: p.telefono || ''
+        }))
+        joined.sort((a, b) => {
+          if (a.estado === b.estado) return (a.nombre || '').localeCompare(b.nombre || '')
+          return a.estado === 'activo' ? -1 : 1
+        })
+        setSocios([...joined])
       }
     } catch (err) {
       console.error('Error inesperado:', err)
