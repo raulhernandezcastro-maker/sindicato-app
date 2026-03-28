@@ -185,26 +185,33 @@ export default function SociosPage() {
   const handleToggleEstado = async () => {
     if (!socioSeleccionado) return
     const nuevoEstado = socioSeleccionado.estado === 'activo' ? 'inactivo' : 'activo'
-    setTogglingId(socioSeleccionado.id)
+    const idSocio = socioSeleccionado.id
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ estado: nuevoEstado })
-      .eq('id', socioSeleccionado.id)
-      .select('id, estado')
-      .single()
-
-    if (error) {
-      console.error('Error cambiando estado:', error)
-      alert(`Error al cambiar el estado: ${error.message}`)
-    } else {
-      // Recargar lista completa desde Supabase para garantizar consistencia
-      await loadSocios()
-    }
-
-    setTogglingId(null)
+    setTogglingId(idSocio)
     setConfirmOpen(false)
     setSocioSeleccionado(null)
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ estado: nuevoEstado })
+        .eq('id', idSocio)
+
+      if (error) {
+        console.error('Error cambiando estado:', error)
+        alert(`Error al cambiar el estado: ${error.message}`)
+      } else {
+        setSocios(prev => prev.map(s =>
+          s.id === idSocio ? { ...s, estado: nuevoEstado } : s
+        ))
+        await loadSocios()
+      }
+    } catch (err) {
+      console.error('Error inesperado:', err)
+      alert(`Error inesperado: ${err.message}`)
+    } finally {
+      setTogglingId(null)
+    }
   }
 
   if (loading) return <Spinner />
