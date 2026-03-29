@@ -2,15 +2,13 @@ import { initializeApp } from 'firebase/app'
 import { getMessaging, getToken, onMessage } from 'firebase/messaging'
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC1kUOV03HaTvhJ-tTUtJtY6BsCRXwSFA4",
-  authDomain: "sindicato-liberty.firebaseapp.com",
-  projectId: "sindicato-liberty",
-  storageBucket: "sindicato-liberty.firebasestorage.app",
-  messagingSenderId: "394236327667",
-  appId: "1:394236327667:web:da323695cea4dcfd99e986"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 }
-
-const VAPID_KEY = "BFfcG2oSE1NkfNZwTHG1QevIrvj3GGrAHVEZsuvx6kswearlgMVekW46DXuD7bYqZ7PQ_VPNEQ1AS4vs8TCUciA"
 
 const app = initializeApp(firebaseConfig)
 
@@ -31,7 +29,9 @@ export const requestNotificationPermission = async () => {
       console.warn('[FCM] Permiso denegado')
       return null
     }
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY })
+    const token = await getToken(messaging, {
+      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
+    })
     return token
   } catch (err) {
     console.error('[FCM] Error obteniendo token:', err)
