@@ -47,7 +47,7 @@ export const guardarCuotasDesdeExcel = async (filasExcel, periodo) => {
       // 1️⃣ Buscar socio/aportante por RUT
       const { data: persona, error: personaError } = await supabase
         .from('profiles')
-        .select('id, activo, tipo')
+        .select('id, estado')
         .eq('rut', rut)
         .single()
 
@@ -56,7 +56,7 @@ export const guardarCuotasDesdeExcel = async (filasExcel, periodo) => {
         continue
       }
 
-      if (persona.activo === false) {
+      if (persona.estado === 'inactivo') {
         resultados.rutInactivo.push({ rut, nombre, tipo, valorPagado })
         continue
       }
