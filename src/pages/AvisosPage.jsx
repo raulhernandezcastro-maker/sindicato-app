@@ -58,15 +58,19 @@ export default function AvisosPage() {
     // Enviar notificación push a todos los socios
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ titulo, contenido }),
-      })
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (token) {
+        await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ titulo, contenido }),
+        })
+      }
     } catch (err) {
       console.warn('[FCM] Error enviando notificaciones:', err)
     }
