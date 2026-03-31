@@ -138,7 +138,10 @@ export const AuthProvider = ({ children }) => {
       .from('profiles').select('estado').eq('id', data.user.id).single()
 
     if (profileData?.estado === 'inactivo') {
+      // Marcar signingOut para ignorar el evento de auth que viene
+      signingOut.current = true
       await supabase.auth.signOut()
+      signingOut.current = false
       throw new Error('Tu cuenta ha sido dada de baja. Contacta al administrador del sindicato.')
     }
 
