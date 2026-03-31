@@ -18,12 +18,15 @@ export function LoginForm({ onForgotPassword }) {
     try {
       await signIn(email, password)
     } catch (err) {
-      if (err.message?.includes('dada de baja')) {
-        setError(err.message)
-      } else {
-        setError('Credenciales incorrectas. Verifica tu email y contraseña.')
-      }
-      setLoading(false)
+      const msg = err.message?.includes('dada de baja')
+        ? err.message
+        : 'Credenciales incorrectas. Verifica tu email y contraseña.'
+      // Pequeño delay para que el mensaje se muestre
+      // aunque el flujo de auth provoque un re-render
+      setTimeout(() => {
+        setError(msg)
+        setLoading(false)
+      }, 100)
     }
   }
 
