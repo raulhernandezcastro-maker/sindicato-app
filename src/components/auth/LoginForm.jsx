@@ -18,7 +18,11 @@ export function LoginForm({ onForgotPassword }) {
     try {
       await signIn(email, password)
     } catch (err) {
-      setError('Credenciales incorrectas. Verifica tu email y contraseña.')
+      if (err.message?.includes('dada de baja')) {
+        setError(err.message)
+      } else {
+        setError('Credenciales incorrectas. Verifica tu email y contraseña.')
+      }
       setLoading(false)
     }
   }
