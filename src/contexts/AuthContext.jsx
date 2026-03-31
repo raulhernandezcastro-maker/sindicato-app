@@ -39,6 +39,19 @@ export const AuthProvider = ({ children }) => {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles').select('*').eq('id', userId).single()
         if (profileError) throw profileError
+
+        // Si el usuario está inactivo, cerrar sesión inmediatamente
+        if (profileData?.estado === 'inactivo') {
+          console.warn('[AUTH] Usuario inactivo, cerrando sesión')
+          await supabase.auth.signOut()
+          if (isMounted) {
+            setUser(null)
+            setProfile(null)
+            setRoles([])
+          }
+          return
+        }
+
         if (isMounted) setProfile(profileData)
 
         const { data: rolesData, error: rolesError } = await supabase
@@ -119,6 +132,16 @@ export const AuthProvider = ({ children }) => {
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
+
+    // Verificar que el usuario no esté dado de baja
+    const { data: profileData } = await supabase
+      .from('profiles').select('estado').eq('id', data.user.id).single()
+
+    if (profileData?.estado === 'inactivo') {
+      await supabase.auth.signOut()
+      throw new Error('Tu cuenta ha sido dada de baja. Contacta al administrador del sindicato.')
+    }
+
     return data
   }
 
