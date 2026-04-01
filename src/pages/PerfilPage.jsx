@@ -26,7 +26,7 @@ export default function PerfilPage() {
   const { profile, roles, user, refreshProfile } = useAuth()
 
   const [formData, setFormData] = useState({ nombre: '', telefono: '' })
-  const [passwordData, setPasswordData] = useState({ newPassword: '', confirmPassword: '' })
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
 
   const [savingProfile, setSavingProfile]   = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
@@ -69,14 +69,76 @@ export default function PerfilPage() {
 
   /* ── Contraseña ── */
   const handlePasswordUpdate = async (e) => {
-    e.preventDefault(); clearMessages(); setSavingPassword(true)
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError('Las contraseñas no coinciden'); setSavingPassword(false); return
+    e.preventDefault(); clearMessages()
+
+    // Validar contraseña actual ingresada
+    if (!passwordData.currentPassword) {
+      setError('Debes ingresar tu contraseña actual'); return
     }
-    const { error } = await supabase.auth.updateUser({ password: passwordData.newPassword })
-    if (error) { setError('Error al cambiar la contraseña') }
-    else { setPasswordData({ newPassword: '', confirmPassword: '' }); setSuccess('Contraseña actualizada correctamente') }
-    setSavingPassword(false)
+
+    // Validar longitud mínima
+    if (passwordData.newPassword.length < 8) {
+      setError('La nueva contraseña debe tener al menos 8 caracteres'); return
+    }
+
+    // Validar que coincidan
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError('Las contraseñas no coinciden'); return
+    }
+
+    // Validar que la nueva sea distinta a la actual
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      setError('La nueva contraseña debe ser distinta a la actual'); return
+    }
+
+    setSavingPassword(true)
+    try {
+      // Verificar contraseña actual reautenticando
+      const { error: reAuthError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordData.currentPassword
+      })
+      if (reAuthError) {
+        setError('La contraseña actual es incorrecta')
+        setSavingPassword(false)
+        return
+      }
+
+      // Actualizar contraseña y cerrar todas las otras sesiones
+      const { error } = await supabase.auth.updateUser(
+        { password: passwordData.newPassword },
+        { emailRedirectTo: null }
+      )
+
+      if (error) {
+        setError('Error al cambiar la contraseña: ' + error.message)
+      } else {
+        // Enviar email informativo via Edge Function (no bloqueante)
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-password-change`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ email: user.email, nombre: profile?.nombre }),
+            })
+          }
+        } catch (emailErr) {
+          console.warn('[AUTH] No se pudo enviar email informativo:', emailErr)
+        }
+
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+        setSuccess('Contraseña actualizada correctamente. Se ha enviado un email de confirmación.')
+      }
+    } catch (err) {
+      setError('Error inesperado al cambiar la contraseña')
+    } finally {
+      setSavingPassword(false)
+    }
   }
 
   /* ── Foto ── */
@@ -209,19 +271,28 @@ export default function PerfilPage() {
         <div className="p-5" style={{ backgroundColor: '#f0f9f2' }}>
           <form onSubmit={handlePasswordUpdate} className="space-y-4">
             <div>
+              <Label>Contraseña actual</Label>
+              <Input
+                type="password"
+                placeholder="Ingresa tu contraseña actual"
+                value={passwordData.currentPassword}
+                onChange={e => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+              />
+            </div>
+            <div>
               <Label>Nueva contraseña</Label>
               <Input
                 type="password"
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mínimo 8 caracteres"
                 value={passwordData.newPassword}
                 onChange={e => setPasswordData({ ...passwordData, newPassword: e.target.value })}
               />
             </div>
             <div>
-              <Label>Confirmar contraseña</Label>
+              <Label>Confirmar nueva contraseña</Label>
               <Input
                 type="password"
-                placeholder="Repite la contraseña"
+                placeholder="Repite la nueva contraseña"
                 value={passwordData.confirmPassword}
                 onChange={e => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
               />
