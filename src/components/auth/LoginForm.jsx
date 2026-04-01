@@ -21,12 +21,8 @@ export function LoginForm({ onForgotPassword }) {
       const msg = err.message?.includes('dada de baja')
         ? err.message
         : 'Credenciales incorrectas. Verifica tu email y contraseña.'
-      // Pequeño delay para que el mensaje se muestre
-      // aunque el flujo de auth provoque un re-render
-      setTimeout(() => {
-        setError(msg)
-        setLoading(false)
-      }, 100)
+      setError(msg)
+      setLoading(false)
     }
   }
 
