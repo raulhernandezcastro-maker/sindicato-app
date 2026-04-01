@@ -82,10 +82,34 @@ export default function PerfilPage() {
   /* ── Foto ── */
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0]; if (!file) return
+
+    // Validar MIME type real (no solo la extensión)
+    const MIME_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    const EXT_PERMITIDAS  = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+
+    if (!MIME_PERMITIDOS.includes(file.type)) {
+      setError('Solo se permiten imágenes (JPG, PNG, WEBP o GIF)')
+      return
+    }
+
+    const ext = file.name.split('.').pop().toLowerCase()
+    if (!EXT_PERMITIDAS.includes(ext)) {
+      setError('Extensión de archivo no permitida. Usa JPG, PNG, WEBP o GIF')
+      return
+    }
+
+    // Validar tamaño máximo (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('La imagen no puede superar los 2MB')
+      return
+    }
+
     clearMessages(); setSavingPhoto(true)
-    const ext  = file.name.split('.').pop()
     const path = `${user.id}.${ext}`
-    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, {
+      upsert: true,
+      contentType: file.type
+    })
     if (uploadError) { setError('Error al subir la foto'); setSavingPhoto(false); return }
     const { error: updateError } = await supabase.from('profiles').update({ foto_url: path }).eq('id', user.id)
     if (updateError) { setError('Error al guardar la foto') }
