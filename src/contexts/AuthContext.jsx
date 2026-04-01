@@ -108,6 +108,15 @@ export const AuthProvider = ({ children }) => {
         if (!initialized.current || signingOut.current) return
 
         if (session?.user) {
+          // Verificar estado ANTES de setear user para evitar redirect a /
+          const { data: profileCheck } = await supabase
+            .from('profiles').select('estado').eq('id', session.user.id).single()
+
+          if (profileCheck?.estado === 'inactivo') {
+            // No setear user — ignorar este evento de auth
+            return
+          }
+
           setUser(session.user)
           await loadUserData(session.user.id)
         } else {
@@ -138,10 +147,9 @@ export const AuthProvider = ({ children }) => {
       .from('profiles').select('estado').eq('id', data.user.id).single()
 
     if (profileData?.estado === 'inactivo') {
-      // Marcar signingOut para ignorar el evento de auth que viene
-      signingOut.current = true
+      // Hacer signOut silencioso — onAuthStateChange lo ignorará
+      // porque el perfil está inactivo y no seteará user
       await supabase.auth.signOut()
-      signingOut.current = false
       throw new Error('Tu cuenta ha sido dada de baja. Contacta al administrador del sindicato.')
     }
 
