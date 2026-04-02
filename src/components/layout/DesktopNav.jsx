@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Home, FileText, FolderOpen, User, Users,
+  Home, FileText, Scale, Gift, User, Users,
   DollarSign, LayoutDashboard, LogOut, HelpCircle
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -14,11 +14,12 @@ export function DesktopNav() {
   const { isAdministrador, isDirector, signOut, profile } = useAuth()
 
   const socioLinks = [
-    { to: '/',           icon: Home,            label: 'Inicio' },
-    { to: '/avisos',     icon: FileText,        label: 'Avisos' },
-    { to: '/documentos', icon: FolderOpen,      label: 'Documentos' },
-    { to: '/perfil',     icon: User,            label: 'Mi Perfil' },
-    { to: '/faq',        icon: HelpCircle,      label: 'Preguntas Frecuentes' },
+    { to: '/',            icon: Home,            label: 'Inicio' },
+    { to: '/avisos',      icon: FileText,        label: 'Avisos' },
+    { to: '/beneficios',  icon: Gift,            label: 'Beneficios' },
+    { to: '/leyes',       icon: Scale,           label: 'Leyes Laborales' },
+    { to: '/perfil',      icon: User,            label: 'Mi Perfil' },
+    { to: '/faq',         icon: HelpCircle,      label: 'Preguntas Frecuentes' },
   ]
   const directorLinks = [
     ...socioLinks,
