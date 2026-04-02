@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Home, FileText, FolderOpen, User, Users,
+  Home, FileText, Scale, Gift, User, Users,
   DollarSign, LayoutDashboard, LogOut, HelpCircle, Menu, X
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -13,11 +13,12 @@ export function MobileNav() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const socioLinks = [
-    { to: '/',           icon: Home,            label: 'Inicio' },
-    { to: '/avisos',     icon: FileText,        label: 'Avisos' },
-    { to: '/documentos', icon: FolderOpen,      label: 'Documentos' },
-    { to: '/perfil',     icon: User,            label: 'Perfil' },
-    { to: '/faq',        icon: HelpCircle,      label: 'Preguntas' },
+    { to: '/',            icon: Home,            label: 'Inicio' },
+    { to: '/avisos',      icon: FileText,        label: 'Avisos' },
+    { to: '/beneficios',  icon: Gift,            label: 'Beneficios' },
+    { to: '/leyes',       icon: Scale,           label: 'Leyes' },
+    { to: '/perfil',      icon: User,            label: 'Perfil' },
+    { to: '/faq',         icon: HelpCircle,      label: 'Preguntas' },
   ]
   const directorLinks = [
     ...socioLinks,
