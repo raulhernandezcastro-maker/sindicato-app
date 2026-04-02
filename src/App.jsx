@@ -6,7 +6,8 @@ import ProtectedRoute from './components/auth/ProtectedRoute'
 import HomePage from './pages/HomePage'
 import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
-import DocumentosPage from './pages/DocumentosPage'
+import LeyesLaboralesPage from './pages/LeyesLaboralesPage'
+import BeneficiosPage from './pages/BeneficiosPage'
 import PerfilPage from './pages/PerfilPage'
 import SociosPage from './pages/SociosPage'
 import CuotasPage from './pages/CuotasPage'
@@ -26,7 +27,8 @@ export default function App() {
           {/* Todos los usuarios logueados */}
           <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/avisos" element={<ProtectedRoute><AvisosPage /></ProtectedRoute>} />
-          <Route path="/documentos" element={<ProtectedRoute><DocumentosPage /></ProtectedRoute>} />
+          <Route path="/leyes" element={<ProtectedRoute><LeyesLaboralesPage /></ProtectedRoute>} />
+          <Route path="/beneficios" element={<ProtectedRoute><BeneficiosPage /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProtectedRoute><PerfilPage /></ProtectedRoute>} />
           <Route path="/faq" element={<ProtectedRoute><FAQPage /></ProtectedRoute>} />
 
