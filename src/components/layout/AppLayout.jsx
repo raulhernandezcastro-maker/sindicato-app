@@ -2,6 +2,7 @@ import React from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { DesktopNav } from './DesktopNav'
 import { MobileNav } from './MobileNav'
+import { InstallPWA } from './InstallPWA'
 import { useNotifications } from '../../hooks/useNotifications'
 
 export function AppLayout() {
@@ -18,6 +19,9 @@ export function AppLayout() {
 
       {/* Menú móvil (incluye header superior + barra inferior + offsets) */}
       <MobileNav />
+
+      {/* Banner instalación PWA */}
+      <InstallPWA />
 
       {/* Contenido principal */}
       {/* pt-16 móvil = barra superior | pb-20 móvil = barra inferior */}
