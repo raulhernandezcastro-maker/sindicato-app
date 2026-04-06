@@ -18,6 +18,13 @@ const normalizarRut = (rut) =>
 
 const EMPTY_FORM = { nombre: '', email: '', rut: '', password: '', telefono: '', roles: ['socio'] }
 
+const formatFecha = (iso) => {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('es-CL', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  })
+}
+
 export default function SociosPage() {
   const { isAdministrador } = useAuth()
   const [socios, setSocios]           = useState([])
@@ -45,7 +52,7 @@ export default function SociosPage() {
 
   const loadSocios = async () => {
     setLoading(true)
-    const { data: profiles } = await supabase.from('profiles').select('id, nombre, email, rut, estado, telefono')
+    const { data: profiles } = await supabase.from('profiles').select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja')
     const { data: roles }    = await supabase.from('roles').select('user_id, role_name')
     const joined = (profiles || []).map(p => ({
       ...p,
@@ -192,9 +199,16 @@ export default function SociosPage() {
     setSocioSeleccionado(null)
 
     try {
+      const updateData = { estado: nuevoEstado }
+      if (nuevoEstado === 'inactivo') {
+        updateData.fecha_baja = new Date().toISOString()
+      } else {
+        updateData.fecha_baja = null
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({ estado: nuevoEstado })
+        .update(updateData)
         .eq('id', idSocio)
 
       if (error) {
@@ -204,7 +218,7 @@ export default function SociosPage() {
         // Forzar recarga limpia desde Supabase
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, nombre, email, rut, estado, telefono')
+          .select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja')
         const { data: roles } = await supabase
           .from('roles')
           .select('user_id, role_name')
@@ -326,6 +340,14 @@ export default function SociosPage() {
                     <Phone className="w-3 h-3 inline mr-1" style={{ color: '#2d7a4f' }} />
                     {s.telefono || <span className="italic text-gray-300">Sin teléfono</span>}
                   </span>
+                  <span className="text-xs text-muted-foreground">
+                    📅 Alta: <span style={{ color: '#2d7a4f' }}>{formatFecha(s.created_at)}</span>
+                  </span>
+                  {s.estado === 'inactivo' && s.fecha_baja && (
+                    <span className="text-xs text-muted-foreground">
+                      🔴 Baja: <span style={{ color: '#c0392b' }}>{formatFecha(s.fecha_baja)}</span>
+                    </span>
+                  )}
                 </div>
                 {isAdministrador && (
                   <div className="flex gap-1 shrink-0">
