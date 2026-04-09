@@ -60,11 +60,8 @@ export default function TablaCuotasConfirmadas() {
       .select("*")
       .eq("estado", "confirmado")
       .order("periodo", { ascending: false })
-    if (periodo) {
-      // Buscar tanto con -01 como sin él para cubrir ambos formatos
-      query = query.or(`periodo.eq.${periodo}-01,periodo.eq.${periodo}`)
-    }
-    if (tipo) query = query.eq("tipo", tipo)
+    if (periodo) query = query.eq("periodo", `${periodo}-01`)
+    if (tipo)    query = query.eq("tipo", tipo)
     const { data, error } = await query
     if (error) console.error("Error cargando cuotas filtradas:", error)
     setRows(data || [])
