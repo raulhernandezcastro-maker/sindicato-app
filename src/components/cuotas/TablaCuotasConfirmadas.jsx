@@ -85,7 +85,9 @@ export default function TablaCuotasConfirmadas() {
   // Resumen por período
   const resumenPorPeriodo = useMemo(() => {
     const map = {}
-    allRows.forEach(r => {
+    // Si hay filtro de período o tipo, usar rows (filtrados); si no, usar allRows (todos)
+    const source = (periodo || tipo) ? rows : allRows
+    source.forEach(r => {
       const p = r.periodo || 'Sin período'
       if (!map[p]) map[p] = { periodo: p, cantSocios: 0, totalSocios: 0, cantAportantes: 0, totalAportantes: 0 }
       if (r.tipo === 'SOCIO') {
@@ -97,7 +99,7 @@ export default function TablaCuotasConfirmadas() {
       }
     })
     return Object.values(map).sort((a, b) => b.periodo.localeCompare(a.periodo))
-  }, [rows])
+  }, [rows, allRows, periodo, tipo])
 
   const totalesGenerales = useMemo(() => ({
     cantSocios:      resumenPorPeriodo.reduce((s, r) => s + r.cantSocios, 0),
