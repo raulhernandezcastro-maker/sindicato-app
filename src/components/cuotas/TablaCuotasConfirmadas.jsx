@@ -35,37 +35,34 @@ export default function TablaCuotasConfirmadas() {
 
   const [allRows, setAllRows] = useState([])
 
-  useEffect(() => { cargar() }, [])
-  useEffect(() => { cargarFiltrado() }, [periodo, tipo])
+  // Al montar: cargar TODOS los datos (para resumen y detalle sin filtros)
+  useEffect(() => { cargarTodo() }, [])
 
-  // Carga TODOS los datos para el resumen por período (sin filtros)
-  const cargar = async () => {
+  // Al cambiar filtros: recargar solo el detalle
+  useEffect(() => {
+    if (allRows.length === 0) return  // esperar que allRows esté listo
+    cargarDetalle()
+  }, [periodo, tipo, allRows])
+
+  const cargarTodo = async () => {
     setLoading(true)
     const { data, error } = await supabase
       .from("cuotas_importacion")
       .select("*")
       .eq("estado", "confirmado")
       .order("periodo", { ascending: false })
-    if (error) console.error("Error cargando cuotas confirmadas:", error)
-    setAllRows(data || [])
-    setRows(data || [])
+    if (error) console.error("Error cargando cuotas:", error)
+    const d = data || []
+    setAllRows(d)
+    setRows(d)
     setLoading(false)
   }
 
-  // Carga filtrada SOLO para el detalle
-  const cargarFiltrado = async () => {
-    setLoading(true)
-    let query = supabase
-      .from("cuotas_importacion")
-      .select("*")
-      .eq("estado", "confirmado")
-      .order("periodo", { ascending: false })
-    if (periodo) query = query.eq("periodo", `${periodo}-01`)
-    if (tipo)    query = query.eq("tipo", tipo)
-    const { data, error } = await query
-    if (error) console.error("Error cargando cuotas filtradas:", error)
-    setRows(data || [])
-    setLoading(false)
+  const cargarDetalle = () => {
+    let filtradas = [...allRows]
+    if (periodo) filtradas = filtradas.filter(r => r.periodo === `${periodo}-01`)
+    if (tipo)    filtradas = filtradas.filter(r => r.tipo === tipo)
+    setRows(filtradas)
   }
 
   const limpiarFiltros = () => { setPeriodo(""); setTipo(""); setBusqueda("") }
