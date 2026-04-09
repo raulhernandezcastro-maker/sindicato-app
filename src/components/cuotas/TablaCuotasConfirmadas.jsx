@@ -46,21 +46,31 @@ export default function TablaCuotasConfirmadas() {
 
   const cargarTodo = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from("cuotas_importacion")
-      .select("*")
-      .eq("estado", "confirmado")
-      .order("periodo", { ascending: false })
-    if (error) console.error("Error cargando cuotas:", error)
-    const d = data || []
-    // Debug: verificar datos recibidos
-    const dicRows = d.filter(r => r.periodo && r.periodo.toString().includes('2025-12'))
-    console.log('[CUOTAS] Total rows:', d.length)
-    console.log('[CUOTAS] Diciembre rows:', dicRows.length)
-    console.log('[CUOTAS] Muestra periodo:', d[0]?.periodo, typeof d[0]?.periodo)
-    setAllRows(d)
-    setRows(d)
-    setLoading(false)
+    try {
+      // Paginar para superar el límite de 1000 filas de Supabase
+      let allData = []
+      let from = 0
+      const pageSize = 1000
+      while (true) {
+        const { data, error } = await supabase
+          .from("cuotas_importacion")
+          .select("*")
+          .eq("estado", "confirmado")
+          .order("periodo", { ascending: false })
+          .range(from, from + pageSize - 1)
+        if (error) { console.error("Error cargando cuotas:", error); break }
+        if (!data || data.length === 0) break
+        allData = [...allData, ...data]
+        if (data.length < pageSize) break
+        from += pageSize
+      }
+      setAllRows(allData)
+      setRows(allData)
+    } catch (err) {
+      console.error("Error inesperado cargando cuotas:", err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const cargarDetalle = () => {
