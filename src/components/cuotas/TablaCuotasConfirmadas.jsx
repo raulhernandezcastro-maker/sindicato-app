@@ -33,19 +33,40 @@ export default function TablaCuotasConfirmadas() {
   const [tipo, setTipo]         = useState("")
   const [busqueda, setBusqueda] = useState("")
 
-  useEffect(() => { cargar() }, [periodo, tipo])
+  const [allRows, setAllRows] = useState([])
 
+  useEffect(() => { cargar() }, [])
+  useEffect(() => { cargarFiltrado() }, [periodo, tipo])
+
+  // Carga TODOS los datos para el resumen por período (sin filtros)
   const cargar = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from("cuotas_importacion")
+      .select("*")
+      .eq("estado", "confirmado")
+      .order("periodo", { ascending: false })
+    if (error) console.error("Error cargando cuotas confirmadas:", error)
+    setAllRows(data || [])
+    setRows(data || [])
+    setLoading(false)
+  }
+
+  // Carga filtrada SOLO para el detalle
+  const cargarFiltrado = async () => {
     setLoading(true)
     let query = supabase
       .from("cuotas_importacion")
       .select("*")
       .eq("estado", "confirmado")
       .order("periodo", { ascending: false })
-    if (periodo) query = query.eq("periodo", `${periodo}-01`)
-    if (tipo)    query = query.eq("tipo", tipo)
+    if (periodo) {
+      // Buscar tanto con -01 como sin él para cubrir ambos formatos
+      query = query.or(`periodo.eq.${periodo}-01,periodo.eq.${periodo}`)
+    }
+    if (tipo) query = query.eq("tipo", tipo)
     const { data, error } = await query
-    if (error) console.error("Error cargando cuotas confirmadas:", error)
+    if (error) console.error("Error cargando cuotas filtradas:", error)
     setRows(data || [])
     setLoading(false)
   }
@@ -55,7 +76,7 @@ export default function TablaCuotasConfirmadas() {
   // Resumen por período
   const resumenPorPeriodo = useMemo(() => {
     const map = {}
-    rows.forEach(r => {
+    allRows.forEach(r => {
       const p = r.periodo || 'Sin período'
       if (!map[p]) map[p] = { periodo: p, cantSocios: 0, totalSocios: 0, cantAportantes: 0, totalAportantes: 0 }
       if (r.tipo === 'SOCIO') {
