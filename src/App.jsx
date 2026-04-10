@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage'
 import AvisosPage from './pages/AvisosPage'
 import LeyesLaboralesPage from './pages/LeyesLaboralesPage'
 import BeneficiosPage from './pages/BeneficiosPage'
+import ConveniosPage from './pages/ConveniosPage'
 import PerfilPage from './pages/PerfilPage'
 import SociosPage from './pages/SociosPage'
 import CuotasPage from './pages/CuotasPage'
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/avisos" element={<ProtectedRoute><AvisosPage /></ProtectedRoute>} />
           <Route path="/leyes" element={<ProtectedRoute><LeyesLaboralesPage /></ProtectedRoute>} />
           <Route path="/beneficios" element={<ProtectedRoute><BeneficiosPage /></ProtectedRoute>} />
+          <Route path="/convenios" element={<ProtectedRoute><ConveniosPage /></ProtectedRoute>} />
           <Route path="/perfil" element={<ProtectedRoute><PerfilPage /></ProtectedRoute>} />
           <Route path="/faq" element={<ProtectedRoute><FAQPage /></ProtectedRoute>} />
 
