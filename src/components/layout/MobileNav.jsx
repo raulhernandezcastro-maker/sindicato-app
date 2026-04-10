@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Home, FileText, Scale, Gift, User, Users,
+  Home, FileText, Scale, Gift, Handshake, User, Users,
   DollarSign, LayoutDashboard, LogOut, HelpCircle, Menu, X
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -16,6 +16,7 @@ export function MobileNav() {
     { to: '/',            icon: Home,            label: 'Inicio' },
     { to: '/avisos',      icon: FileText,        label: 'Avisos' },
     { to: '/beneficios',  icon: Gift,            label: 'Beneficios' },
+    { to: '/convenios',   icon: Handshake,       label: 'Convenios' },
     { to: '/leyes',       icon: Scale,           label: 'Leyes' },
     { to: '/perfil',      icon: User,            label: 'Perfil' },
     { to: '/faq',         icon: HelpCircle,      label: 'Preguntas' },
