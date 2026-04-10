@@ -6,14 +6,14 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
-import { FileText, Gift, Users, Phone, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, Gift, Handshake, HelpCircle, Users, Phone, Plus, Pencil, Trash2, Scale } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import WhatsAppButton from '../components/ui/WhatsAppButton'
 
 export default function HomePage() {
   const { isAdministrador } = useAuth()
   const [ultimoAviso, setUltimoAviso]   = useState(null)
-  const [sliderIdx, setSliderIdx]        = useState(0)
   const [directores, setDirectores]     = useState([])
   const [loading, setLoading]           = useState(true)
 
@@ -77,6 +77,14 @@ export default function HomePage() {
     setDirectores(prev => prev.filter(d => d.id !== id))
   }
 
+  // Accesos rápidos
+  const accesos = [
+    { to: '/beneficios', icon: Gift,      label: 'Beneficios',         color: '#d4edda', iconColor: '#2d7a4f' },
+    { to: '/convenios',  icon: Handshake, label: 'Convenios',          color: '#d4edda', iconColor: '#2d7a4f' },
+    { to: '/leyes',      icon: Scale,     label: 'Leyes Laborales',    color: '#d4edda', iconColor: '#2d7a4f' },
+    { to: '/faq',        icon: HelpCircle,label: 'Preguntas Frecuentes',color: '#d4edda', iconColor: '#2d7a4f' },
+  ]
+
   // Formatea celular para WhatsApp (quita espacios, +, guiones)
   const whatsappUrl = (celular) => {
     const num = String(celular).replace(/[\s+\-()]/g, '')
@@ -95,16 +103,6 @@ export default function HomePage() {
     </div>
   )
 
-
-  const BENEFICIOS = [
-    { src: '/beneficio_bono_navidad.png',     alt: 'Coopeuch' },
-    { src: '/beneficio_jubilacion.png',        alt: 'Ópticas Bustorf' },
-    { src: '/beneficio_indemnizacion.png',     alt: 'Funeraria Iván Martínez' },
-    { src: '/beneficio_seguro_vida.png',       alt: 'Clínica Donover' },
-  ]
-
-  const prevSlide = () => setSliderIdx(i => (i - 1 + BENEFICIOS.length) % BENEFICIOS.length)
-  const nextSlide = () => setSliderIdx(i => (i + 1) % BENEFICIOS.length)
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -144,46 +142,31 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* ── Slider Beneficios ── */}
+          {/* ── Accesos Rápidos ── */}
           <div className="rounded-lg border overflow-hidden">
-            <SectionTitle icon={Gift} title="Convenios del Sindicato" />
-            <div className="relative" style={{ backgroundColor: '#f0f9f2' }}>
-              {/* Imagen */}
-              <div className="relative overflow-hidden" style={{ paddingBottom: '75%' }}>
-                <img
-                  key={sliderIdx}
-                  src={BENEFICIOS[sliderIdx].src}
-                  alt={BENEFICIOS[sliderIdx].alt}
-                  className="absolute inset-0 w-full h-full object-contain p-2"
-                  style={{ transition: 'opacity 0.3s ease' }}
-                />
-              </div>
-              {/* Controles */}
-              <button
-                onClick={prevSlide}
-                className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full p-1.5 shadow-md"
-                style={{ backgroundColor: 'rgba(45,122,79,0.85)' }}
-              >
-                <ChevronLeft className="w-5 h-5 text-white" />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full p-1.5 shadow-md"
-                style={{ backgroundColor: 'rgba(45,122,79,0.85)' }}
-              >
-                <ChevronRight className="w-5 h-5 text-white" />
-              </button>
-              {/* Indicadores */}
-              <div className="flex justify-center gap-1.5 py-2">
-                {BENEFICIOS.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSliderIdx(i)}
-                    className="w-2 h-2 rounded-full transition-all"
-                    style={{ backgroundColor: i === sliderIdx ? '#2d7a4f' : '#b0d4bc' }}
-                  />
-                ))}
-              </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-t-lg"
+                 style={{ backgroundColor: '#2d7a4f' }}>
+              <Gift className="w-4 h-4 text-white" />
+              <span className="font-semibold text-white text-sm">Accesos Rápidos</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 p-4" style={{ backgroundColor: '#f0f9f2' }}>
+              {accesos.map(({ to, icon: Icon, label, color, iconColor }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border bg-white hover:shadow-md transition-all"
+                  style={{ borderColor: '#d4edda' }}
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                       style={{ backgroundColor: color }}>
+                    <Icon className="w-5 h-5" style={{ color: iconColor }} />
+                  </div>
+                  <span className="text-xs font-semibold text-center leading-tight"
+                        style={{ color: '#2d7a4f' }}>
+                    {label}
+                  </span>
+                </Link>
+              ))}
             </div>
           </div>
 
