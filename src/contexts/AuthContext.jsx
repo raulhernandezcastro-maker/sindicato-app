@@ -54,6 +54,13 @@ export const AuthProvider = ({ children }) => {
 
         if (isMounted) setProfile(profileData)
 
+        // Registrar último acceso (sin esperar respuesta para no bloquear)
+        supabase.from('profiles')
+          .update({ ultimo_acceso: new Date().toISOString() })
+          .eq('id', userId)
+          .then(() => {})
+          .catch(() => {})
+
         const { data: rolesData, error: rolesError } = await supabase
           .from('roles').select('role_name').eq('user_id', userId)
         if (rolesError) throw rolesError
@@ -93,6 +100,12 @@ export const AuthProvider = ({ children }) => {
         const { data } = await supabase.auth.getSession()
         if (data?.session?.user) {
           setUser(data.session.user)
+          // Registrar último acceso al volver a la app
+          supabase.from('profiles')
+            .update({ ultimo_acceso: new Date().toISOString() })
+            .eq('id', data.session.user.id)
+            .then(() => {})
+            .catch(() => {})
         } else {
           setUser(null)
           setProfile(null)
