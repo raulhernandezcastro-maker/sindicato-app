@@ -52,7 +52,7 @@ export default function SociosPage() {
 
   const loadSocios = async () => {
     setLoading(true)
-    const { data: profiles } = await supabase.from('profiles').select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja')
+    const { data: profiles } = await supabase.from('profiles_with_activity').select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja, last_sign_in_at')
     const { data: roles }    = await supabase.from('roles').select('user_id, role_name')
     const joined = (profiles || []).map(p => ({
       ...p,
@@ -217,8 +217,8 @@ export default function SociosPage() {
       } else {
         // Forzar recarga limpia desde Supabase
         const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja')
+          .from('profiles_with_activity')
+          .select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja, last_sign_in_at')
         const { data: roles } = await supabase
           .from('roles')
           .select('user_id, role_name')
@@ -346,6 +346,13 @@ export default function SociosPage() {
                   {s.estado === 'inactivo' && s.fecha_baja && (
                     <span className="text-xs text-muted-foreground">
                       🔴 Baja: <span style={{ color: '#c0392b' }}>{formatFecha(s.fecha_baja)}</span>
+                    </span>
+                  )}
+                  {isAdministrador && s.estado === 'activo' && (
+                    <span className="text-xs text-muted-foreground">
+                      🟢 Último acceso: <span style={{ color: '#2d7a4f' }}>
+                        {s.last_sign_in_at ? formatFecha(s.last_sign_in_at) : 'Sin acceso aún'}
+                      </span>
                     </span>
                   )}
                 </div>
