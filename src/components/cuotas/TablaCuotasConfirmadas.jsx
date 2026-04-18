@@ -102,9 +102,7 @@ export default function TablaCuotasConfirmadas() {
   }, [rows, allRows, periodo, tipo])
 
   const totalesGenerales = useMemo(() => ({
-    cantSocios:      resumenPorPeriodo.reduce((s, r) => s + r.cantSocios, 0),
     totalSocios:     resumenPorPeriodo.reduce((s, r) => s + r.totalSocios, 0),
-    cantAportantes:  resumenPorPeriodo.reduce((s, r) => s + r.cantAportantes, 0),
     totalAportantes: resumenPorPeriodo.reduce((s, r) => s + r.totalAportantes, 0),
   }), [resumenPorPeriodo])
 
@@ -168,9 +166,9 @@ export default function TablaCuotasConfirmadas() {
                 <tfoot>
                   <tr style={{ backgroundColor: '#2d7a4f' }}>
                     <td className="px-3 py-2 text-sm font-bold text-white">Total General</td>
-                    <td className="px-3 py-2 text-sm font-bold text-white text-right">{totalesGenerales.cantSocios}</td>
+                    <td className="px-3 py-2 text-sm font-bold text-white text-right">—</td>
                     <td className="px-3 py-2 text-sm font-bold text-white text-right">{fmt(totalesGenerales.totalSocios)}</td>
-                    <td className="px-3 py-2 text-sm font-bold text-white text-right">{totalesGenerales.cantAportantes}</td>
+                    <td className="px-3 py-2 text-sm font-bold text-white text-right">—</td>
                     <td className="px-3 py-2 text-sm font-bold text-white text-right">{fmt(totalesGenerales.totalAportantes)}</td>
                     <td className="px-3 py-2 text-sm font-bold text-white text-right">{fmt(totalesGenerales.totalSocios + totalesGenerales.totalAportantes)}</td>
                   </tr>
