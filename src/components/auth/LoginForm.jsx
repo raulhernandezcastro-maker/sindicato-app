@@ -81,7 +81,7 @@ export function LoginForm({ onForgotPassword }) {
           </button>
         </div>
 
-        
+        <a
           href="https://wa.me/56932076628?text=Hola%2C%20no%20puedo%20ingresar%20a%20la%20app%20del%20Sindicato.%20Mi%20nombre%20es%3A%20"
           target="_blank"
           rel="noopener noreferrer"
