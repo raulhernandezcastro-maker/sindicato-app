@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Card, CardContent } from '../components/ui/card'
@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Checkbox } from '../components/ui/checkbox'
-import { Search, Users, Pencil, Plus, Phone } from 'lucide-react'
+import { Search, Users, Pencil, Plus, Phone, RefreshCw, TrendingUp, UserCheck, UserX, Clock } from 'lucide-react'
 
 const normalizarRut = (rut) =>
   String(rut || '').replace(/\./g, '').replace(/-/g, '').trim().toLowerCase()
@@ -25,10 +25,147 @@ const formatFecha = (iso) => {
   })
 }
 
+const formatFechaHora = (iso) => {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('es-CL', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  })
+}
+
+// ── Panel de métricas (solo administrador) ──────────────────────────────────
+function PanelMetricas({ socios, onRefresh, refreshing }) {
+  const ahora = new Date()
+  const hace5dias  = new Date(ahora - 5  * 24 * 60 * 60 * 1000)
+  const hace30dias = new Date(ahora - 30 * 24 * 60 * 60 * 1000)
+  const hace7dias  = new Date(ahora - 7  * 24 * 60 * 60 * 1000)
+
+  const activos    = socios.filter(s => s.estado === 'activo')
+  const inactivos  = socios.filter(s => s.estado === 'inactivo')
+
+  // Usamos last_sign_in_at como indicador real de acceso a la app
+  const ingresaron5dias  = activos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace5dias)
+  const ingresaron7dias  = activos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace7dias)
+  const ingresaron30dias = activos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace30dias)
+  const nunca            = activos.filter(s => !s.last_sign_in_at)
+
+  const pct = (n) => activos.length > 0 ? Math.round((n / activos.length) * 100) : 0
+
+  // Último acceso registrado en toda la app
+  const ultimoAcceso = socios
+    .filter(s => s.last_sign_in_at)
+    .sort((a, b) => new Date(b.last_sign_in_at) - new Date(a.last_sign_in_at))[0]
+
+  const tarjetas = [
+    {
+      icon: <Users className="w-5 h-5" />,
+      label: 'Socios activos',
+      valor: activos.length,
+      sub: `${inactivos.length} dados de baja`,
+      color: '#2d7a4f',
+      bg: '#f0fdf4',
+    },
+    {
+      icon: <TrendingUp className="w-5 h-5" />,
+      label: 'Últimos 5 días',
+      valor: ingresaron5dias.length,
+      sub: `${pct(ingresaron5dias.length)}% de socios activos`,
+      color: '#1d4ed8',
+      bg: '#eff6ff',
+    },
+    {
+      icon: <UserCheck className="w-5 h-5" />,
+      label: 'Últimos 30 días',
+      valor: ingresaron30dias.length,
+      sub: `${pct(ingresaron30dias.length)}% de socios activos`,
+      color: '#7c3aed',
+      bg: '#f5f3ff',
+    },
+    {
+      icon: <UserX className="w-5 h-5" />,
+      label: 'Nunca ingresaron',
+      valor: nunca.length,
+      sub: `${pct(nunca.length)}% aún no ha entrado`,
+      color: '#dc2626',
+      bg: '#fef2f2',
+    },
+  ]
+
+  return (
+    <div className="rounded-xl border shadow-sm overflow-hidden" style={{ borderColor: '#e5e7eb' }}>
+      {/* Header del panel */}
+      <div className="flex items-center justify-between px-4 py-2.5" style={{ backgroundColor: '#1e3a5f' }}>
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-blue-200" />
+          <span className="text-sm font-semibold text-white">Actividad de la App</span>
+          <span className="text-xs text-blue-300 ml-1">— solo visible para administrador</span>
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 text-xs text-blue-200 hover:text-white transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Actualizando...' : 'Actualizar'}
+        </button>
+      </div>
+
+      {/* Tarjetas de métricas */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-white">
+        {tarjetas.map((t, i) => (
+          <div key={i} className="rounded-lg p-3 flex flex-col gap-1" style={{ backgroundColor: t.bg }}>
+            <div className="flex items-center gap-1.5" style={{ color: t.color }}>
+              {t.icon}
+              <span className="text-xs font-medium">{t.label}</span>
+            </div>
+            <span className="text-2xl font-bold" style={{ color: t.color }}>{t.valor}</span>
+            <span className="text-xs" style={{ color: '#6b7280' }}>{t.sub}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Fila inferior con datos adicionales */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-t divide-y md:divide-y-0 md:divide-x" style={{ borderColor: '#e5e7eb' }}>
+        <div className="flex items-center gap-2 px-4 py-2 bg-gray-50">
+          <Clock className="w-4 h-4 shrink-0" style={{ color: '#6b7280' }} />
+          <div>
+            <p className="text-xs text-gray-500">Último acceso registrado</p>
+            <p className="text-xs font-semibold text-gray-700">
+              {ultimoAcceso
+                ? `${ultimoAcceso.nombre} — ${formatFechaHora(ultimoAcceso.last_sign_in_at)}`
+                : 'Sin datos'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 bg-gray-50">
+          <UserCheck className="w-4 h-4 shrink-0" style={{ color: '#16a34a' }} />
+          <div>
+            <p className="text-xs text-gray-500">Ingresaron esta semana</p>
+            <p className="text-xs font-semibold text-gray-700">
+              {ingresaron7dias.length} socios ({pct(ingresaron7dias.length)}%)
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 bg-gray-50">
+          <Users className="w-4 h-4 shrink-0" style={{ color: '#2d7a4f' }} />
+          <div>
+            <p className="text-xs text-gray-500">Total registrados</p>
+            <p className="text-xs font-semibold text-gray-700">
+              {socios.length} socios ({activos.length} activos · {inactivos.length} inactivos)
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Página principal ─────────────────────────────────────────────────────────
 export default function SociosPage() {
   const { isAdministrador } = useAuth()
   const [socios, setSocios]           = useState([])
   const [loading, setLoading]         = useState(true)
+  const [refreshing, setRefreshing]   = useState(false)
   const [busqueda, setBusqueda]       = useState('')
 
   // Crear
@@ -48,12 +185,15 @@ export default function SociosPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [togglingId, setTogglingId]   = useState(null)
 
-  useEffect(() => { loadSocios() }, [])
+  const loadSocios = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true)
+    else setLoading(true)
 
-  const loadSocios = async () => {
-    setLoading(true)
-    const { data: profiles } = await supabase.from('profiles_with_activity').select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja, last_sign_in_at, ultimo_acceso')
-    const { data: roles }    = await supabase.from('roles').select('user_id, role_name')
+    const { data: profiles } = await supabase
+      .from('profiles_with_activity')
+      .select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja, last_sign_in_at, ultimo_acceso')
+    const { data: roles } = await supabase.from('roles').select('user_id, role_name')
+
     const joined = (profiles || []).map(p => ({
       ...p,
       roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role_name),
@@ -64,19 +204,21 @@ export default function SociosPage() {
       return a.estado === 'activo' ? -1 : 1
     })
     setSocios(joined)
-    setLoading(false)
-  }
+
+    if (isRefresh) setRefreshing(false)
+    else setLoading(false)
+  }, [])
+
+  useEffect(() => { loadSocios() }, [loadSocios])
 
   /* ── CREAR ── */
   const toggleRole = (role) => {
     setForm(prev => {
       let newRoles = [...prev.roles]
       if (newRoles.includes(role)) {
-        // No desmarcar si es el único rol
         if (newRoles.length === 1) return prev
         newRoles = newRoles.filter(r => r !== role)
       } else {
-        // Socio y Aportante son mutuamente excluyentes
         if (role === 'aportante') newRoles = newRoles.filter(r => r !== 'socio')
         if (role === 'socio')     newRoles = newRoles.filter(r => r !== 'aportante')
         newRoles.push(role)
@@ -127,7 +269,7 @@ export default function SociosPage() {
   const abrirEditar = (socio) => {
     setErrorEdit('')
     setEditForm({
-      id:     socio.id,
+      id:       socio.id,
       nombre:   socio.nombre   || '',
       email:    socio.email    || '',
       rut:      socio.rut      || '',
@@ -160,20 +302,15 @@ export default function SociosPage() {
     if (editForm.newPassword && editForm.newPassword.length < 6) { setErrorEdit('La contraseña debe tener al menos 6 caracteres'); return }
     setSavingEdit(true)
     try {
-      // 1. Actualizar profile
       const { error: profileErr } = await supabase
         .from('profiles')
         .update({ nombre: editForm.nombre, rut: normalizarRut(editForm.rut), telefono: editForm.telefono })
         .eq('id', editForm.id)
       if (profileErr) throw profileErr
 
-      // 2. Actualizar roles: borrar los actuales y reinsertar
       await supabase.from('roles').delete().eq('user_id', editForm.id)
       const rolesInsert = editForm.roles.map(r => ({ user_id: editForm.id, role_name: r }))
       await supabase.from('roles').insert(rolesInsert)
-
-      // 3. Cambiar contraseña si se ingresó una nueva (requiere Edge Function o admin API)
-      // Se omite por ahora ya que requiere privilegios de servicio
 
       setSocios(prev => prev.map(s =>
         s.id === editForm.id ? { ...s, nombre: editForm.nombre, rut: normalizarRut(editForm.rut), roles: editForm.roles } : s
@@ -200,41 +337,16 @@ export default function SociosPage() {
 
     try {
       const updateData = { estado: nuevoEstado }
-      if (nuevoEstado === 'inactivo') {
-        updateData.fecha_baja = new Date().toISOString()
-      } else {
-        updateData.fecha_baja = null
-      }
+      if (nuevoEstado === 'inactivo') updateData.fecha_baja = new Date().toISOString()
+      else updateData.fecha_baja = null
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', idSocio)
-
+      const { error } = await supabase.from('profiles').update(updateData).eq('id', idSocio)
       if (error) {
-        console.error('Error cambiando estado:', error)
         alert(`Error al cambiar el estado: ${error.message}`)
       } else {
-        // Forzar recarga limpia desde Supabase
-        const { data: profiles } = await supabase
-          .from('profiles_with_activity')
-          .select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja, last_sign_in_at, ultimo_acceso')
-        const { data: roles } = await supabase
-          .from('roles')
-          .select('user_id, role_name')
-        const joined = (profiles || []).map(p => ({
-          ...p,
-          roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role_name),
-          telefono: p.telefono || ''
-        }))
-        joined.sort((a, b) => {
-          if (a.estado === b.estado) return (a.nombre || '').localeCompare(b.nombre || '')
-          return a.estado === 'activo' ? -1 : 1
-        })
-        setSocios([...joined])
+        await loadSocios()
       }
     } catch (err) {
-      console.error('Error inesperado:', err)
       alert(`Error inesperado: ${err.message}`)
     } finally {
       setTogglingId(null)
@@ -284,6 +396,15 @@ export default function SociosPage() {
         )}
       </div>
 
+      {/* Panel de métricas — solo administrador */}
+      {isAdministrador && (
+        <PanelMetricas
+          socios={socios}
+          onRefresh={() => loadSocios(true)}
+          refreshing={refreshing}
+        />
+      )}
+
       {/* Buscador */}
       <div className="flex items-center gap-3 px-3 py-2 rounded-lg border bg-white shadow-sm">
         <Search className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -301,7 +422,7 @@ export default function SociosPage() {
         )}
       </div>
 
-      {/* Lista de socios con scroll */}
+      {/* Lista de socios */}
       <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: '65vh' }}>
         {sociosFiltrados.length === 0 ? (
           <div className="text-center text-muted-foreground py-12">
@@ -312,7 +433,6 @@ export default function SociosPage() {
             <div key={s.id}
               className="rounded-lg border bg-white shadow-sm overflow-hidden"
               style={{ opacity: s.estado === 'inactivo' ? 0.55 : 1 }}>
-              {/* Franja superior con nombre y badges */}
               <div className="flex items-center justify-between px-4 py-2"
                    style={{ backgroundColor: '#f0f9f2' }}>
                 <div className="flex items-center gap-2 min-w-0">
@@ -331,7 +451,6 @@ export default function SociosPage() {
                   {s.estado === 'activo' ? 'Activo' : 'Inactivo'}
                 </Badge>
               </div>
-              {/* Datos y acciones */}
               <div className="flex items-center justify-between px-4 py-2 gap-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-0.5 flex-1 min-w-0">
                   <span className="text-xs text-muted-foreground truncate">📧 {s.email}</span>
@@ -384,7 +503,7 @@ export default function SociosPage() {
         )}
       </div>
 
-      {/* ── Diálogo CREAR ── */}
+      {/* Diálogo CREAR */}
       <Dialog open={openCrear} onOpenChange={v => { if (!v) { setOpenCrear(false); setError(''); setForm(EMPTY_FORM) } }}>
         <DialogContent>
           <DialogHeader>
@@ -404,7 +523,6 @@ export default function SociosPage() {
                   <div key={r} className="flex items-center gap-2">
                     <Checkbox checked={form.roles.includes(r)} onCheckedChange={() => toggleRole(r)} />
                     <span className="capitalize text-sm">{r}</span>
-                    
                   </div>
                 ))}
               </div>
@@ -416,7 +534,7 @@ export default function SociosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Diálogo EDITAR ── */}
+      {/* Diálogo EDITAR */}
       <Dialog open={openEditar} onOpenChange={v => { if (!v) setOpenEditar(false) }}>
         <DialogContent>
           <DialogHeader>
@@ -439,7 +557,6 @@ export default function SociosPage() {
                   <div key={r} className="flex items-center gap-2">
                     <Checkbox checked={(editForm.roles || []).includes(r)} onCheckedChange={() => toggleRoleEdit(r)} />
                     <span className="capitalize text-sm">{r}</span>
-                    
                   </div>
                 ))}
               </div>
@@ -451,7 +568,7 @@ export default function SociosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Diálogo confirmar baja/reactivación ── */}
+      {/* Diálogo confirmar baja/reactivación */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
