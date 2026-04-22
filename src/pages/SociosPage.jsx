@@ -40,16 +40,23 @@ function PanelMetricas({ socios, onRefresh, refreshing }) {
   const hace30dias = new Date(ahora - 30 * 24 * 60 * 60 * 1000)
   const hace7dias  = new Date(ahora - 7  * 24 * 60 * 60 * 1000)
 
-  const activos    = socios.filter(s => s.estado === 'activo')
-  const inactivos  = socios.filter(s => s.estado === 'inactivo')
+  // Métricas: solo socios puros (excluye aportantes, directores, admin)
+  const soloSocios      = socios.filter(s => s.roles.includes('socio') && !s.roles.includes('aportante') && !s.roles.includes('director') && !s.roles.includes('administrador'))
+  const sociosActivos   = soloSocios.filter(s => s.estado === 'activo')
+  const sociosInactivos = soloSocios.filter(s => s.estado === 'inactivo')
 
-  // Usamos last_sign_in_at como indicador real de acceso a la app
-  const ingresaron5dias  = activos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace5dias)
-  const ingresaron7dias  = activos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace7dias)
-  const ingresaron30dias = activos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace30dias)
-  const nunca            = activos.filter(s => !s.last_sign_in_at)
+  // Desglose para Total registrados
+  const totalAportantes = socios.filter(s => s.roles.includes('aportante')).length
+  const totalDirectores = socios.filter(s => s.roles.includes('director')).length
+  const totalAdmin      = socios.filter(s => s.roles.includes('administrador')).length
 
-  const pct = (n) => activos.length > 0 ? Math.round((n / activos.length) * 100) : 0
+  // Actividad basada en last_sign_in_at — solo sobre socios activos
+  const ingresaron5dias  = sociosActivos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace5dias)
+  const ingresaron7dias  = sociosActivos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace7dias)
+  const ingresaron30dias = sociosActivos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace30dias)
+  const nunca            = sociosActivos.filter(s => !s.last_sign_in_at)
+
+  const pct = (n) => sociosActivos.length > 0 ? Math.round((n / sociosActivos.length) * 100) : 0
 
   // Último acceso registrado en toda la app
   const ultimoAcceso = socios
@@ -60,8 +67,8 @@ function PanelMetricas({ socios, onRefresh, refreshing }) {
     {
       icon: <Users className="w-5 h-5" />,
       label: 'Socios activos',
-      valor: activos.length,
-      sub: `${inactivos.length} dados de baja`,
+      valor: sociosActivos.length,
+      sub: `${sociosInactivos.length} dados de baja`,
       color: '#2d7a4f',
       bg: '#f0fdf4',
     },
@@ -151,7 +158,7 @@ function PanelMetricas({ socios, onRefresh, refreshing }) {
           <div>
             <p className="text-xs text-gray-500">Total registrados</p>
             <p className="text-xs font-semibold text-gray-700">
-              {socios.length} socios ({activos.length} activos · {inactivos.length} inactivos)
+              {soloSocios.length} socios ({sociosActivos.length} activos · {sociosInactivos.length} de baja) · {totalAportantes} aportantes · {totalDirectores} directores · {totalAdmin} admin
             </p>
           </div>
         </div>
