@@ -10,6 +10,7 @@ import { FileText, Gift, Handshake, HelpCircle, Users, Phone, Plus, Pencil, Tras
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import WhatsAppButton from '../components/ui/WhatsAppButton'
+import ModalDiaTrabajador from '../components/ui/ModalDiaTrabajador'
 
 export default function HomePage() {
   const { isAdministrador } = useAuth()
@@ -106,6 +107,8 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+
+      <ModalDiaTrabajador />
 
       {/* ── Encabezado ── */}
       <div className="flex items-center gap-4">
