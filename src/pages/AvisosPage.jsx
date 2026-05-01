@@ -55,25 +55,29 @@ export default function AvisosPage() {
     setContenido('')
     setSaving(false)
 
-    // Enviar notificación push a todos los socios
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      if (token) {
-        await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ titulo, contenido }),
-        })
+    // Enviar notificación push en segundo plano (sin bloquear UI)
+    const tituloAviso = titulo
+    const contenidoAviso = contenido
+    ;(async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (token) {
+          await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ titulo: tituloAviso, contenido: contenidoAviso }),
+          })
+        }
+      } catch (err) {
+        console.warn('[FCM] Error enviando notificaciones:', err)
       }
-    } catch (err) {
-      console.warn('[FCM] Error enviando notificaciones:', err)
-    }
+    })()
   }
 
   const handleDelete = async (id) => {
