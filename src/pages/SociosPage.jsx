@@ -247,21 +247,49 @@ export default function SociosPage() {
     const err = validateForm()
     if (err) { setError(err); return }
     setSaving(true)
-    try {
+
+    const MAX_INTENTOS = 3
+    const ESPERA_MS    = 2000 // 2 segundos entre reintentos
+
+    const llamarEdgeFunction = async (intento = 1) => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
-      const res  = await fetch(`${supabaseUrl}/functions/v1/bright-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ nombre: form.nombre, email: form.email, rut: normalizarRut(form.rut), password: form.password, telefono: form.telefono, roles: form.roles })
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
+
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000) // timeout 10s por intento
+
+      try {
+        const res = await fetch(`${supabaseUrl}/functions/v1/bright-service`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ nombre: form.nombre, email: form.email, rut: normalizarRut(form.rut), password: form.password, telefono: form.telefono, roles: form.roles }),
+          signal: controller.signal
+        })
+        clearTimeout(timeout)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
+        return data
+      } catch (e) {
+        clearTimeout(timeout)
+        const esTimeout = e.name === 'AbortError'
+        const esRed     = e.name === 'TypeError'
+        // Solo reintenta en errores de red o timeout (cold start), no en errores de negocio
+        if ((esTimeout || esRed) && intento < MAX_INTENTOS) {
+          console.warn(`[bright-service] Intento ${intento} fallido (${e.message}). Reintentando en ${ESPERA_MS}ms...`)
+          await new Promise(r => setTimeout(r, ESPERA_MS))
+          return llamarEdgeFunction(intento + 1)
+        }
+        throw e
+      }
+    }
+
+    try {
+      await llamarEdgeFunction()
       setOpenCrear(false)
       setForm(EMPTY_FORM)
       await loadSocios()
