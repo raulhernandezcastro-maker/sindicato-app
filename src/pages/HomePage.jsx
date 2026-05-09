@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import WhatsAppButton from '../components/ui/WhatsAppButton'
 import ModalDiaTrabajador from '../components/ui/ModalDiaTrabajador'
+import ModalDiaMadre from '../components/ui/ModalDiaMadre'
 
 export default function HomePage() {
   const { isAdministrador } = useAuth()
@@ -109,6 +110,7 @@ export default function HomePage() {
     <div className="space-y-6 max-w-6xl mx-auto">
 
       <ModalDiaTrabajador />
+      <ModalDiaMadre />
 
       {/* ── Encabezado ── */}
       <div className="flex items-center gap-4">
