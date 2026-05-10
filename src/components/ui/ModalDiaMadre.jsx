@@ -38,7 +38,7 @@ function marcarVisto() {
 
 export default function ModalDiaMadre() {
   const [visible, setVisible] = useState(false)
-  const [segundos, setSegundos] = useState(5)
+  const [segundos, setSegundos] = useState(10)
 
   useEffect(() => {
     if (esDiaMadre() && !yaVisto()) setVisible(true)
@@ -172,4 +172,3 @@ export default function ModalDiaMadre() {
     </div>
   )
 }
-
