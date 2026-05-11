@@ -17,16 +17,11 @@ export function useNotifications() {
     }
   }, [user?.id])
 
-  // Escuchar mensajes en primer plano
+  // Mensajes en primer plano — FCM ya maneja la notificación push,
+  // no se genera notificación local para evitar duplicados
   useEffect(() => {
     const unsubscribe = onForegroundMessage((payload) => {
-      const { title, body } = payload.notification || {}
-      if (Notification.permission === 'granted') {
-        new Notification(title || 'Sindicato Liberty', {
-          body: body || 'Tienes un nuevo aviso',
-          icon: '/logo.png',
-        })
-      }
+      console.log('[FCM] Mensaje en primer plano recibido:', payload)
     })
     return unsubscribe
   }, [])
