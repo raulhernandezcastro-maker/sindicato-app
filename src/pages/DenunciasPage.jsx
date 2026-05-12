@@ -1,1 +1,237 @@
+import React, { useEffect, useState } from 'react'
+import { ShieldAlert, ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, Inbox } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
+import { Spinner } from '../components/ui/spinner'
 
+const ESTADOS = ['pendiente', 'en_revision', 'cerrada']
+const ESTADO_LABEL = { pendiente: 'Pendiente', en_revision: 'En revisión', cerrada: 'Cerrada' }
+const ESTADO_COLOR = {
+  pendiente:   { bg: '#FFF3CD', text: '#856404', border: '#FFEEBA' },
+  en_revision: { bg: '#D1ECF1', text: '#0C5460', border: '#BEE5EB' },
+  cerrada:     { bg: '#D4EDDA', text: '#155724', border: '#C3E6CB' },
+}
+
+const TIPO_LABELS = {
+  maltrato_psicologico: 'Maltrato psicológico',
+  acoso_laboral:        'Acoso laboral',
+  acoso_sexual:         'Acoso sexual',
+  cambio_funciones:     'Cambio o suma de funciones',
+  otros:                'Otros',
+}
+
+export default function DenunciasPage() {
+  const { isAdministrador, isDirector } = useAuth()
+  const [denuncias, setDenuncias] = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [expandida, setExpandida] = useState(null)
+  const [filtroEstado, setFiltroEstado] = useState('todos')
+  const [updatingId, setUpdatingId] = useState(null)
+
+  const canView = isAdministrador || isDirector
+
+  useEffect(() => {
+    if (canView) loadDenuncias()
+  }, [canView])
+
+  const loadDenuncias = async () => {
+    const { data } = await supabase
+      .from('denuncias')
+      .select('*')
+      .order('created_at', { ascending: false })
+    setDenuncias(data || [])
+    setLoading(false)
+  }
+
+  const cambiarEstado = async (id, nuevoEstado) => {
+    setUpdatingId(id)
+    await supabase.from('denuncias').update({ estado: nuevoEstado }).eq('id', id)
+    setDenuncias(prev => prev.map(d => d.id === id ? { ...d, estado: nuevoEstado } : d))
+    setUpdatingId(null)
+  }
+
+  const formatFecha = (iso) => {
+    if (!iso) return ''
+    return new Date(iso).toLocaleDateString('es-CL', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+  }
+
+  const getTipos = (d) => Object.entries(TIPO_LABELS)
+    .filter(([key]) => d[key])
+    .map(([, label]) => label)
+
+  const denunciasFiltradas = filtroEstado === 'todos'
+    ? denuncias
+    : denuncias.filter(d => d.estado === filtroEstado)
+
+  // Contadores
+  const contadores = {
+    todos:       denuncias.length,
+    pendiente:   denuncias.filter(d => d.estado === 'pendiente').length,
+    en_revision: denuncias.filter(d => d.estado === 'en_revision').length,
+    cerrada:     denuncias.filter(d => d.estado === 'cerrada').length,
+  }
+
+  if (!canView) return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <ShieldAlert className="w-12 h-12 mb-4" style={{ color: '#c0392b' }} />
+      <p className="text-lg font-semibold">Acceso restringido</p>
+      <p className="text-sm text-muted-foreground mt-1">Solo directores y administradores pueden ver este panel.</p>
+    </div>
+  )
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-4">
+
+      {/* Encabezado */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ backgroundColor: '#1e3a2f' }}>
+        <ShieldAlert className="w-5 h-5 text-white" />
+        <h1 className="text-xl font-bold text-white">Panel de Denuncias</h1>
+        <span className="ml-auto text-xs px-2 py-1 rounded-full font-medium"
+              style={{ backgroundColor: '#2d7a4f', color: '#fff' }}>
+          Confidencial
+        </span>
+      </div>
+
+      {/* Tarjetas resumen */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { key: 'todos',       label: 'Total',       icon: Inbox,       color: '#1e3a2f' },
+          { key: 'pendiente',   label: 'Pendientes',  icon: Clock,       color: '#856404' },
+          { key: 'en_revision', label: 'En revisión', icon: ShieldAlert, color: '#0C5460' },
+          { key: 'cerrada',     label: 'Cerradas',    icon: CheckCircle, color: '#155724' },
+        ].map(({ key, label, icon: Icon, color }) => (
+          <button
+            key={key}
+            onClick={() => setFiltroEstado(key)}
+            className="rounded-lg border p-3 text-left transition-all"
+            style={{
+              borderColor: filtroEstado === key ? color : '#ddd6cc',
+              backgroundColor: filtroEstado === key ? `${color}15` : '#fff',
+              boxShadow: filtroEstado === key ? `0 0 0 2px ${color}40` : 'none'
+            }}
+          >
+            <Icon className="w-4 h-4 mb-1" style={{ color }} />
+            <p className="text-xl font-bold" style={{ color }}>{contadores[key]}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* Lista */}
+      {loading ? (
+        <div className="flex justify-center py-12"><Spinner /></div>
+      ) : denunciasFiltradas.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <Inbox className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p>No hay denuncias {filtroEstado !== 'todos' ? `con estado "${ESTADO_LABEL[filtroEstado]}"` : 'registradas'}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {denunciasFiltradas.map(d => {
+            const isOpen = expandida === d.id
+            const estadoStyle = ESTADO_COLOR[d.estado] || ESTADO_COLOR.pendiente
+            const tipos = getTipos(d)
+
+            return (
+              <div key={d.id} className="rounded-xl border overflow-hidden" style={{ borderColor: '#ddd6cc' }}>
+
+                {/* Cabecera de la tarjeta */}
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                  onClick={() => setExpandida(isOpen ? null : d.id)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm" style={{ color: '#1e3a2f' }}>{d.nombre}</p>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium border"
+                            style={{ backgroundColor: estadoStyle.bg, color: estadoStyle.text, borderColor: estadoStyle.border }}>
+                        {ESTADO_LABEL[d.estado]}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {formatFecha(d.created_at)} · {tipos.join(', ') || 'Sin tipo'}
+                    </p>
+                  </div>
+                  {isOpen ? <ChevronUp className="w-4 h-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />}
+                </button>
+
+                {/* Detalle expandido */}
+                {isOpen && (
+                  <div className="border-t px-4 py-4 space-y-4" style={{ borderColor: '#ddd6cc', backgroundColor: '#fafafa' }}>
+
+                    {/* Datos denunciante */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#2d7a4f' }}>Denunciante</p>
+                        <p className="font-medium">{d.nombre}</p>
+                        <p className="text-muted-foreground">{d.rut}</p>
+                        <p className="text-muted-foreground">{d.email}</p>
+                        {d.telefono && <p className="text-muted-foreground">{d.telefono}</p>}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#c0392b' }}>Denunciado</p>
+                        <p className="font-medium">{d.denunciado_nombre}</p>
+                        <p className="text-muted-foreground">{d.denunciado_cargo}</p>
+                      </div>
+                    </div>
+
+                    {/* Tipos */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#2d7a4f' }}>Tipo de denuncia</p>
+                      <div className="flex flex-wrap gap-2">
+                        {tipos.map((t, i) => (
+                          <span key={i} className="text-xs px-2 py-1 rounded-full font-medium"
+                                style={{ backgroundColor: '#FFF3CD', color: '#856404', border: '1px solid #FFEEBA' }}>
+                            {t}
+                          </span>
+                        ))}
+                        {d.otros && d.otros_detalle && (
+                          <span className="text-xs text-muted-foreground italic">({d.otros_detalle})</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Descripción */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#2d7a4f' }}>Descripción de los hechos</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-line bg-white rounded-lg border p-3"
+                         style={{ borderColor: '#ddd6cc' }}>{d.descripcion}</p>
+                    </div>
+
+                    {/* Cambiar estado */}
+                    {isAdministrador && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#2d7a4f' }}>Cambiar estado</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {ESTADOS.map(estado => (
+                            <button
+                              key={estado}
+                              disabled={d.estado === estado || updatingId === d.id}
+                              onClick={() => cambiarEstado(d.id, estado)}
+                              className="text-xs px-3 py-1.5 rounded-full border font-medium transition-all disabled:opacity-40"
+                              style={{
+                                backgroundColor: d.estado === estado ? ESTADO_COLOR[estado].bg : '#fff',
+                                color: ESTADO_COLOR[estado].text,
+                                borderColor: ESTADO_COLOR[estado].border,
+                              }}
+                            >
+                              {updatingId === d.id ? '...' : ESTADO_LABEL[estado]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
