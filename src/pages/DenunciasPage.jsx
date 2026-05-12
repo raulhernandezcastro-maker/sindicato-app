@@ -120,6 +120,33 @@ export default function DenunciasPage() {
         ))}
       </div>
 
+      {/* Estadística tipos de denuncia */}
+      {!loading && denuncias.length > 0 && (
+        <div className="rounded-xl border p-4" style={{ borderColor: '#ddd6cc', backgroundColor: '#fff' }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#1e3a2f' }}>
+            Tipos de denuncia
+          </p>
+          <div className="space-y-2">
+            {Object.entries(TIPO_LABELS).map(([key, label]) => {
+              const count = denuncias.filter(d => d[key]).length
+              const pct   = denuncias.length > 0 ? Math.round((count / denuncias.length) * 100) : 0
+              if (count === 0) return null
+              return (
+                <div key={key}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span style={{ color: '#333' }}>{label}</span>
+                    <span className="font-semibold" style={{ color: '#1e3a2f' }}>{count} ({pct}%)</span>
+                  </div>
+                  <div className="w-full rounded-full h-1.5" style={{ backgroundColor: '#e5e7eb' }}>
+                    <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: '#2d7a4f' }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Lista */}
       {loading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
@@ -177,6 +204,14 @@ export default function DenunciasPage() {
                         <p className="text-muted-foreground">{d.denunciado_cargo}</p>
                       </div>
                     </div>
+
+                    {/* Fecha ocurrencia */}
+                    {d.fecha_ocurrencia && (
+                      <div className="text-sm p-3 rounded-lg border" style={{ borderColor: '#ddd6cc', backgroundColor: '#fff' }}>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#2d7a4f' }}>Fecha de ocurrencia</p>
+                        <p>{new Date(d.fecha_ocurrencia).toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                      </div>
+                    )}
 
                     {/* Tipos */}
                     <div>
