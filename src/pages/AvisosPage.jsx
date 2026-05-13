@@ -223,18 +223,13 @@ export default function AvisosPage() {
         <div className="space-y-3 px-2">
           {avisos.map((a, idx) => {
             const esRec = a.es_recurrente && a.recurrente_activo
-            const bgColor = esRec ? '#1e3a2f' : idx === 0 ? '#2d7a4f' : '#7CBE80'
+            const bgColor = esRec ? '#2d5a3f' : idx === 0 ? '#2d7a4f' : '#7CBE80'
             const textColor = (esRec || idx === 0) ? 'white' : '#003d18'
             return (
               <div key={a.id} className="flex flex-col items-start">
                 <div className="relative max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-3 shadow-md"
                      style={{ backgroundColor: bgColor, color: textColor }}>
-                  {esRec && (
-                    <div className="flex items-center gap-1 mb-1.5">
-                      <RefreshCw className="w-3 h-3 opacity-80" />
-                      <span className="text-xs opacity-80 font-medium">Aviso recurrente · cada {a.frecuencia_dias} día{a.frecuencia_dias > 1 ? 's' : ''}</span>
-                    </div>
-                  )}
+
                   <p className="font-semibold text-sm mb-1">{a.titulo}</p>
                   <p className="text-sm whitespace-pre-line leading-relaxed">{a.contenido}</p>
                   <div className="flex items-center justify-between mt-2 gap-4">
