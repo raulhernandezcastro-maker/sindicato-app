@@ -13,41 +13,43 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging()
 
-// Manejar notificaciones en segundo plano
-// IMPORTANTE: solo usar data payload (sin notification) para evitar duplicados
-// FCM muestra la notificación automáticamente si viene con "notification"
-// Por eso usamos solo "data" y la mostramos manualmente aquí
-messaging.onBackgroundMessage((payload) => {
-  console.log('[SW] Mensaje en segundo plano:', payload)
+const APP_URL = 'https://sindicato-app-4vkd.vercel.app/avisos'
 
-  const titulo  = payload.data?.titulo  || payload.notification?.title || 'Sindicato Liberty'
-  const cuerpo  = payload.data?.cuerpo  || payload.notification?.body  || 'Tienes un nuevo aviso'
+// Notificaciones en segundo plano
+messaging.onBackgroundMessage((payload) => {
+  console.log('[SW] Mensaje recibido:', payload)
+
+  const titulo = payload.data?.titulo || 'Sindicato Liberty'
+  const cuerpo = payload.data?.cuerpo || 'Tienes un nuevo aviso'
 
   self.registration.showNotification(titulo, {
     body:    cuerpo,
     icon:    '/logo.png',
     badge:   '/logo.png',
     vibrate: [200, 100, 200],
-    data:    { url: 'https://sindicato-app-4vkd.vercel.app/avisos' },
+    tag:     'aviso-sindicato', // evita duplicados si llegan dos eventos
+    data:    { url: APP_URL },
   })
 })
 
 // Abrir la app al hacer clic en la notificación
 self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Clic en notificación:', event.notification)
   event.notification.close()
-  const url = event.notification.data?.url || 'https://sindicato-app-4vkd.vercel.app/avisos'
+
+  const url = event.notification.data?.url || APP_URL
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Si la app ya está abierta, enfócarla
+      // Si la app ya está abierta en alguna pestaña, enfocarla y navegar
       for (const client of clientList) {
-        if (client.url.includes('sindicato-app-4vkd.vercel.app') && 'focus' in client) {
-          return client.focus()
+        if (client.url.includes('sindicato-app-4vkd.vercel.app')) {
+          client.focus()
+          return client.navigate(url)
         }
       }
       // Si no está abierta, abrir nueva ventana
-      if (clients.openWindow) {
-        return clients.openWindow(url)
-      }
+      return clients.openWindow(url)
     })
   )
 })
