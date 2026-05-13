@@ -64,7 +64,7 @@ export default function WhatsAppButton() {
                 onClick={() => setAbierto(false)}
                 style={{
                   width: '46px', height: '46px', borderRadius: '50%',
-                  backgroundColor: '#1e3a2f',
+                  backgroundColor: '#2d7a4f',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
                   flexShrink: 0,
@@ -85,7 +85,7 @@ export default function WhatsAppButton() {
           title="Contacto y Denuncias"
           style={{
             width: '52px', height: '52px', borderRadius: '50%',
-            backgroundColor: '#1e3a2f',
+            backgroundColor: '#2d7a4f',
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
