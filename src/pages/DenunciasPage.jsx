@@ -26,7 +26,10 @@ export default function DenunciasPage() {
   const [loading, setLoading]     = useState(true)
   const [expandida, setExpandida] = useState(null)
   const [filtroEstado, setFiltroEstado] = useState('todos')
-  const [updatingId, setUpdatingId] = useState(null)
+  const [updatingId, setUpdatingId]     = useState(null)
+  const [modalCierre, setModalCierre]   = useState(null)
+  const [resolucion, setResolucion]     = useState('')
+  const [enviandoCierre, setEnviandoCierre] = useState(false)
 
   const canView = isAdministrador || isDirector
 
@@ -43,11 +46,49 @@ export default function DenunciasPage() {
     setLoading(false)
   }
 
-  const cambiarEstado = async (id, nuevoEstado) => {
+  const cambiarEstado = async (id, nuevoEstado, denuncia) => {
+    if (nuevoEstado === 'cerrada') {
+      setModalCierre({ id, nombre: denuncia.nombre, email: denuncia.email })
+      setResolucion('')
+      return
+    }
     setUpdatingId(id)
     await supabase.from('denuncias').update({ estado: nuevoEstado }).eq('id', id)
     setDenuncias(prev => prev.map(d => d.id === id ? { ...d, estado: nuevoEstado } : d))
     setUpdatingId(null)
+    ;(async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        const { data: { session } } = await supabase.auth.getSession()
+        await fetch(`${supabaseUrl}/functions/v1/notify-estado-denuncia`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, 'Authorization': `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ nombre: denuncia.nombre, email: denuncia.email, estado: nuevoEstado }),
+        })
+      } catch (err) { console.warn('[Email estado]', err) }
+    })()
+  }
+
+  const confirmarCierre = async () => {
+    if (!resolucion.trim()) return
+    const { id, nombre, email } = modalCierre
+    setEnviandoCierre(true)
+    await supabase.from('denuncias').update({ estado: 'cerrada', resolucion }).eq('id', id)
+    setDenuncias(prev => prev.map(d => d.id === id ? { ...d, estado: 'cerrada', resolucion } : d))
+    setModalCierre(null)
+    setResolucion('')
+    setEnviandoCierre(false)
+    ;(async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        const { data: { session } } = await supabase.auth.getSession()
+        await fetch(`${supabaseUrl}/functions/v1/notify-estado-denuncia`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, 'Authorization': `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ nombre, email, estado: 'cerrada', resolucion }),
+        })
+      } catch (err) { console.warn('[Email cierre]', err) }
+    })()
   }
 
   const formatFecha = (iso) => {
@@ -245,7 +286,7 @@ export default function DenunciasPage() {
                             <button
                               key={estado}
                               disabled={d.estado === estado || updatingId === d.id}
-                              onClick={() => cambiarEstado(d.id, estado)}
+                              onClick={() => cambiarEstado(d.id, estado, d)}
                               className="text-xs px-3 py-1.5 rounded-full border font-medium transition-all disabled:opacity-40"
                               style={{
                                 backgroundColor: d.estado === estado ? ESTADO_COLOR[estado].bg : '#fff',
@@ -268,5 +309,43 @@ export default function DenunciasPage() {
         </div>
       )}
     </div>
+
+      {modalCierre && (
+        <div onClick={() => setModalCierre(null)}
+             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem' }}>
+          <div onClick={e => e.stopPropagation()}
+               style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ background: '#1e3a2f', padding: '1.2rem 1.5rem' }}>
+              <p style={{ color: '#fff', fontWeight: 600, fontSize: 16, margin: 0 }}>✅ Cerrar caso</p>
+              <p style={{ color: '#a8d5b5', fontSize: 13, margin: '4px 0 0' }}>Denuncia de {modalCierre.nombre}</p>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ fontSize: 14, color: '#555', margin: '0 0 0.75rem', lineHeight: 1.6 }}>
+                Describe brevemente la resolución del caso. Este texto será enviado al socio por correo electrónico.
+              </p>
+              <textarea
+                value={resolucion}
+                onChange={e => setResolucion(e.target.value)}
+                placeholder="Ej: Luego de analizar los antecedentes, se tomaron las medidas correspondientes..."
+                rows={5}
+                style={{ width: '100%', border: '1.5px solid #ddd6cc', borderRadius: 8, padding: '0.65rem 0.9rem', fontFamily: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+              />
+              {!resolucion.trim() && (
+                <p style={{ fontSize: 12, color: '#c0392b', margin: '4px 0 0' }}>La resolución es obligatoria para cerrar el caso.</p>
+              )}
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
+                <button onClick={() => setModalCierre(null)}
+                        style={{ flex: 1, padding: '0.75rem', border: '1.5px solid #ddd6cc', borderRadius: 10, background: '#fff', fontSize: 14, cursor: 'pointer', color: '#555' }}>
+                  Cancelar
+                </button>
+                <button onClick={confirmarCierre} disabled={!resolucion.trim() || enviandoCierre}
+                        style={{ flex: 1, padding: '0.75rem', border: 'none', borderRadius: 10, background: resolucion.trim() ? '#1e3a2f' : '#ccc', color: '#fff', fontSize: 14, fontWeight: 500, cursor: resolucion.trim() ? 'pointer' : 'not-allowed' }}>
+                  {enviandoCierre ? 'Cerrando...' : 'Cerrar caso y notificar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
   )
 }
