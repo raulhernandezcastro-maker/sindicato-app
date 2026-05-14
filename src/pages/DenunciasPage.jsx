@@ -308,7 +308,6 @@ export default function DenunciasPage() {
           })}
         </div>
       )}
-    <div>
 
       {modalCierre && (
         <div onClick={() => setModalCierre(null)}
