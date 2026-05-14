@@ -308,7 +308,7 @@ export default function DenunciasPage() {
           })}
         </div>
       )}
-    </div>
+    <div>
 
       {modalCierre && (
         <div onClick={() => setModalCierre(null)}
@@ -347,5 +347,6 @@ export default function DenunciasPage() {
           </div>
         </div>
       )}
+    </div>
   )
 }
