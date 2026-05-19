@@ -54,7 +54,7 @@ function PanelMetricas({ socios, onRefresh, refreshing }) {
   const ingresaron5dias  = sociosActivos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace5dias)
   const ingresaron7dias  = sociosActivos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace7dias)
   const ingresaron30dias = sociosActivos.filter(s => s.last_sign_in_at && new Date(s.last_sign_in_at) >= hace30dias)
-  const nunca            = sociosActivos.filter(s => !s.last_sign_in_at)
+  const nunca            = sociosActivos.filter(s => !s.last_sign_in_at && !s.roles.includes('aportante') && !s.roles.includes('director') && !s.roles.includes('administrador'))
 
   const pct = (n) => sociosActivos.length > 0 ? Math.round((n / sociosActivos.length) * 100) : 0
 
