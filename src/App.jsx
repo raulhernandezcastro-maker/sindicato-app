@@ -13,6 +13,8 @@ import PerfilPage from './pages/PerfilPage'
 import SociosPage from './pages/SociosPage'
 import CuotasPage from './pages/CuotasPage'
 import DenunciasPage from './pages/DenunciasPage'
+import EncuestasPage from './pages/EncuestasPage'
+import EncuestasAdminPage from './pages/EncuestasAdminPage'
 import LoginPage from './pages/LoginPage'
 import FAQPage from './pages/FAQPage'
 
@@ -40,6 +42,8 @@ export default function App() {
           <Route path="/cuotas" element={<ProtectedRoute allowDirector><CuotasPage /></ProtectedRoute>} />
           <Route path="/socios" element={<ProtectedRoute allowDirector><SociosPage /></ProtectedRoute>} />
           <Route path="/denuncias" element={<ProtectedRoute allowDirector><DenunciasPage /></ProtectedRoute>} />
+          <Route path="/encuestas" element={<ProtectedRoute><EncuestasPage /></ProtectedRoute>} />
+          <Route path="/encuestas/admin" element={<ProtectedRoute allowDirector><EncuestasAdminPage /></ProtectedRoute>} />
 
         </Route>
 
