@@ -20,6 +20,7 @@ export function MobileNav() {
     { to: '/leyes',       icon: Scale,           label: 'Leyes' },
     { to: '/perfil',      icon: User,            label: 'Perfil' },
     { to: '/faq',         icon: HelpCircle,      label: 'Preguntas' },
+    { to: '/encuestas',   icon: ClipboardList,   label: 'Encuestas' },
   ]
   const directorLinks = [
     ...socioLinks,
