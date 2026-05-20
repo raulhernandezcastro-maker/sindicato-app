@@ -21,6 +21,7 @@ export function DesktopNav() {
     { to: '/leyes',       icon: Scale,           label: 'Leyes Laborales' },
     { to: '/perfil',      icon: User,            label: 'Mi Perfil' },
     { to: '/faq',         icon: HelpCircle,      label: 'Preguntas Frecuentes' },
+    { to: '/encuestas',   icon: ClipboardList,   label: 'Encuestas' },
   ]
   const directorLinks = [
     ...socioLinks,
