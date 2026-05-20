@@ -74,8 +74,19 @@ export default function EncuestasAdminPage() {
 
   const cargarPlantilla = async (plantilla) => {
     if (plantilla === 'personalizada') { setPreguntas([]); return }
-    const { data } = await supabase.from('plantillas_encuesta').select('*').eq('plantilla', plantilla).order('orden')
-    setPreguntas((data || []).map(p => ({ texto: p.texto, tipo: p.tipo, opciones: p.opciones, obligatoria: p.obligatoria })))
+    setPreguntas([]) // limpiar antes de cargar
+    const { data, error } = await supabase
+      .from('plantillas_encuesta')
+      .select('*')
+      .eq('plantilla', plantilla)
+      .order('orden')
+    console.log('[Plantilla]', plantilla, data, error)
+    setPreguntas((data || []).map(p => ({
+      texto:      p.texto,
+      tipo:       p.tipo,
+      opciones:   p.opciones,
+      obligatoria: p.obligatoria
+    })))
   }
 
   const agregarPregunta = () => {
@@ -287,7 +298,11 @@ export default function EncuestasAdminPage() {
           <div>
             <label className="text-xs font-medium text-muted-foreground">Plantilla base</label>
             <select value={form.plantilla_base}
-              onChange={e => { setForm(f => ({ ...f, plantilla_base: e.target.value })); cargarPlantilla(e.target.value) }}
+              onChange={async e => {
+                const val = e.target.value
+                setForm(f => ({ ...f, plantilla_base: val }))
+                await cargarPlantilla(val)
+              }}
               className="w-full border rounded-lg px-3 py-2 text-sm mt-1" style={{ borderColor: '#ddd6cc' }}>
               {Object.entries(PLANTILLAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
@@ -467,4 +482,3 @@ export default function EncuestasAdminPage() {
     </div>
   )
 }
-
