@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Home, FileText, Scale, Gift, Handshake, User, Users,
-  DollarSign, LayoutDashboard, LogOut, HelpCircle, Menu, X, ShieldAlert
+  DollarSign, LayoutDashboard, LogOut, HelpCircle, Menu, X, ShieldAlert, ClipboardList
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
@@ -27,6 +27,7 @@ export function MobileNav() {
     { to: '/cuotas',     icon: DollarSign,      label: 'Cuotas' },
     { to: '/socios',     icon: Users,           label: 'Socios' },
     { to: '/denuncias',  icon: ShieldAlert,     label: 'Denuncias' },
+    { to: '/encuestas/admin', icon: ClipboardList, label: 'Encuestas' },
   ]
   const adminLinks = [
     ...directorLinks,
