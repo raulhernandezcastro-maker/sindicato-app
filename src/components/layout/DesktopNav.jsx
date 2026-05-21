@@ -34,7 +34,9 @@ export function DesktopNav() {
     { to: '/votaciones',      icon: ThumbsUp,        label: 'Votaciones' },
   ]
   const adminLinks = [
-    ...directorLinks,
+    ...directorLinks.filter(l => l.to !== '/encuestas' && l.to !== '/votaciones'),
+    { to: '/encuestas/admin', icon: ClipboardList,   label: 'Encuestas' },
+    { to: '/votaciones/admin',icon: ThumbsUp,        label: 'Votaciones' },
   ]
 
   const links = isAdministrador ? adminLinks : isDirector ? directorLinks : socioLinks
