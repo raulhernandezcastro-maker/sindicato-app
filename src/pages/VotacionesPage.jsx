@@ -10,6 +10,16 @@ async function generarHash(userId, votacionId) {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+
+// Calcula el número exacto de votos requeridos según tipo de quórum
+function calcularQuorumRequerido(votacion, totalSocios) {
+  const tipo = votacion.tipo_quorum || 'porcentaje'
+  if (tipo === 'simple') return Math.floor(totalSocios / 2) + 1
+  if (tipo === 'calificada') return Math.ceil(totalSocios * 2 / 3)
+  // absoluta o porcentaje personalizado
+  return Math.ceil(totalSocios * (votacion.quorum_requerido / 100))
+}
+
 const VOTOS = [
   { valor: 'favor',      emoji: '✅', label: 'A favor',    bg: '#D4EDDA', color: '#155724', border: '#C3E6CB' },
   { valor: 'contra',     emoji: '❌', label: 'En contra',  bg: '#f8d7da', color: '#721c24', border: '#f5c6cb' },
@@ -105,7 +115,8 @@ export default function VotacionesPage() {
   }
 
   const pct = (n) => conteos.total > 0 ? Math.round((n / conteos.total) * 100) : 0
-  const quorumAlcanzado = totalSocios > 0 && (conteos.total / totalSocios * 100) >= (votacion?.quorum_requerido || 50)
+  const quorumReq = votacion ? calcularQuorumRequerido(votacion, totalSocios) : 0
+  const quorumAlcanzado = totalSocios > 0 && conteos.total >= quorumReq
   const aprobada = conteos.favor > conteos.contra
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
@@ -159,7 +170,8 @@ export default function VotacionesPage() {
           <p className="text-sm font-semibold" style={{ color: '#1e3a2f' }}>Votos emitidos</p>
           <span className="text-xs font-medium px-2 py-0.5 rounded-full"
                 style={{ backgroundColor: quorumAlcanzado ? '#D4EDDA' : '#FFF3CD', color: quorumAlcanzado ? '#155724' : '#856404' }}>
-            {conteos.total} de {Math.ceil(totalSocios * (votacion.quorum_requerido / 100))} requeridos ({votacion.quorum_requerido}%)
+            {conteos.total} de {quorumReq} requeridos
+            {votacion?.tipo_quorum === 'simple' ? ' (50%+1)' : votacion?.tipo_quorum === 'calificada' ? ' (2/3)' : ` (${votacion?.quorum_requerido}%)`}
           </span>
         </div>
 
@@ -227,4 +239,3 @@ export default function VotacionesPage() {
     </div>
   )
 }
-
