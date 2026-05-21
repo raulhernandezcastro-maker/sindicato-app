@@ -135,6 +135,43 @@ export default function VotacionesAdminPage() {
 
   const pct = (n, total) => total > 0 ? Math.round((n / total) * 100) : 0
 
+  const publicarResultado = async (vot, res) => {
+    // Marcar como publicado
+    await supabase.from('votaciones').update({ resultado_publicado: true }).eq('id', vot.id)
+
+    // Armar texto del resultado
+    const aprobada = res.favor > res.contra
+    const titulo = `📊 Resultado: ${vot.titulo}`
+    const contenido = `La votación ha concluido con ${res.total} votos emitidos.
+
+✅ A favor: ${res.favor} (${pct(res.favor, res.total)}%)
+❌ En contra: ${res.contra} (${pct(res.contra, res.total)}%)
+⬜ Abstención: ${res.abstencion} (${pct(res.abstencion, res.total)}%)
+
+Resultado: ${res.quorumAlcanzado ? (aprobada ? '✅ APROBADA' : '❌ RECHAZADA') : '⚠️ Sin quórum'}`
+
+    // Crear aviso
+    await supabase.from('avisos').insert({ titulo, contenido, creado_por: user.id })
+
+    // Enviar notificación push
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const { data: { session } } = await supabase.auth.getSession()
+      await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ titulo, contenido }),
+      })
+    } catch (err) { console.warn('[Notificación resultado]', err) }
+
+    await load()
+    alert('✅ Resultado publicado a todos los socios')
+  }
+
   if (!canView) return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <p className="text-lg font-semibold">Acceso restringido</p>
@@ -157,6 +194,24 @@ export default function VotacionesAdminPage() {
 
       {loadingRes ? <div className="flex justify-center py-12"><Spinner /></div> : resultados && (
         <>
+          {/* Botón publicar resultado */}
+          {(isAdministrador || isDirector) && votSeleccionada?.estado === 'cerrada' && !votSeleccionada?.resultado_publicado && (
+            <div className="rounded-xl border p-4 text-center" style={{ borderColor: '#a8d5b5', backgroundColor: '#f0f8f3' }}>
+              <p className="text-sm font-semibold mb-1" style={{ color: '#1e3a2f' }}>¿Listo para publicar el resultado?</p>
+              <p className="text-xs text-muted-foreground mb-3">Se creará un aviso y se enviará una notificación push a todos los socios.</p>
+              <button onClick={() => publicarResultado(votSeleccionada, resultados)}
+                className="px-6 py-2 rounded-full text-sm font-medium text-white"
+                style={{ backgroundColor: '#1e3a2f' }}>
+                📢 Publicar resultado a socios
+              </button>
+            </div>
+          )}
+          {votSeleccionada?.resultado_publicado && (
+            <div className="rounded-xl border p-3 text-center text-sm"
+                 style={{ borderColor: '#C3E6CB', backgroundColor: '#D4EDDA', color: '#155724' }}>
+              ✅ Resultado ya publicado a los socios
+            </div>
+          )}
           {/* Quórum */}
           <div className="rounded-xl border p-4" style={{ borderColor: '#ddd6cc', backgroundColor: '#fff' }}>
             <div className="flex items-center justify-between mb-3">
