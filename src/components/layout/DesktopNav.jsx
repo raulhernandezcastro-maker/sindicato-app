@@ -30,8 +30,8 @@ export function DesktopNav() {
     { to: '/cuotas',          icon: DollarSign,      label: 'Cuotas' },
     { to: '/socios',          icon: Users,           label: 'Gestión de Socios' },
     { to: '/denuncias',       icon: ShieldAlert,     label: 'Denuncias' },
-    { to: '/encuestas/admin', icon: ClipboardList,   label: 'Encuestas' },
-    { to: '/votaciones/admin',icon: ThumbsUp,        label: 'Votaciones' },
+    { to: '/encuestas',       icon: ClipboardList,   label: 'Encuestas' },
+    { to: '/votaciones',      icon: ThumbsUp,        label: 'Votaciones' },
   ]
   const adminLinks = [
     ...directorLinks,
