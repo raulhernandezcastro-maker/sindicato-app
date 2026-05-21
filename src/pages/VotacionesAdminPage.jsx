@@ -4,6 +4,16 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Spinner } from '../components/ui/spinner'
 
+
+// Calcula el número exacto de votos requeridos según tipo de quórum
+function calcularQuorumRequerido(votacion, totalSocios) {
+  const tipo = votacion.tipo_quorum || 'porcentaje'
+  if (tipo === 'simple') return Math.floor(totalSocios / 2) + 1
+  if (tipo === 'calificada') return Math.ceil(totalSocios * 2 / 3)
+  // absoluta o porcentaje personalizado
+  return Math.ceil(totalSocios * (votacion.quorum_requerido / 100))
+}
+
 const ESTADO_COLOR = {
   borrador: { bg: '#f0f0f0', text: '#555' },
   activa:   { bg: '#D4EDDA', text: '#155724' },
@@ -31,6 +41,7 @@ export default function VotacionesAdminPage() {
   const [form, setForm] = useState({
     titulo: '', descripcion: '', tipo: 'anonima',
     visible_para: 'todos', quorum_requerido: 50,
+    tipo_quorum: 'simple', // simple=50+1, absoluta=50%, calificada=67%, personalizado
     fecha_cierre: '', hora_cierre: '',
   })
 
@@ -61,10 +72,16 @@ export default function VotacionesAdminPage() {
       fecha_cierre = new Date(`${form.fecha_cierre}T${form.hora_cierre}`).toISOString()
     }
 
+    // Calcular quórum según tipo
+    let quorum_requerido = Number(form.quorum_requerido)
+    if (form.tipo_quorum === 'simple') quorum_requerido = -1 // -1 = 50%+1 (se calcula en runtime con total socios)
+    else if (form.tipo_quorum === 'calificada') quorum_requerido = 67
+
     const { error } = await supabase.from('votaciones').insert({
       titulo: form.titulo, descripcion: form.descripcion,
       tipo: form.tipo, visible_para: form.visible_para,
-      quorum_requerido: Number(form.quorum_requerido),
+      quorum_requerido,
+      tipo_quorum: form.tipo_quorum,
       fecha_cierre, estado, created_by: user.id,
     })
 
@@ -96,7 +113,7 @@ export default function VotacionesAdminPage() {
     const contra     = votos?.filter(v => v.voto === 'contra').length || 0
     const abstencion = votos?.filter(v => v.voto === 'abstencion').length || 0
     const total      = emitidas?.length || 0
-    const quorumReq  = Math.ceil(totalSocios * (vot.quorum_requerido / 100))
+    const quorumReq  = calcularQuorumRequerido(vot, totalSocios)
     const quorumAlcanzado = total >= quorumReq
     const aprobada   = favor > contra
 
@@ -255,19 +272,37 @@ export default function VotacionesAdminPage() {
         </div>
 
         <div>
-          <label className="text-xs font-medium text-muted-foreground">Quórum requerido (%)</label>
-          <div className="flex items-center gap-3 mt-1">
-            {[25, 50, 67, 75].map(n => (
-              <button key={n} type="button" onClick={() => setForm(f => ({ ...f, quorum_requerido: n }))}
-                className="px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
-                style={{ backgroundColor: form.quorum_requerido === n ? '#2d7a4f' : '#fff', color: form.quorum_requerido === n ? '#fff' : '#2d7a4f', borderColor: '#2d7a4f' }}>
-                {n}%
+          <label className="text-xs font-medium text-muted-foreground">Tipo de quórum</label>
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            {[
+              { key: 'simple',      label: 'Mayoría simple',    desc: '50% + 1 voto' },
+              { key: 'absoluta',    label: 'Mayoría absoluta',  desc: '50% de los socios' },
+              { key: 'calificada',  label: 'Mayoría calificada',desc: '2/3 (67%)' },
+              { key: 'personalizado', label: 'Personalizado',   desc: 'Porcentaje manual' },
+            ].map(({ key, label, desc }) => (
+              <button key={key} type="button"
+                onClick={() => {
+                  const pct = key === 'simple' ? 50 : key === 'absoluta' ? 50 : key === 'calificada' ? 67 : form.quorum_requerido
+                  setForm(f => ({ ...f, tipo_quorum: key, quorum_requerido: pct }))
+                }}
+                className="text-left px-3 py-2 rounded-lg border-2 transition-all"
+                style={{
+                  borderColor: form.tipo_quorum === key ? '#2d7a4f' : '#e5e7eb',
+                  backgroundColor: form.tipo_quorum === key ? '#f0f8f3' : '#fff',
+                }}>
+                <p className="text-xs font-semibold" style={{ color: form.tipo_quorum === key ? '#1e3a2f' : '#333' }}>{label}</p>
+                <p className="text-xs" style={{ color: '#888' }}>{desc}</p>
               </button>
             ))}
-            <input type="number" min={1} max={100} value={form.quorum_requerido}
-              onChange={e => setForm(f => ({ ...f, quorum_requerido: Number(e.target.value) }))}
-              className="w-16 border rounded-lg px-2 py-1.5 text-sm text-center" style={{ borderColor: '#ddd6cc' }} />
           </div>
+          {form.tipo_quorum === 'personalizado' && (
+            <div className="mt-2 flex items-center gap-2">
+              <input type="number" min={1} max={100} value={form.quorum_requerido}
+                onChange={e => setForm(f => ({ ...f, quorum_requerido: Number(e.target.value) }))}
+                className="w-20 border rounded-lg px-2 py-1.5 text-sm text-center" style={{ borderColor: '#ddd6cc' }} />
+              <span className="text-sm text-muted-foreground">% de los socios</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -345,7 +380,7 @@ export default function VotacionesAdminPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm" style={{ color: '#1e3a2f' }}>{vot.titulo}</p>
                     <p className="text-xs text-muted-foreground">
-                      {vot.tipo === 'anonima' ? '🔒 Anónima' : '📋 Nominada'} · Quórum {vot.quorum_requerido}% · {VISIBLE_PARA[vot.visible_para]}
+                      {vot.tipo === 'anonima' ? '🔒 Anónima' : '📋 Nominada'} · Quórum {vot.tipo_quorum === 'simple' ? '50%+1' : vot.tipo_quorum === 'calificada' ? '2/3' : `${vot.quorum_requerido}%`} · {VISIBLE_PARA[vot.visible_para]}
                       {vot.fecha_cierre && ` · Cierra ${new Date(vot.fecha_cierre).toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
                     </p>
                   </div>
