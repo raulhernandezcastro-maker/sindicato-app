@@ -2,7 +2,7 @@ import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Home, FileText, Scale, Gift, Handshake, User, Users,
-  DollarSign, LayoutDashboard, LogOut, HelpCircle, ShieldAlert, ClipboardList
+  DollarSign, LayoutDashboard, LogOut, HelpCircle, ShieldAlert, ClipboardList, ThumbsUp
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
@@ -22,6 +22,7 @@ export function DesktopNav() {
     { to: '/perfil',      icon: User,            label: 'Mi Perfil' },
     { to: '/faq',         icon: HelpCircle,      label: 'Preguntas Frecuentes' },
     { to: '/encuestas',   icon: ClipboardList,   label: 'Encuestas' },
+    { to: '/votaciones',  icon: ThumbsUp,        label: 'Votaciones' },
   ]
   const directorLinks = [
     ...socioLinks,
@@ -30,6 +31,7 @@ export function DesktopNav() {
     { to: '/socios',     icon: Users,           label: 'Gestión de Socios' },
     { to: '/denuncias',  icon: ShieldAlert,     label: 'Denuncias' },
     { to: '/encuestas/admin', icon: ClipboardList, label: 'Encuestas' },
+    { to: '/votaciones/admin', icon: ThumbsUp,    label: 'Votaciones' },
   ]
   const adminLinks = [
     ...directorLinks,
