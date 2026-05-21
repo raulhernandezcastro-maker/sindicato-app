@@ -63,7 +63,7 @@ export default function AvisosPage() {
       frecuencia_dias: esRecurrente ? frecuenciaDias : null,
       fecha_inicio: esRecurrente ? fechaInicio : null,
       fecha_fin: esRecurrente && fechaFin ? fechaFin : null,
-      proxima_notificacion: esRecurrente ? fechaInicio : null,
+      proxima_notificacion: esRecurrente ? (new Date(fechaInicio) < new Date() ? new Date().toISOString().split('T')[0] : fechaInicio) : null,
       recurrente_activo: esRecurrente ? true : null,
     }
 
