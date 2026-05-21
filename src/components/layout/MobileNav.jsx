@@ -24,13 +24,13 @@ export function MobileNav() {
     { to: '/faq',         icon: HelpCircle,      label: 'Preguntas' },
   ]
   const directorLinks = [
-    ...socioLinks,
-    { to: '/dashboard',  icon: LayoutDashboard, label: 'Panel' },
-    { to: '/cuotas',     icon: DollarSign,      label: 'Cuotas' },
-    { to: '/socios',     icon: Users,           label: 'Socios' },
-    { to: '/denuncias',  icon: ShieldAlert,     label: 'Denuncias' },
-    { to: '/encuestas/admin', icon: ClipboardList, label: 'Encuestas' },
-    { to: '/votaciones/admin', icon: ThumbsUp,    label: 'Votaciones' },
+    ...socioLinks.filter(l => l.to !== '/encuestas' && l.to !== '/votaciones'),
+    { to: '/dashboard',       icon: LayoutDashboard, label: 'Panel' },
+    { to: '/cuotas',          icon: DollarSign,      label: 'Cuotas' },
+    { to: '/socios',          icon: Users,           label: 'Socios' },
+    { to: '/denuncias',       icon: ShieldAlert,     label: 'Denuncias' },
+    { to: '/encuestas/admin', icon: ClipboardList,   label: 'Encuestas' },
+    { to: '/votaciones/admin',icon: ThumbsUp,        label: 'Votaciones' },
   ]
   const adminLinks = [
     ...directorLinks,
