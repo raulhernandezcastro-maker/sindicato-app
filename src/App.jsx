@@ -15,6 +15,8 @@ import CuotasPage from './pages/CuotasPage'
 import DenunciasPage from './pages/DenunciasPage'
 import EncuestasPage from './pages/EncuestasPage'
 import EncuestasAdminPage from './pages/EncuestasAdminPage'
+import VotacionesPage from './pages/VotacionesPage'
+import VotacionesAdminPage from './pages/VotacionesAdminPage'
 import LoginPage from './pages/LoginPage'
 import FAQPage from './pages/FAQPage'
 
@@ -44,6 +46,8 @@ export default function App() {
           <Route path="/denuncias" element={<ProtectedRoute allowDirector><DenunciasPage /></ProtectedRoute>} />
           <Route path="/encuestas" element={<ProtectedRoute><EncuestasPage /></ProtectedRoute>} />
           <Route path="/encuestas/admin" element={<ProtectedRoute allowDirector><EncuestasAdminPage /></ProtectedRoute>} />
+          <Route path="/votaciones" element={<ProtectedRoute><VotacionesPage /></ProtectedRoute>} />
+          <Route path="/votaciones/admin" element={<ProtectedRoute allowDirector><VotacionesAdminPage /></ProtectedRoute>} />
 
         </Route>
 
