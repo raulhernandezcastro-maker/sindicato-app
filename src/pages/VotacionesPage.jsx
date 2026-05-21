@@ -1,1 +1,230 @@
+import React, { useEffect, useState, useCallback } from 'react'
+import { Vote, CheckCircle, Lock, Clock } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
+import { Spinner } from '../components/ui/spinner'
+
+async function generarHash(userId, votacionId) {
+  const data = new TextEncoder().encode(`voto:${userId}:${votacionId}`)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+const VOTOS = [
+  { valor: 'favor',      emoji: '✅', label: 'A favor',    bg: '#D4EDDA', color: '#155724', border: '#C3E6CB' },
+  { valor: 'contra',     emoji: '❌', label: 'En contra',  bg: '#f8d7da', color: '#721c24', border: '#f5c6cb' },
+  { valor: 'abstencion', emoji: '⬜', label: 'Abstención', bg: '#f0f0f0', color: '#555',    border: '#ddd'    },
+]
+
+export default function VotacionesPage() {
+  const { user } = useAuth()
+  const [habilitado, setHabilitado]   = useState(false)
+  const [loading, setLoading]         = useState(true)
+  const [votacion, setVotacion]       = useState(null)
+  const [yaVoto, setYaVoto]           = useState(false)
+  const [conteos, setConteos]         = useState({ favor: 0, contra: 0, abstencion: 0, total: 0 })
+  const [totalSocios, setTotalSocios] = useState(0)
+  const [votoSeleccionado, setVotoSeleccionado] = useState(null)
+  const [enviando, setEnviando]       = useState(false)
+  const [enviado, setEnviado]         = useState(false)
+  const [error, setError]             = useState('')
+  const [tiempoRestante, setTiempoRestante] = useState('')
+
+  const cargar = useCallback(async () => {
+    setLoading(true)
+
+    const { data: config } = await supabase
+      .from('configuracion').select('valor')
+      .eq('clave', 'votaciones_habilitadas').single()
+
+    if (!config || config.valor !== 'true') { setHabilitado(false); setLoading(false); return }
+    setHabilitado(true)
+
+    const { data: vot } = await supabase
+      .from('votaciones').select('*')
+      .eq('estado', 'activa')
+      .order('created_at', { ascending: false })
+      .limit(1).single()
+
+    if (!vot) { setLoading(false); return }
+    setVotacion(vot)
+
+    // Verificar si ya votó
+    const hash = await generarHash(user.id, vot.id)
+    const { data: emitida } = await supabase
+      .from('votaciones_emitidas').select('id').eq('hash', hash).single()
+    if (emitida) setYaVoto(true)
+
+    // Conteos
+    const { data: votos } = await supabase
+      .from('votos').select('voto').eq('votacion_id', vot.id)
+    const c = { favor: 0, contra: 0, abstencion: 0, total: votos?.length || 0 }
+    votos?.forEach(v => { if (c[v.voto] !== undefined) c[v.voto]++ })
+    setConteos(c)
+
+    // Total socios activos para quórum
+    const { count } = await supabase
+      .from('profiles').select('id', { count: 'exact', head: true })
+      .eq('estado', 'activo')
+    setTotalSocios(count || 0)
+
+    setLoading(false)
+  }, [user])
+
+  useEffect(() => { cargar() }, [cargar])
+
+  // Contador regresivo
+  useEffect(() => {
+    if (!votacion?.fecha_cierre) return
+    const interval = setInterval(() => {
+      const diff = new Date(votacion.fecha_cierre) - new Date()
+      if (diff <= 0) { setTiempoRestante('Votación cerrada'); clearInterval(interval); return }
+      const h = Math.floor(diff / 3600000)
+      const m = Math.floor((diff % 3600000) / 60000)
+      const s = Math.floor((diff % 60000) / 1000)
+      setTiempoRestante(`${h}h ${m}m ${s}s`)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [votacion])
+
+  const handleVotar = async () => {
+    if (!votoSeleccionado) { setError('Selecciona una opción para votar'); return }
+    setEnviando(true); setError('')
+
+    try {
+      await supabase.from('votos').insert({ votacion_id: votacion.id, voto: votoSeleccionado })
+      const hash = await generarHash(user.id, votacion.id)
+      await supabase.from('votaciones_emitidas').insert({ hash, votacion_id: votacion.id })
+      setEnviado(true)
+      await cargar()
+    } catch (err) {
+      setError('Error al registrar tu voto. Intenta nuevamente.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const pct = (n) => conteos.total > 0 ? Math.round((n / conteos.total) * 100) : 0
+  const quorumAlcanzado = totalSocios > 0 && (conteos.total / totalSocios * 100) >= (votacion?.quorum_requerido || 50)
+  const aprobada = conteos.favor > conteos.contra
+
+  if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
+
+  if (!habilitado) return (
+    <div className="flex flex-col items-center justify-center py-24 text-center px-4">
+      <Lock className="w-12 h-12 mb-4 opacity-30" />
+      <p className="text-lg font-semibold">Módulo no disponible</p>
+      <p className="text-sm text-muted-foreground mt-1">Las votaciones no están habilitadas actualmente.</p>
+    </div>
+  )
+
+  if (!votacion) return (
+    <div className="flex flex-col items-center justify-center py-24 text-center px-4">
+      <Vote className="w-12 h-12 mb-4 opacity-30" />
+      <p className="text-lg font-semibold">Sin votaciones activas</p>
+      <p className="text-sm text-muted-foreground mt-1">No hay votaciones disponibles en este momento.</p>
+    </div>
+  )
+
+  return (
+    <div className="max-w-xl mx-auto px-4 pb-8 space-y-4">
+
+      {/* Encabezado */}
+      <div className="rounded-xl px-4 py-3" style={{ backgroundColor: '#1e3a2f' }}>
+        <div className="flex items-start gap-3">
+          <Vote className="w-5 h-5 text-white flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h1 className="text-white font-bold text-base leading-tight">{votacion.titulo}</h1>
+            {votacion.descripcion && <p className="text-xs mt-1" style={{ color: '#a8d5b5' }}>{votacion.descripcion}</p>}
+          </div>
+          <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: '#2d7a4f', color: '#fff' }}>
+            {votacion.tipo === 'anonima' ? '🔒 Anónima' : '📋 Nominada'}
+          </span>
+        </div>
+      </div>
+
+      {/* Tiempo restante */}
+      {tiempoRestante && (
+        <div className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
+             style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
+          <Clock className="w-4 h-4" />
+          <span>Tiempo restante: <strong>{tiempoRestante}</strong></span>
+        </div>
+      )}
+
+      {/* Resultados parciales */}
+      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: '#ddd6cc', backgroundColor: '#fff' }}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold" style={{ color: '#1e3a2f' }}>Votos emitidos</p>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: quorumAlcanzado ? '#D4EDDA' : '#FFF3CD', color: quorumAlcanzado ? '#155724' : '#856404' }}>
+            {conteos.total} de {Math.ceil(totalSocios * (votacion.quorum_requerido / 100))} requeridos ({votacion.quorum_requerido}%)
+          </span>
+        </div>
+
+        {VOTOS.map(({ valor, emoji, label, bg, color, border }) => (
+          <div key={valor}>
+            <div className="flex justify-between text-xs mb-1">
+              <span>{emoji} {label}</span>
+              <span className="font-semibold">{conteos[valor]} ({pct(conteos[valor])}%)</span>
+            </div>
+            <div className="w-full rounded-full h-2.5" style={{ backgroundColor: '#e5e7eb' }}>
+              <div className="h-2.5 rounded-full transition-all" style={{ width: `${pct(conteos[valor])}%`, backgroundColor: color }} />
+            </div>
+          </div>
+        ))}
+
+        {/* Resultado si hay quórum */}
+        {quorumAlcanzado && (
+          <div className="mt-2 p-3 rounded-lg text-center text-sm font-bold"
+               style={{ backgroundColor: aprobada ? '#D4EDDA' : '#f8d7da', color: aprobada ? '#155724' : '#721c24' }}>
+            {aprobada ? '✅ Moción APROBADA' : '❌ Moción RECHAZADA'}
+          </div>
+        )}
+      </div>
+
+      {/* Votación */}
+      {(yaVoto || enviado) ? (
+        <div className="flex flex-col items-center py-8 text-center">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
+               style={{ backgroundColor: '#f0f8f3', border: '2px solid #2d7a4f' }}>
+            <CheckCircle className="w-8 h-8" style={{ color: '#2d7a4f' }} />
+          </div>
+          <p className="font-bold" style={{ color: '#1e3a2f' }}>¡Voto registrado!</p>
+          <p className="text-sm text-muted-foreground mt-1">Tu voto ha sido registrado de forma anónima y segura.</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: '#ddd6cc', backgroundColor: '#fff' }}>
+          <p className="text-sm font-semibold" style={{ color: '#1e3a2f' }}>Emite tu voto</p>
+
+          {VOTOS.map(({ valor, emoji, label, bg, color, border }) => (
+            <button key={valor}
+              onClick={() => setVotoSeleccionado(valor)}
+              className="w-full py-4 rounded-xl border-2 text-base font-semibold transition-all"
+              style={{
+                borderColor: votoSeleccionado === valor ? color : '#e5e7eb',
+                backgroundColor: votoSeleccionado === valor ? bg : '#fff',
+                color: votoSeleccionado === valor ? color : '#555',
+              }}>
+              {emoji} {label}
+            </button>
+          ))}
+
+          {error && <p className="text-sm" style={{ color: '#c0392b' }}>{error}</p>}
+
+          <button onClick={handleVotar} disabled={!votoSeleccionado || enviando}
+            className="w-full py-3 rounded-xl text-sm font-medium text-white transition-all"
+            style={{ backgroundColor: votoSeleccionado ? '#1e3a2f' : '#ccc', cursor: votoSeleccionado ? 'pointer' : 'not-allowed' }}>
+            {enviando ? 'Registrando voto...' : 'Confirmar voto'}
+          </button>
+
+          <p className="text-center text-xs" style={{ color: '#999' }}>
+            🔒 Tu voto es anónimo y no puede ser modificado una vez emitido
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
 
