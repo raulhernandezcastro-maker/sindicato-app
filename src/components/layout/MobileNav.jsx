@@ -18,10 +18,10 @@ export function MobileNav() {
     { to: '/beneficios',  icon: Gift,            label: 'Beneficios' },
     { to: '/convenios',   icon: Handshake,       label: 'Convenios' },
     { to: '/leyes',       icon: Scale,           label: 'Leyes' },
+    { to: '/encuestas',  icon: ClipboardList,   label: 'Encuestas' },
+    { to: '/votaciones',  icon: ThumbsUp,        label: 'Votaciones' },
     { to: '/perfil',      icon: User,            label: 'Perfil' },
     { to: '/faq',         icon: HelpCircle,      label: 'Preguntas' },
-    { to: '/encuestas',   icon: ClipboardList,   label: 'Encuestas' },
-    { to: '/votaciones',  icon: ThumbsUp,        label: 'Votaciones' },
   ]
   const directorLinks = [
     ...socioLinks,
