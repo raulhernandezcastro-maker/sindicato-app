@@ -19,10 +19,10 @@ export function DesktopNav() {
     { to: '/beneficios',  icon: Gift,            label: 'Beneficios' },
     { to: '/convenios',   icon: Handshake,       label: 'Convenios' },
     { to: '/leyes',       icon: Scale,           label: 'Leyes Laborales' },
+    { to: '/encuestas',  icon: ClipboardList,   label: 'Encuestas' },
+    { to: '/votaciones',  icon: ThumbsUp,        label: 'Votaciones' },
     { to: '/perfil',      icon: User,            label: 'Mi Perfil' },
     { to: '/faq',         icon: HelpCircle,      label: 'Preguntas Frecuentes' },
-    { to: '/encuestas',   icon: ClipboardList,   label: 'Encuestas' },
-    { to: '/votaciones',  icon: ThumbsUp,        label: 'Votaciones' },
   ]
   const directorLinks = [
     ...socioLinks,
