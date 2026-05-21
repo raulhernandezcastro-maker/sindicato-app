@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Vote, CheckCircle, Lock, Clock } from 'lucide-react'
+import { Vote, CheckCircle, Lock, Clock, BarChart2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Spinner } from '../components/ui/spinner'
@@ -10,13 +10,10 @@ async function generarHash(userId, votacionId) {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-
-// Calcula el número exacto de votos requeridos según tipo de quórum
 function calcularQuorumRequerido(votacion, totalSocios) {
-  const tipo = votacion.tipo_quorum || 'porcentaje'
+  const tipo = votacion.tipo_quorum || 'simple'
   if (tipo === 'simple') return Math.floor(totalSocios / 2) + 1
   if (tipo === 'calificada') return Math.ceil(totalSocios * 2 / 3)
-  // absoluta o porcentaje personalizado
   return Math.ceil(totalSocios * (votacion.quorum_requerido / 100))
 }
 
@@ -27,7 +24,10 @@ const VOTOS = [
 ]
 
 export default function VotacionesPage() {
-  const { user } = useAuth()
+  const { user, isAdministrador, isDirector } = useAuth()
+  const puedeVotar    = !isAdministrador // socios y directores pueden votar
+  const puedeVerAdmin = isAdministrador || isDirector
+
   const [habilitado, setHabilitado]   = useState(false)
   const [loading, setLoading]         = useState(true)
   const [votacion, setVotacion]       = useState(null)
@@ -50,11 +50,23 @@ export default function VotacionesPage() {
     if (!config || config.valor !== 'true') { setHabilitado(false); setLoading(false); return }
     setHabilitado(true)
 
-    const { data: vot } = await supabase
+    // Buscar votación activa O cerrada+publicada (para mostrar resultado)
+    const { data: activa } = await supabase
       .from('votaciones').select('*')
       .eq('estado', 'activa')
       .order('created_at', { ascending: false })
       .limit(1).single()
+
+    let vot = activa
+    if (!vot) {
+      const { data: cerrada } = await supabase
+        .from('votaciones').select('*')
+        .eq('estado', 'cerrada')
+        .eq('resultado_publicado', true)
+        .order('updated_at', { ascending: false })
+        .limit(1).single()
+      vot = cerrada
+    }
 
     if (!vot) { setLoading(false); return }
     setVotacion(vot)
@@ -72,7 +84,7 @@ export default function VotacionesPage() {
     votos?.forEach(v => { if (c[v.voto] !== undefined) c[v.voto]++ })
     setConteos(c)
 
-    // Total socios activos para quórum
+    // Total socios para quórum
     const { count } = await supabase
       .from('profiles').select('id', { count: 'exact', head: true })
       .eq('estado', 'activo')
@@ -100,7 +112,6 @@ export default function VotacionesPage() {
   const handleVotar = async () => {
     if (!votoSeleccionado) { setError('Selecciona una opción para votar'); return }
     setEnviando(true); setError('')
-
     try {
       await supabase.from('votos').insert({ votacion_id: votacion.id, voto: votoSeleccionado })
       const hash = await generarHash(user.id, votacion.id)
@@ -116,8 +127,9 @@ export default function VotacionesPage() {
 
   const pct = (n) => conteos.total > 0 ? Math.round((n / conteos.total) * 100) : 0
   const quorumReq = votacion ? calcularQuorumRequerido(votacion, totalSocios) : 0
-  const quorumAlcanzado = totalSocios > 0 && conteos.total >= quorumReq
+  const quorumAlcanzado = conteos.total >= quorumReq
   const aprobada = conteos.favor > conteos.contra
+  const esCerrada = votacion?.estado === 'cerrada'
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
 
@@ -149,14 +161,14 @@ export default function VotacionesPage() {
             {votacion.descripcion && <p className="text-xs mt-1" style={{ color: '#a8d5b5' }}>{votacion.descripcion}</p>}
           </div>
           <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: '#2d7a4f', color: '#fff' }}>
-            {votacion.tipo === 'anonima' ? '🔒 Anónima' : '📋 Nominada'}
+                style={{ backgroundColor: esCerrada ? '#f8d7da' : '#2d7a4f', color: esCerrada ? '#721c24' : '#fff' }}>
+            {esCerrada ? '🔒 Cerrada' : votacion.tipo === 'anonima' ? '🔒 Anónima' : '📋 Nominada'}
           </span>
         </div>
       </div>
 
       {/* Tiempo restante */}
-      {tiempoRestante && (
+      {tiempoRestante && !esCerrada && (
         <div className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
              style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
           <Clock className="w-4 h-4" />
@@ -164,78 +176,123 @@ export default function VotacionesPage() {
         </div>
       )}
 
-      {/* Resultados parciales */}
-      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: '#ddd6cc', backgroundColor: '#fff' }}>
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold" style={{ color: '#1e3a2f' }}>Votos emitidos</p>
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: quorumAlcanzado ? '#D4EDDA' : '#FFF3CD', color: quorumAlcanzado ? '#155724' : '#856404' }}>
-            {conteos.total} de {quorumReq} requeridos
-            {votacion?.tipo_quorum === 'simple' ? ' (50%+1)' : votacion?.tipo_quorum === 'calificada' ? ' (2/3)' : ` (${votacion?.quorum_requerido}%)`}
-          </span>
-        </div>
+      {/* Resultado final (votación cerrada y publicada) */}
+      {esCerrada && (
+        <div className="rounded-xl border p-4 space-y-3"
+             style={{ borderColor: quorumAlcanzado && aprobada ? '#C3E6CB' : quorumAlcanzado ? '#f5c6cb' : '#ddd6cc', backgroundColor: '#fff' }}>
+          <div className="flex items-center gap-2">
+            <BarChart2 className="w-4 h-4" style={{ color: '#2d7a4f' }} />
+            <p className="font-semibold text-sm" style={{ color: '#1e3a2f' }}>Resultado Final</p>
+          </div>
 
-        {VOTOS.map(({ valor, emoji, label, bg, color, border }) => (
-          <div key={valor}>
-            <div className="flex justify-between text-xs mb-1">
-              <span>{emoji} {label}</span>
-              <span className="font-semibold">{conteos[valor]} ({pct(conteos[valor])}%)</span>
+          {quorumAlcanzado ? (
+            <div className="p-3 rounded-lg text-center font-bold text-sm"
+                 style={{ backgroundColor: aprobada ? '#D4EDDA' : '#f8d7da', color: aprobada ? '#155724' : '#721c24' }}>
+              {aprobada ? '✅ Moción APROBADA' : '❌ Moción RECHAZADA'}
             </div>
-            <div className="w-full rounded-full h-2.5" style={{ backgroundColor: '#e5e7eb' }}>
-              <div className="h-2.5 rounded-full transition-all" style={{ width: `${pct(conteos[valor])}%`, backgroundColor: color }} />
+          ) : (
+            <div className="p-3 rounded-lg text-center text-sm"
+                 style={{ backgroundColor: '#FFF3CD', color: '#856404' }}>
+              ⚠️ No se alcanzó el quórum requerido
             </div>
-          </div>
-        ))}
+          )}
 
-        {/* Resultado si hay quórum */}
-        {quorumAlcanzado && (
-          <div className="mt-2 p-3 rounded-lg text-center text-sm font-bold"
-               style={{ backgroundColor: aprobada ? '#D4EDDA' : '#f8d7da', color: aprobada ? '#155724' : '#721c24' }}>
-            {aprobada ? '✅ Moción APROBADA' : '❌ Moción RECHAZADA'}
-          </div>
-        )}
-      </div>
-
-      {/* Votación */}
-      {(yaVoto || enviado) ? (
-        <div className="flex flex-col items-center py-8 text-center">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
-               style={{ backgroundColor: '#f0f8f3', border: '2px solid #2d7a4f' }}>
-            <CheckCircle className="w-8 h-8" style={{ color: '#2d7a4f' }} />
-          </div>
-          <p className="font-bold" style={{ color: '#1e3a2f' }}>¡Voto registrado!</p>
-          <p className="text-sm text-muted-foreground mt-1">Tu voto ha sido registrado de forma anónima y segura.</p>
-        </div>
-      ) : (
-        <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: '#ddd6cc', backgroundColor: '#fff' }}>
-          <p className="text-sm font-semibold" style={{ color: '#1e3a2f' }}>Emite tu voto</p>
-
-          {VOTOS.map(({ valor, emoji, label, bg, color, border }) => (
-            <button key={valor}
-              onClick={() => setVotoSeleccionado(valor)}
-              className="w-full py-4 rounded-xl border-2 text-base font-semibold transition-all"
-              style={{
-                borderColor: votoSeleccionado === valor ? color : '#e5e7eb',
-                backgroundColor: votoSeleccionado === valor ? bg : '#fff',
-                color: votoSeleccionado === valor ? color : '#555',
-              }}>
-              {emoji} {label}
-            </button>
+          {/* Detalle de votos */}
+          {VOTOS.map(({ valor, emoji, label, color }) => (
+            <div key={valor}>
+              <div className="flex justify-between text-sm mb-1">
+                <span>{emoji} {label}</span>
+                <span className="font-bold">{conteos[valor]} votos ({pct(conteos[valor])}%)</span>
+              </div>
+              <div className="w-full rounded-full h-2.5" style={{ backgroundColor: '#e5e7eb' }}>
+                <div className="h-2.5 rounded-full" style={{ width: `${pct(conteos[valor])}%`, backgroundColor: color }} />
+              </div>
+            </div>
           ))}
 
-          {error && <p className="text-sm" style={{ color: '#c0392b' }}>{error}</p>}
-
-          <button onClick={handleVotar} disabled={!votoSeleccionado || enviando}
-            className="w-full py-3 rounded-xl text-sm font-medium text-white transition-all"
-            style={{ backgroundColor: votoSeleccionado ? '#1e3a2f' : '#ccc', cursor: votoSeleccionado ? 'pointer' : 'not-allowed' }}>
-            {enviando ? 'Registrando voto...' : 'Confirmar voto'}
-          </button>
-
-          <p className="text-center text-xs" style={{ color: '#999' }}>
-            🔒 Tu voto es anónimo y no puede ser modificado una vez emitido
+          <p className="text-xs text-center text-muted-foreground">
+            Total votos emitidos: {conteos.total} de {quorumReq} requeridos
           </p>
         </div>
       )}
+
+      {/* Resultados parciales (solo para directores y admin, mientras está activa) */}
+      {!esCerrada && puedeVerAdmin && (
+        <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: '#ddd6cc', backgroundColor: '#fff' }}>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold" style={{ color: '#1e3a2f' }}>Resultados en tiempo real</p>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: quorumAlcanzado ? '#D4EDDA' : '#FFF3CD', color: quorumAlcanzado ? '#155724' : '#856404' }}>
+              {conteos.total} / {quorumReq} votos
+            </span>
+          </div>
+          {VOTOS.map(({ valor, emoji, label, color }) => (
+            <div key={valor}>
+              <div className="flex justify-between text-xs mb-1">
+                <span>{emoji} {label}</span>
+                <span className="font-semibold">{conteos[valor]} ({pct(conteos[valor])}%)</span>
+              </div>
+              <div className="w-full rounded-full h-2" style={{ backgroundColor: '#e5e7eb' }}>
+                <div className="h-2 rounded-full" style={{ width: `${pct(conteos[valor])}%`, backgroundColor: color }} />
+              </div>
+            </div>
+          ))}
+          {quorumAlcanzado && (
+            <div className="p-2 rounded-lg text-center text-xs font-bold"
+                 style={{ backgroundColor: aprobada ? '#D4EDDA' : '#f8d7da', color: aprobada ? '#155724' : '#721c24' }}>
+              {aprobada ? '✅ Moción APROBADA' : '❌ Moción RECHAZADA'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sección de voto */}
+      {!esCerrada && puedeVotar && (
+        <>
+          {(yaVoto || enviado) ? (
+            <div className="flex flex-col items-center py-8 text-center">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
+                   style={{ backgroundColor: '#f0f8f3', border: '2px solid #2d7a4f' }}>
+                <CheckCircle className="w-8 h-8" style={{ color: '#2d7a4f' }} />
+              </div>
+              <p className="font-bold" style={{ color: '#1e3a2f' }}>¡Voto registrado!</p>
+              <p className="text-sm text-muted-foreground mt-1">Tu voto ha sido registrado de forma anónima y segura.</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: '#ddd6cc', backgroundColor: '#fff' }}>
+              <p className="text-sm font-semibold" style={{ color: '#1e3a2f' }}>Emite tu voto</p>
+              {VOTOS.map(({ valor, emoji, label, bg, color, border }) => (
+                <button key={valor} onClick={() => setVotoSeleccionado(valor)}
+                  className="w-full py-4 rounded-xl border-2 text-base font-semibold transition-all"
+                  style={{
+                    borderColor: votoSeleccionado === valor ? color : '#e5e7eb',
+                    backgroundColor: votoSeleccionado === valor ? bg : '#fff',
+                    color: votoSeleccionado === valor ? color : '#555',
+                  }}>
+                  {emoji} {label}
+                </button>
+              ))}
+              {error && <p className="text-sm" style={{ color: '#c0392b' }}>{error}</p>}
+              <button onClick={handleVotar} disabled={!votoSeleccionado || enviando}
+                className="w-full py-3 rounded-xl text-sm font-medium text-white"
+                style={{ backgroundColor: votoSeleccionado ? '#1e3a2f' : '#ccc', cursor: votoSeleccionado ? 'pointer' : 'not-allowed' }}>
+                {enviando ? 'Registrando voto...' : 'Confirmar voto'}
+              </button>
+              <p className="text-center text-xs" style={{ color: '#999' }}>
+                🔒 Tu voto es anónimo y no puede ser modificado una vez emitido
+              </p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Admin no vota */}
+      {!esCerrada && isAdministrador && !isDirector && (
+        <div className="text-center py-4 text-sm text-muted-foreground">
+          Como administrador, puedes ver los resultados pero no emitir voto.
+        </div>
+      )}
+
     </div>
   )
 }
