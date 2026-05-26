@@ -133,19 +133,20 @@ export default function VotacionesPage() {
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
 
-  if (!habilitado) return (
-    <div className="flex flex-col items-center justify-center py-24 text-center px-4">
-      <Lock className="w-12 h-12 mb-4 opacity-30" />
-      <p className="text-lg font-semibold">Módulo no disponible</p>
-      <p className="text-sm text-muted-foreground mt-1">Las votaciones no están habilitadas actualmente.</p>
-    </div>
-  )
-
-  if (!votacion) return (
-    <div className="flex flex-col items-center justify-center py-24 text-center px-4">
-      <Vote className="w-12 h-12 mb-4 opacity-30" />
-      <p className="text-lg font-semibold">Sin votaciones activas</p>
-      <p className="text-sm text-muted-foreground mt-1">No hay votaciones disponibles en este momento.</p>
+  if (!habilitado || !votacion) return (
+    <div className="flex flex-col items-center justify-center py-24 text-center px-4 max-w-sm mx-auto">
+      <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+           style={{ backgroundColor: '#f0f8f3', border: '2px solid #a8d5b5' }}>
+        <Vote className="w-10 h-10" style={{ color: '#2d7a4f' }} />
+      </div>
+      <h2 className="text-lg font-bold mb-2" style={{ color: '#1e3a2f' }}>No hay votaciones activas</h2>
+      <p className="text-sm leading-relaxed" style={{ color: '#555' }}>
+        Por el momento no hay votaciones en curso. Cuando el Sindicato convoque una votación, 
+        recibirás una notificación para que puedas emitir tu voto.
+      </p>
+      <div className="mt-4 px-4 py-3 rounded-lg text-xs" style={{ backgroundColor: '#f0f8f3', color: '#2d7a4f' }}>
+        🔔 Te avisaremos cuando haya una nueva votación
+      </div>
     </div>
   )
 
