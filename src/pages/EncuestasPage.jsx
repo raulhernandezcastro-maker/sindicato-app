@@ -124,19 +124,20 @@ export default function EncuestasPage() {
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>
 
-  if (!habilitado) return (
-    <div className="flex flex-col items-center justify-center py-24 text-center px-4">
-      <Lock className="w-12 h-12 mb-4 opacity-30" />
-      <p className="text-lg font-semibold">Módulo no disponible</p>
-      <p className="text-sm text-muted-foreground mt-1">Las encuestas no están habilitadas actualmente.</p>
-    </div>
-  )
-
-  if (!encuesta) return (
-    <div className="flex flex-col items-center justify-center py-24 text-center px-4">
-      <ClipboardList className="w-12 h-12 mb-4 opacity-30" />
-      <p className="text-lg font-semibold">Sin encuestas activas</p>
-      <p className="text-sm text-muted-foreground mt-1">No hay encuestas disponibles en este momento.</p>
+  if (!habilitado || !encuesta) return (
+    <div className="flex flex-col items-center justify-center py-24 text-center px-4 max-w-sm mx-auto">
+      <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+           style={{ backgroundColor: '#f0f8f3', border: '2px solid #a8d5b5' }}>
+        <ClipboardList className="w-10 h-10" style={{ color: '#2d7a4f' }} />
+      </div>
+      <h2 className="text-lg font-bold mb-2" style={{ color: '#1e3a2f' }}>No hay encuestas activas</h2>
+      <p className="text-sm leading-relaxed" style={{ color: '#555' }}>
+        Por el momento no tenemos encuestas disponibles. Cuando el Sindicato publique una nueva encuesta, 
+        recibirás una notificación para que puedas participar.
+      </p>
+      <div className="mt-4 px-4 py-3 rounded-lg text-xs" style={{ backgroundColor: '#f0f8f3', color: '#2d7a4f' }}>
+        🔔 Te avisaremos cuando haya una nueva encuesta
+      </div>
     </div>
   )
 
@@ -311,4 +312,3 @@ export default function EncuestasPage() {
     </div>
   )
 }
-
