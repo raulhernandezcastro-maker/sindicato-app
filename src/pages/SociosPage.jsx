@@ -198,7 +198,7 @@ export default function SociosPage() {
 
     const { data: profiles } = await supabase
       .from('profiles_with_activity')
-      .select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja, last_sign_in_at, ultimo_acceso')
+      .select('id, nombre, email, rut, estado, telefono, created_at, fecha_baja, last_sign_in_at')
     const { data: roles } = await supabase.from('roles').select('user_id, role_name')
 
     const joined = (profiles || []).map(p => ({
