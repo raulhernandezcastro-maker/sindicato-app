@@ -41,7 +41,7 @@ function PanelMetricas({ socios, onRefresh, refreshing }) {
   const hace7dias  = new Date(ahora - 7  * 24 * 60 * 60 * 1000)
 
   // Métricas: solo socios puros (excluye aportantes, directores, admin)
-  const soloSocios      = socios.filter(s => s.roles.includes('socio') && !s.roles.includes('aportante') && !s.roles.includes('director') && !s.roles.includes('administrador'))
+  const soloSocios      = socios.filter(s => s.roles.includes('socio') && !s.roles.includes('aportante') && !s.roles.includes('director') && !s.roles.includes('administrador') && s.email !== 'invitado@sindicato.cl')
   const sociosActivos   = soloSocios.filter(s => s.estado === 'activo')
   const sociosInactivos = soloSocios.filter(s => s.estado === 'inactivo')
 
