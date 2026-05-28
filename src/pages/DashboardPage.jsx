@@ -41,7 +41,7 @@ export default function DashboardPage() {
         { count: totalDocumentos },
       ] = await Promise.all([
         supabase.from('roles').select('user_id, role_name'),
-        supabase.from('profiles').select('id, estado'),
+        supabase.from('profiles').select('id, estado').neq('email', 'invitado@sindicato.cl'),
         supabase.from('avisos').select('id', { count: 'exact' }),
         supabase.from('documentos').select('id', { count: 'exact' }),
       ])
