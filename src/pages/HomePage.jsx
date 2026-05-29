@@ -31,7 +31,7 @@ export default function HomePage() {
     try {
       setLoading(true)
       const [{ data: avisos }, { data: dirs }] = await Promise.all([
-        supabase.from('avisos').select('*').order('created_at', { ascending: false }).limit(1),
+        supabase.from('avisos').select('*').or('es_recurrente.is.null,es_recurrente.eq.false,recurrente_activo.eq.true').order('created_at', { ascending: false }).limit(1),
         supabase.from('directivos').select('*').order('created_at', { ascending: true }),
       ])
       setUltimoAviso(avisos?.[0] || null)
