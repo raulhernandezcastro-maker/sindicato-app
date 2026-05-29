@@ -40,7 +40,7 @@ export default function AvisosPage() {
   const loadAvisos = useCallback(async () => {
     const { data } = await supabase
       .from('avisos').select('*').order('created_at', { ascending: false })
-    setAvisos(mezclarAvisos(data || []))
+    setAvisos(data || [])
     setLoading(false)
   }, [])
 
@@ -99,8 +99,10 @@ export default function AvisosPage() {
 
   const toggleRecurrente = async (aviso) => {
     const nuevoEstado = !aviso.recurrente_activo
-    await supabase.from('avisos').update({ recurrente_activo: nuevoEstado }).eq('id', aviso.id)
-    setAvisos(prev => mezclarAvisos(prev.map(a => a.id === aviso.id ? { ...a, recurrente_activo: nuevoEstado } : a)))
+    const { error } = await supabase.from('avisos').update({ recurrente_activo: nuevoEstado }).eq('id', aviso.id)
+    if (!error) {
+      setAvisos(prev => prev.map(a => a.id === aviso.id ? { ...a, recurrente_activo: nuevoEstado } : a))
+    }
   }
 
   const formatFecha = (iso) => {
@@ -221,7 +223,11 @@ export default function AvisosPage() {
         <div className="text-center py-12 text-muted-foreground">No hay avisos publicados aún</div>
       ) : (
         <div className="space-y-3 px-2">
-          {avisos.map((a, idx) => {
+          {mezclarAvisos(
+            canManage
+              ? avisos  // Admin ve todos incluyendo pausados
+              : avisos.filter(a => !a.es_recurrente || a.recurrente_activo) // Socios no ven pausados
+          ).map((a, idx) => {
             const esRec = a.es_recurrente && a.recurrente_activo
             const bgColor = esRec ? '#2d5a3f' : idx === 0 ? '#2d7a4f' : '#7CBE80'
             const textColor = (esRec || idx === 0) ? 'white' : '#003d18'
