@@ -512,7 +512,7 @@ export default function SociosPage() {
                   {isAdministrador && s.estado === 'activo' && (
                     <span className="text-xs text-muted-foreground">
                       🟢 Última visita: <span style={{ color: '#2d7a4f' }}>
-                        {s.ultimo_acceso ? formatFecha(s.ultimo_acceso) : 'Sin visitas aún'}
+                        {s.last_sign_in_at ? formatFechaHora(s.last_sign_in_at) : 'Sin visitas aún'}
                       </span>
                     </span>
                   )}
