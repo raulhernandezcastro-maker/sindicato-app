@@ -51,6 +51,26 @@ export default function AvisosPage() {
     setFrecuenciaDias(3); setFechaInicio(''); setFechaFin(''); setError('')
   }
 
+  /**
+   * FIX #1: Corrección del cálculo de proxima_notificacion
+   * 
+   * Problema: La comparación de fechas con Date() puede fallar por timezone
+   * Solución: Comparar usando solo las partes de fecha (YYYY-MM-DD)
+   */
+  const calcularProximaNotificacion = (fechaInicio) => {
+    // Obtener la fecha de hoy en formato YYYY-MM-DD (sin timezone)
+    const hoy = new Date().toISOString().split('T')[0]
+    
+    // Comparar strings de fecha directamente (más confiable que Date objects)
+    if (fechaInicio <= hoy) {
+      // Si la fecha de inicio ya pasó, usar hoy como próxima notificación
+      return hoy
+    } else {
+      // Si la fecha de inicio es futura, usar esa fecha
+      return fechaInicio
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!titulo.trim() || !contenido.trim()) { setError('Completa el título y el contenido'); return }
@@ -63,7 +83,8 @@ export default function AvisosPage() {
       frecuencia_dias: esRecurrente ? frecuenciaDias : null,
       fecha_inicio: esRecurrente ? fechaInicio : null,
       fecha_fin: esRecurrente && fechaFin ? fechaFin : null,
-      proxima_notificacion: esRecurrente ? (new Date(fechaInicio) < new Date() ? new Date().toISOString().split('T')[0] : fechaInicio) : null,
+      // FIX #1: Usar nueva función calcularProximaNotificacion
+      proxima_notificacion: esRecurrente ? calcularProximaNotificacion(fechaInicio) : null,
       recurrente_activo: esRecurrente ? true : null,
     }
 
@@ -110,9 +131,32 @@ export default function AvisosPage() {
     return new Date(iso).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
+  /**
+   * FIX #2: Corrección de formatDate para zona horaria
+   * 
+   * Problema: Los campos DATE (sin hora) pueden interpretarse como UTC
+   *           esto causa que se muestren un día antes en zona horaria local
+   * Solución: Parsear manualmente la fecha como YYYY-MM-DD
+   *           esto evita el ajuste automático de timezone
+   */
   const formatDate = (str) => {
     if (!str) return '—'
-    return new Date(str).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })
+    
+    // Parsear como YYYY-MM-DD string (formato que viene de PostgreSQL)
+    const partes = str.split('T')[0].split('-') // Obtener solo la parte de fecha
+    if (partes.length !== 3) return '—'
+    
+    const [año, mes, dia] = partes.map(p => parseInt(p, 10))
+    
+    // Crear fecha sin conversión de timezone (usar directamente los valores parseados)
+    // Usar toLocaleDateString con los parámetros correctos
+    const fecha = new Date(año, mes - 1, dia) // Crear fecha en timezone local
+    
+    return fecha.toLocaleDateString('es-CL', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    })
   }
 
   const recurrentesActivos = avisos.filter(a => a.es_recurrente)
