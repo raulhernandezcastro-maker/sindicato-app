@@ -19,18 +19,31 @@ export default function ResumenCuotas() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from("cuotas_importacion")
-        .select("estado, estado_validacion");
+      // Paginar para superar el límite de 1000 filas de Supabase
+      let allData = [];
+      let from = 0;
+      const pageSize = 1000;
 
-      if (error) throw error;
+      while (true) {
+        const { data, error } = await supabase
+          .from("cuotas_importacion")
+          .select("estado, estado_validacion")
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+
+        allData = [...allData, ...data];
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
 
       let pendientes = 0;
       let conError = 0;
       let confirmadas = 0;
       let sinSocio = 0;
 
-      data.forEach((r) => {
+      allData.forEach((r) => {
         if (r.estado === "confirmado") {
           confirmadas++;
         } else if (r.estado === "sin_socio") {
