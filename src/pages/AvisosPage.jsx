@@ -10,6 +10,7 @@ import { Textarea } from '../components/ui/textarea'
 import { Spinner } from '../components/ui/spinner'
 import { Alert } from '../components/ui/alert'
 import WhatsAppButton from '../components/ui/WhatsAppButton'
+import { APP_CONFIG } from '../config'
 
 function mezclarAvisos(lista) {
   const recurrentes = lista.filter(a => a.es_recurrente && a.recurrente_activo)
@@ -28,12 +29,12 @@ export default function AvisosPage() {
   const [open, setOpen]           = useState(false)
   const [error, setError]         = useState('')
   const [saving, setSaving]       = useState(false)
-  const [titulo, setTitulo]           = useState('')
-  const [contenido, setContenido]     = useState('')
+  const [titulo, setTitulo]             = useState('')
+  const [contenido, setContenido]       = useState('')
   const [esRecurrente, setEsRecurrente] = useState(false)
   const [frecuenciaDias, setFrecuenciaDias] = useState(3)
-  const [fechaInicio, setFechaInicio] = useState('')
-  const [fechaFin, setFechaFin]       = useState('')
+  const [fechaInicio, setFechaInicio]   = useState('')
+  const [fechaFin, setFechaFin]         = useState('')
 
   const canManage = isAdministrador
 
@@ -51,26 +52,6 @@ export default function AvisosPage() {
     setFrecuenciaDias(3); setFechaInicio(''); setFechaFin(''); setError('')
   }
 
-  /**
-   * FIX #1: Corrección del cálculo de proxima_notificacion
-   * 
-   * Problema: La comparación de fechas con Date() puede fallar por timezone
-   * Solución: Comparar usando solo las partes de fecha (YYYY-MM-DD)
-   */
-  const calcularProximaNotificacion = (fechaInicio) => {
-    // Obtener la fecha de hoy en formato YYYY-MM-DD (sin timezone)
-    const hoy = new Date().toISOString().split('T')[0]
-    
-    // Comparar strings de fecha directamente (más confiable que Date objects)
-    if (fechaInicio <= hoy) {
-      // Si la fecha de inicio ya pasó, usar hoy como próxima notificación
-      return hoy
-    } else {
-      // Si la fecha de inicio es futura, usar esa fecha
-      return fechaInicio
-    }
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!titulo.trim() || !contenido.trim()) { setError('Completa el título y el contenido'); return }
@@ -83,8 +64,11 @@ export default function AvisosPage() {
       frecuencia_dias: esRecurrente ? frecuenciaDias : null,
       fecha_inicio: esRecurrente ? fechaInicio : null,
       fecha_fin: esRecurrente && fechaFin ? fechaFin : null,
-      // FIX #1: Usar nueva función calcularProximaNotificacion
-      proxima_notificacion: esRecurrente ? calcularProximaNotificacion(fechaInicio) : null,
+      proxima_notificacion: esRecurrente ? (() => {
+        const inicio = new Date(fechaInicio)
+        inicio.setDate(inicio.getDate() + frecuenciaDias)
+        return inicio.toISOString().split('T')[0]
+      })() : null,
       recurrente_activo: esRecurrente ? true : null,
     }
 
@@ -105,7 +89,11 @@ export default function AvisosPage() {
         if (token) {
           await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` },
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${token}`,
+            },
             body: JSON.stringify({ titulo: t, contenido: c }),
           })
         }
@@ -128,35 +116,16 @@ export default function AvisosPage() {
 
   const formatFecha = (iso) => {
     if (!iso) return ''
-    return new Date(iso).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return new Date(iso).toLocaleDateString('es-CL', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
   }
 
-  /**
-   * FIX #2: Corrección de formatDate para zona horaria
-   * 
-   * Problema: Los campos DATE (sin hora) pueden interpretarse como UTC
-   *           esto causa que se muestren un día antes en zona horaria local
-   * Solución: Parsear manualmente la fecha como YYYY-MM-DD
-   *           esto evita el ajuste automático de timezone
-   */
   const formatDate = (str) => {
     if (!str) return '—'
-    
-    // Parsear como YYYY-MM-DD string (formato que viene de PostgreSQL)
-    const partes = str.split('T')[0].split('-') // Obtener solo la parte de fecha
-    if (partes.length !== 3) return '—'
-    
-    const [año, mes, dia] = partes.map(p => parseInt(p, 10))
-    
-    // Crear fecha sin conversión de timezone (usar directamente los valores parseados)
-    // Usar toLocaleDateString con los parámetros correctos
-    const fecha = new Date(año, mes - 1, dia) // Crear fecha en timezone local
-    
-    return fecha.toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
+    const [year, month, day] = str.split('T')[0].split('-')
+    return new Date(Number(year), Number(month) - 1, Number(day))
+      .toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })
   }
 
   const recurrentesActivos = avisos.filter(a => a.es_recurrente)
@@ -164,7 +133,9 @@ export default function AvisosPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
 
-      <div className="flex items-center justify-between px-4 py-3 rounded-lg" style={{ backgroundColor: '#2d7a4f' }}>
+      {/* Encabezado */}
+      <div className="flex items-center justify-between px-4 py-3 rounded-lg"
+           style={{ backgroundColor: APP_CONFIG.colorPrimario }}>
         <div className="flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-white" />
           <h1 className="text-xl font-bold text-white">Avisos</h1>
@@ -172,7 +143,8 @@ export default function AvisosPage() {
         {canManage && (
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
             <DialogTrigger asChild>
-              <Button size="sm" style={{ backgroundColor: '#7CBE80', color: '#003d18' }}>
+              <Button size="sm"
+                      style={{ backgroundColor: APP_CONFIG.colorPrimarioClaro, color: APP_CONFIG.colorPrimarioOscuro }}>
                 <Plus className="w-4 h-4 mr-1" /> Nuevo
               </Button>
             </DialogTrigger>
@@ -188,30 +160,48 @@ export default function AvisosPage() {
                   <Label>Contenido</Label>
                   <Textarea value={contenido} onChange={e => setContenido(e.target.value)} rows={4} />
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg border" style={{ borderColor: '#a8d5b5', backgroundColor: '#f0f8f3' }}>
-                  <input type="checkbox" id="esRecurrente" checked={esRecurrente} onChange={e => setEsRecurrente(e.target.checked)} className="w-4 h-4 accent-green-700" />
-                  <label htmlFor="esRecurrente" className="flex items-center gap-2 text-sm font-medium cursor-pointer" style={{ color: '#1e3a2f' }}>
+
+                {/* Opción recurrente */}
+                <div className="flex items-center gap-3 p-3 rounded-lg border"
+                     style={{ borderColor: APP_CONFIG.colorPrimario, backgroundColor: APP_CONFIG.colorPrimarioClaro }}>
+                  <input type="checkbox" id="esRecurrente" checked={esRecurrente}
+                         onChange={e => setEsRecurrente(e.target.checked)} className="w-4 h-4" />
+                  <label htmlFor="esRecurrente"
+                         className="flex items-center gap-2 text-sm font-medium cursor-pointer"
+                         style={{ color: APP_CONFIG.colorPrimarioOscuro }}>
                     <RefreshCw className="w-4 h-4" /> Aviso recurrente (se repite automáticamente)
                   </label>
                 </div>
+
                 {esRecurrente && (
-                  <div className="space-y-3 p-3 rounded-lg border" style={{ borderColor: '#a8d5b5', backgroundColor: '#f7fdf9' }}>
+                  <div className="space-y-3 p-3 rounded-lg border"
+                       style={{ borderColor: APP_CONFIG.colorPrimario, backgroundColor: '#f7fdf9' }}>
                     <div>
-                      <Label className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Repetir cada (días)</Label>
+                      <Label className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> Repetir cada (días)
+                      </Label>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {[1,2,3,4,7,14].map(d => (
+                        {[1, 2, 3, 4, 7, 14].map(d => (
                           <button key={d} type="button" onClick={() => setFrecuenciaDias(d)}
                             className="w-9 h-9 rounded-full text-sm font-medium border transition-all"
-                            style={{ backgroundColor: frecuenciaDias === d ? '#2d7a4f' : '#fff', color: frecuenciaDias === d ? '#fff' : '#2d7a4f', borderColor: '#2d7a4f' }}>
+                            style={{
+                              backgroundColor: frecuenciaDias === d ? APP_CONFIG.colorPrimario : '#fff',
+                              color:           frecuenciaDias === d ? '#fff' : APP_CONFIG.colorPrimario,
+                              borderColor:     APP_CONFIG.colorPrimario,
+                            }}>
                             {d}
                           </button>
                         ))}
-                        <Input type="number" min={1} max={90} value={frecuenciaDias} onChange={e => setFrecuenciaDias(Number(e.target.value))} className="w-16 text-center" />
+                        <Input type="number" min={1} max={90} value={frecuenciaDias}
+                               onChange={e => setFrecuenciaDias(Number(e.target.value))}
+                               className="w-16 text-center" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="flex items-center gap-1"><CalendarRange className="w-3.5 h-3.5" /> Fecha inicio</Label>
+                        <Label className="flex items-center gap-1">
+                          <CalendarRange className="w-3.5 h-3.5" /> Fecha inicio
+                        </Label>
                         <Input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} />
                       </div>
                       <div>
@@ -219,12 +209,14 @@ export default function AvisosPage() {
                         <Input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} />
                       </div>
                     </div>
-                    <p className="text-xs" style={{ color: '#2d7a4f' }}>
+                    <p className="text-xs" style={{ color: APP_CONFIG.colorPrimario }}>
                       El aviso se enviará automáticamente cada {frecuenciaDias} día{frecuenciaDias > 1 ? 's' : ''} y aparecerá primero en la lista.
                     </p>
                   </div>
                 )}
-                <Button disabled={saving} style={{ backgroundColor: '#2d7a4f', color: '#fff', width: '100%' }}>
+
+                <Button disabled={saving}
+                        style={{ backgroundColor: APP_CONFIG.colorPrimario, color: '#fff', width: '100%' }}>
                   {saving ? 'Publicando...' : 'Publicar Aviso'}
                 </Button>
               </form>
@@ -233,16 +225,22 @@ export default function AvisosPage() {
         )}
       </div>
 
+      {/* Panel de recurrentes (solo admin) */}
       {canManage && recurrentesActivos.length > 0 && (
-        <div className="rounded-lg border p-4 space-y-2" style={{ borderColor: '#a8d5b5', backgroundColor: '#f0f8f3' }}>
+        <div className="rounded-lg border p-4 space-y-2"
+             style={{ borderColor: APP_CONFIG.colorPrimario, backgroundColor: APP_CONFIG.colorPrimarioClaro }}>
           <div className="flex items-center gap-2 mb-3">
-            <RefreshCw className="w-4 h-4" style={{ color: '#2d7a4f' }} />
-            <span className="font-semibold text-sm" style={{ color: '#1e3a2f' }}>Avisos recurrentes programados</span>
+            <RefreshCw className="w-4 h-4" style={{ color: APP_CONFIG.colorPrimario }} />
+            <span className="font-semibold text-sm" style={{ color: APP_CONFIG.colorPrimarioOscuro }}>
+              Avisos recurrentes programados
+            </span>
           </div>
           {recurrentesActivos.map(a => (
-            <div key={a.id} className="flex items-center justify-between p-2 rounded-lg bg-white border text-xs gap-2" style={{ borderColor: '#ddd6cc' }}>
+            <div key={a.id}
+                 className="flex items-center justify-between p-2 rounded-lg bg-white border text-xs gap-2"
+                 style={{ borderColor: '#ddd6cc' }}>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate" style={{ color: '#1e3a2f' }}>{a.titulo}</p>
+                <p className="font-medium truncate" style={{ color: APP_CONFIG.colorPrimarioOscuro }}>{a.titulo}</p>
                 <p style={{ color: '#555' }}>
                   Cada {a.frecuencia_dias} día{a.frecuencia_dias > 1 ? 's' : ''} · {formatDate(a.fecha_inicio)} → {formatDate(a.fecha_fin)} · Próximo: <strong>{formatDate(a.proxima_notificacion)}</strong>
                 </p>
@@ -252,7 +250,9 @@ export default function AvisosPage() {
                   {a.recurrente_activo ? 'Activo' : 'Pausado'}
                 </span>
                 <button onClick={() => toggleRecurrente(a)} title={a.recurrente_activo ? 'Pausar' : 'Activar'}>
-                  {a.recurrente_activo ? <PauseCircle className="w-4 h-4 text-amber-500" /> : <PlayCircle className="w-4 h-4 text-green-600" />}
+                  {a.recurrente_activo
+                    ? <PauseCircle className="w-4 h-4 text-amber-500" />
+                    : <PlayCircle className="w-4 h-4 text-green-600" />}
                 </button>
                 <button onClick={() => handleDelete(a.id)}><Trash2 className="w-4 h-4 text-red-400" /></button>
               </div>
@@ -261,6 +261,7 @@ export default function AvisosPage() {
         </div>
       )}
 
+      {/* Lista de avisos */}
       {loading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
       ) : avisos.length === 0 ? (
@@ -269,17 +270,16 @@ export default function AvisosPage() {
         <div className="space-y-3 px-2">
           {mezclarAvisos(
             canManage
-              ? avisos  // Admin ve todos incluyendo pausados
-              : avisos.filter(a => !a.es_recurrente || a.recurrente_activo) // Socios no ven pausados
+              ? avisos
+              : avisos.filter(a => !a.es_recurrente || a.recurrente_activo)
           ).map((a, idx) => {
-            const esRec = a.es_recurrente && a.recurrente_activo
-            const bgColor = esRec ? '#2d5a3f' : idx === 0 ? '#2d7a4f' : '#7CBE80'
-            const textColor = (esRec || idx === 0) ? 'white' : '#003d18'
+            const esRec    = a.es_recurrente && a.recurrente_activo
+            const bgColor  = esRec ? APP_CONFIG.colorPrimarioOscuro : idx === 0 ? APP_CONFIG.colorPrimario : APP_CONFIG.colorPrimarioClaro
+            const textColor = (esRec || idx === 0) ? '#fff' : APP_CONFIG.colorPrimarioOscuro
             return (
               <div key={a.id} className="flex flex-col items-start">
                 <div className="relative max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-3 shadow-md"
                      style={{ backgroundColor: bgColor, color: textColor }}>
-
                   <p className="font-semibold text-sm mb-1">{a.titulo}</p>
                   <p className="text-sm whitespace-pre-line leading-relaxed">{a.contenido}</p>
                   <div className="flex items-center justify-between mt-2 gap-4">
@@ -294,12 +294,14 @@ export default function AvisosPage() {
                        style={{ borderTop: `8px solid ${bgColor}`, borderLeft: '8px solid transparent' }} />
                 </div>
                 {esRec && (
-                  <span className="mt-1 ml-1 text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#FFD700', color: '#333' }}>
+                  <span className="mt-1 ml-1 text-xs font-bold px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: '#FFD700', color: '#333' }}>
                     📌 FIJADO
                   </span>
                 )}
                 {!esRec && idx === 0 && (
-                  <span className="mt-1 ml-1 text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#FFD700', color: '#333' }}>
+                  <span className="mt-1 ml-1 text-xs font-bold px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: '#FFD700', color: '#333' }}>
                     NUEVO
                   </span>
                 )}
