@@ -19,7 +19,7 @@ export const APP_CONFIG = {
 
   // ── Contacto ───────────────────────────────────────────────
   // ⚠️  Reemplaza con el número real de WhatsApp de Liberty
-  whatsappNumero:  "56XXXXXXXXX",
+  whatsappNumero:  "56932076628",
   whatsappMensaje: "Hola, me contacto desde el portal del Sindicato Liberty.",
 
   // ── Denuncias ──────────────────────────────────────────────
