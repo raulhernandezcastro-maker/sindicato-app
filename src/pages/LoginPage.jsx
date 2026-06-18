@@ -43,6 +43,22 @@ export default function LoginPage() {
       ) : (
         <LoginForm onForgotPassword={() => setShowForgotPassword(true)} />
       )}
+
+      {/* Aviso legal Ley 21.719 */}
+      <p className="text-xs text-center mt-5 px-4 max-w-sm leading-relaxed" style={{ color: '#4b7a61' }}>
+        Los datos personales de los socios son tratados conforme a la{' '}
+        <strong>Ley 21.719</strong> de Protección de Datos Personales. Consulta nuestra{' '}
+        <a
+          href="https://sindicatoliberty.com/privacidad.php"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline font-semibold"
+          style={{ color: '#2d7a4f' }}
+        >
+          Política de Privacidad
+        </a>
+        .
+      </p>
     </div>
   )
 }
