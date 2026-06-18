@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext'
 import WhatsAppButton from '../components/ui/WhatsAppButton'
 import ModalDiaTrabajador from '../components/ui/ModalDiaTrabajador'
 import ModalDiaMadre from '../components/ui/ModalDiaMadre'
+import ModalDiaPadre from '../components/ui/ModalDiaPadre'
 
 export default function HomePage() {
   const { isAdministrador } = useAuth()
@@ -111,6 +112,7 @@ export default function HomePage() {
 
       <ModalDiaTrabajador />
       <ModalDiaMadre />
+      <ModalDiaPadre />
 
       {/* ── Encabezado ── */}
       <div className="flex items-center gap-4">
