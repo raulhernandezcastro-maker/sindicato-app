@@ -12,6 +12,8 @@ export function useNotifications() {
   useEffect(() => {
     if (!user?.id) return
     if (typeof Notification === 'undefined') return
+    // Solo registrar token si ya tenía permiso Y ya aceptó el consentimiento
+    // El modal FCMConsentModal es quien llama a requestPermission() la primera vez
     if (Notification.permission === 'granted') {
       registerToken()
     }
