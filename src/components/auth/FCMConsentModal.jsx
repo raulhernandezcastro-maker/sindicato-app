@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Bell, X } from "lucide-react";
 
-export default function FCMConsentModal({ userId }) {
+export function FCMConsentModal({ userId }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
