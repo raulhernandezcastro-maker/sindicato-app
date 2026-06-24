@@ -1,93 +1,142 @@
-import React from 'react'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../contexts/AuthContext'
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { Bell, X } from "lucide-react";
 
-/**
- * Modal de consentimiento para notificaciones push (FCM)
- * Ley 21.719 — se muestra una única vez cuando fcm_consentimiento === null
- */
-export function FCMConsentModal({ onAccept, onReject }) {
-  const { user } = useAuth()
+export default function FCMConsentModal({ userId }) {
+  const [visible, setVisible] = useState(false);
 
-  const guardarConsentimiento = async (valor) => {
-    if (!user?.id) return
-    await supabase.from('profiles').update({
-      fcm_consentimiento: valor,
-      fcm_consentimiento_fecha: new Date().toISOString()
-    }).eq('id', user.id)
-  }
+  useEffect(() => {
+    if (!userId) return;
 
-  const handleAceptar = async () => {
-    await guardarConsentimiento(true)
-    onAccept()
-  }
+    const checkConsent = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("fcm_consentimiento")
+        .eq("id", userId)
+        .single();
 
-  const handleRechazar = async () => {
-    await guardarConsentimiento(false)
-    onReject()
-  }
+      if (!error && !data?.fcm_consentimiento) {
+        setVisible(true);
+      }
+    };
+
+    checkConsent();
+  }, [userId]);
+
+  const handleActivar = async () => {
+    if (!("Notification" in window)) {
+      alert("Tu navegador no soporta notificaciones.");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      setVisible(false);
+      return;
+    }
+
+    // Registrar token FCM
+    try {
+      const { initializeApp, getApps } = await import("firebase/app");
+      const { getMessaging, getToken } = await import("firebase/messaging");
+
+      const firebaseConfig = {
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+      };
+
+      const app =
+        getApps().length === 0
+          ? initializeApp(firebaseConfig)
+          : getApps()[0];
+
+      const messaging = getMessaging(app);
+      const token = await getToken(messaging, {
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+      });
+
+      if (token) {
+        // Guardar token en fcm_tokens
+        await supabase.from("fcm_tokens").upsert(
+          { user_id: userId, token },
+          { onConflict: "user_id" }
+        );
+      }
+    } catch (err) {
+      console.error("Error al obtener token FCM:", err);
+    }
+
+    // Guardar consentimiento en profiles
+    await supabase
+      .from("profiles")
+      .update({
+        fcm_consentimiento: true,
+        fcm_consentimiento_fecha: new Date().toISOString(),
+      })
+      .eq("id", userId);
+
+    setVisible(false);
+  };
+
+  const handleCerrar = () => {
+    setVisible(false);
+  };
+
+  if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-         style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-xl p-6">
+        {/* Botón cerrar */}
+        <button
+          onClick={handleCerrar}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label="Cerrar"
+        >
+          <X size={20} />
+        </button>
 
-        {/* Header */}
-        <div className="px-6 py-4" style={{ backgroundColor: '#1e3a2f' }}>
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🔔</span>
-            <h2 className="text-white text-base font-bold leading-tight">
-              Notificaciones del Sindicato
-            </h2>
-          </div>
+        {/* Ícono */}
+        <div
+          className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
+          style={{ backgroundColor: "#e6f2ec" }}
+        >
+          <Bell size={28} style={{ color: "#1e3a2f" }} />
         </div>
 
-        {/* Cuerpo */}
-        <div className="px-6 py-5 space-y-3">
-          <p className="text-sm leading-relaxed" style={{ color: '#374151' }}>
-            El Sindicato Interempresas Liberty Seguros desea enviarte{' '}
-            <strong>avisos, comunicados y novedades importantes</strong> a través
-            de notificaciones push.
-          </p>
-          <p className="text-sm leading-relaxed" style={{ color: '#374151' }}>
-            Tu token de dispositivo se almacenará de forma segura y se usará
-            exclusivamente para enviarte estas notificaciones. Puedes revocar
-            este consentimiento en cualquier momento desde tu perfil.
-          </p>
-          <p className="text-xs leading-relaxed" style={{ color: '#6b7280' }}>
-            Tratamiento conforme a la{' '}
-            <a
-              href="https://sindicatoliberty.com/privacidad.php"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-              style={{ color: '#2d7a4f' }}
-            >
-              Ley 21.719
-            </a>
-            {' '}— Política de Privacidad del Sindicato.
-          </p>
-        </div>
+        {/* Título */}
+        <h2
+          className="text-center text-lg font-bold mb-2"
+          style={{ color: "#1e3a2f" }}
+        >
+          ¡No te pierdas ningún beneficio!
+        </h2>
+
+        {/* Descripción */}
+        <p className="text-center text-sm text-gray-600 mb-6">
+          Activa las notificaciones y sé el primero en enterarte de beneficios,
+          convenios y novedades del Sindicato — antes de que se agoten los cupos.
+        </p>
 
         {/* Botones */}
-        <div className="px-6 pb-6 flex flex-col gap-2">
-          <button
-            onClick={handleAceptar}
-            className="w-full py-3 rounded-xl text-white text-sm font-bold transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#2d7a4f' }}
-          >
-            Aceptar notificaciones
-          </button>
-          <button
-            onClick={handleRechazar}
-            className="w-full py-2.5 rounded-xl text-sm font-medium border transition-colors hover:bg-gray-50"
-            style={{ color: '#6b7280', borderColor: '#d1d5db' }}
-          >
-            No, gracias
-          </button>
-        </div>
-
+        <button
+          onClick={handleActivar}
+          className="w-full rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 mb-2"
+          style={{ backgroundColor: "#2d7a4f" }}
+        >
+          Activar notificaciones
+        </button>
+        <button
+          onClick={handleCerrar}
+          className="w-full rounded-xl py-3 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Ahora no
+        </button>
       </div>
     </div>
-  )
+  );
 }
