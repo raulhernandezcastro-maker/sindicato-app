@@ -22,7 +22,7 @@ const SectionHeader = ({ icon: Icon, title }) => (
 )
 
 export default function PerfilPage() {
-  const { permission, requestPermission } = useNotifications()
+  const { permission, requestPermission, consentimiento, setConsentimiento } = useNotifications()
   const { profile, roles, user, refreshProfile } = useAuth()
   const [formData, setFormData] = useState({ nombre: '', telefono: '' })
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
@@ -172,12 +172,31 @@ export default function PerfilPage() {
         })
         .eq('id', user.id)
 
+      setConsentimiento(false)
       if (refreshProfile) await refreshProfile()
       setSuccess('Notificaciones desactivadas. Puedes volver a activarlas cuando quieras.')
     } catch (err) {
       setError('Error al desactivar las notificaciones')
     } finally {
       setSavingNotif(false)
+    }
+  }
+
+  /* ── Activar notificaciones desde perfil ── */
+  const handleActivarNotificaciones = async () => {
+    clearMessages()
+    const token = await requestPermission()
+    if (token) {
+      await supabase
+        .from('profiles')
+        .update({
+          fcm_consentimiento: true,
+          fcm_consentimiento_fecha: new Date().toISOString()
+        })
+        .eq('id', user.id)
+      setConsentimiento(true)
+      if (refreshProfile) await refreshProfile()
+      setSuccess('Notificaciones activadas correctamente.')
     }
   }
 
@@ -313,7 +332,7 @@ export default function PerfilPage() {
           <span className="text-white text-sm font-semibold">Notificaciones Push</span>
         </div>
         <div className="p-5" style={{ backgroundColor: '#f0f9f2' }}>
-          {permission === 'granted' ? (
+          {consentimiento === true ? (
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <BellRing className="w-5 h-5" style={{ color: '#2d7a4f' }} />
@@ -344,7 +363,7 @@ export default function PerfilPage() {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">Activa las notificaciones para recibir avisos del sindicato directamente en tu dispositivo.</p>
-              <Button onClick={requestPermission} style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
+              <Button onClick={handleActivarNotificaciones} style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
                 <Bell className="w-4 h-4 mr-2" />
                 Activar Notificaciones
               </Button>
