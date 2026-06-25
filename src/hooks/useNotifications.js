@@ -8,19 +8,33 @@ export function useNotifications() {
   const [permission, setPermission] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   )
+  const [consentimiento, setConsentimiento] = useState(null)
+
+  // Leer fcm_consentimiento desde profiles al montar
+  useEffect(() => {
+    if (!user?.id) return
+
+    const fetchConsentimiento = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('fcm_consentimiento')
+        .eq('id', user.id)
+        .single()
+      setConsentimiento(data?.fcm_consentimiento ?? false)
+    }
+
+    fetchConsentimiento()
+  }, [user?.id])
 
   useEffect(() => {
     if (!user?.id) return
     if (typeof Notification === 'undefined') return
-    // Solo registrar token si ya tenía permiso Y ya aceptó el consentimiento
-    // El modal FCMConsentModal es quien llama a requestPermission() la primera vez
+
     if (Notification.permission === 'granted') {
       registerToken()
     }
   }, [user?.id])
 
-  // Mensajes en primer plano — FCM ya maneja la notificación push,
-  // no se genera notificación local para evitar duplicados
   useEffect(() => {
     const unsubscribe = onForegroundMessage((payload) => {
       console.log('[FCM] Mensaje en primer plano recibido:', payload)
@@ -33,8 +47,6 @@ export function useNotifications() {
     try {
       const token = await requestNotificationPermission()
       if (!token) return
-
-      // Guardar token en Supabase (upsert por token)
       await supabase.from('fcm_tokens').upsert(
         { user_id: user.id, token, updated_at: new Date().toISOString() },
         { onConflict: 'token' }
@@ -47,9 +59,12 @@ export function useNotifications() {
   const requestPermission = async () => {
     const token = await requestNotificationPermission()
     setPermission(Notification.permission)
-    if (token) await registerToken()
+    if (token) {
+      await registerToken()
+      setConsentimiento(true)
+    }
     return token
   }
 
-  return { permission, requestPermission }
+  return { permission, requestPermission, consentimiento, setConsentimiento }
 }
