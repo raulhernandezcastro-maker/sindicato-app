@@ -12,18 +12,15 @@ export function AppLayout() {
   const { requestPermission } = useNotifications()
   const [showFCMConsent, setShowFCMConsent] = useState(false)
 
-  // Mostrar modal de consentimiento solo si aún no ha respondido (null)
+  // Mostrar modal si fcm_consentimiento es null O false
   useEffect(() => {
-    if (profile && profile.fcm_consentimiento === null) {
-      // Pequeño delay para no mostrar el modal en el mismo instante del login
-      const timer = setTimeout(() => setShowFCMConsent(true), 1500)
-      return () => clearTimeout(timer)
+    if (profile && profile.fcm_consentimiento !== true) {
+      setShowFCMConsent(true)
     }
   }, [profile])
 
   const handleConsentAccept = async () => {
     setShowFCMConsent(false)
-    // Solicitar permiso al navegador y registrar token FCM
     await requestPermission()
   }
 
@@ -31,11 +28,11 @@ export function AppLayout() {
     setShowFCMConsent(false)
   }
 
-  // Usar la ruta actual como key para forzar remonte de cada página
   const location = useLocation()
 
   return (
     <div className="min-h-screen bg-background">
+
       {/* Menú lateral escritorio */}
       <DesktopNav />
 
@@ -60,6 +57,7 @@ export function AppLayout() {
           <Outlet key={location.pathname} />
         </div>
       </main>
+
     </div>
   )
 }
