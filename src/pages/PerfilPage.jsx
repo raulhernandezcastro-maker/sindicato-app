@@ -14,25 +14,23 @@ import { useNotifications } from '../hooks/useNotifications'
 
 const SectionHeader = ({ icon: Icon, title }) => (
   <div className="flex items-center gap-2 px-4 py-2 rounded-t-lg"
-       style={{ backgroundColor: '#2d7a4f' }}>
+    style={{ backgroundColor: '#2d7a4f' }}>
     <Icon className="w-4 h-4 text-white" />
     <span className="font-semibold text-white text-sm">{title}</span>
-      <WhatsAppButton />
+    <WhatsAppButton />
   </div>
 )
 
 export default function PerfilPage() {
   const { permission, requestPermission } = useNotifications()
   const { profile, roles, user, refreshProfile } = useAuth()
-
   const [formData, setFormData] = useState({ nombre: '', telefono: '' })
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
-
-  const [savingProfile, setSavingProfile]   = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
-  const [savingPhoto, setSavingPhoto]       = useState(false)
-
-  const [error, setError]     = useState('')
+  const [savingPhoto, setSavingPhoto] = useState(false)
+  const [savingNotif, setSavingNotif] = useState(false)
+  const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
@@ -57,7 +55,6 @@ export default function PerfilPage() {
         setError('Error al actualizar el perfil: ' + error.message)
       } else {
         setSuccess('Perfil actualizado correctamente')
-        // Recargar perfil en contexto sin cerrar sesión
         if (refreshProfile) await refreshProfile()
       }
     } catch (err) {
@@ -70,30 +67,20 @@ export default function PerfilPage() {
   /* ── Contraseña ── */
   const handlePasswordUpdate = async (e) => {
     e.preventDefault(); clearMessages()
-
-    // Validar contraseña actual ingresada
     if (!passwordData.currentPassword) {
       setError('Debes ingresar tu contraseña actual'); return
     }
-
-    // Validar longitud mínima
     if (passwordData.newPassword.length < 8) {
       setError('La nueva contraseña debe tener al menos 8 caracteres'); return
     }
-
-    // Validar que coincidan
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setError('Las contraseñas no coinciden'); return
     }
-
-    // Validar que la nueva sea distinta a la actual
     if (passwordData.currentPassword === passwordData.newPassword) {
       setError('La nueva contraseña debe ser distinta a la actual'); return
     }
-
     setSavingPassword(true)
     try {
-      // Verificar contraseña actual reautenticando
       const { error: reAuthError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: passwordData.currentPassword
@@ -103,17 +90,13 @@ export default function PerfilPage() {
         setSavingPassword(false)
         return
       }
-
-      // Actualizar contraseña y cerrar todas las otras sesiones
       const { error } = await supabase.auth.updateUser(
         { password: passwordData.newPassword },
         { emailRedirectTo: null }
       )
-
       if (error) {
         setError('Error al cambiar la contraseña: ' + error.message)
       } else {
-        // Enviar email informativo via Edge Function (no bloqueante)
         try {
           const { data: { session } } = await supabase.auth.getSession()
           if (session?.access_token) {
@@ -130,7 +113,6 @@ export default function PerfilPage() {
         } catch (emailErr) {
           console.warn('[AUTH] No se pudo enviar email informativo:', emailErr)
         }
-
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
         setSuccess('Contraseña actualizada correctamente. Se ha enviado un email de confirmación.')
       }
@@ -144,28 +126,21 @@ export default function PerfilPage() {
   /* ── Foto ── */
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0]; if (!file) return
-
-    // Validar MIME type real (no solo la extensión)
     const MIME_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    const EXT_PERMITIDAS  = ['jpg', 'jpeg', 'png', 'webp', 'gif']
-
+    const EXT_PERMITIDAS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
     if (!MIME_PERMITIDOS.includes(file.type)) {
       setError('Solo se permiten imágenes (JPG, PNG, WEBP o GIF)')
       return
     }
-
     const ext = file.name.split('.').pop().toLowerCase()
     if (!EXT_PERMITIDAS.includes(ext)) {
       setError('Extensión de archivo no permitida. Usa JPG, PNG, WEBP o GIF')
       return
     }
-
-    // Validar tamaño máximo (2MB)
     if (file.size > 2 * 1024 * 1024) {
       setError('La imagen no puede superar los 2MB')
       return
     }
-
     clearMessages(); setSavingPhoto(true)
     const path = `${user.id}.${ext}`
     const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, {
@@ -179,6 +154,33 @@ export default function PerfilPage() {
     setSavingPhoto(false)
   }
 
+  /* ── Desactivar notificaciones ── */
+  const handleDesactivarNotificaciones = async () => {
+    clearMessages()
+    setSavingNotif(true)
+    try {
+      await supabase
+        .from('fcm_tokens')
+        .delete()
+        .eq('user_id', user.id)
+
+      await supabase
+        .from('profiles')
+        .update({
+          fcm_consentimiento: false,
+          fcm_consentimiento_fecha: null
+        })
+        .eq('id', user.id)
+
+      if (refreshProfile) await refreshProfile()
+      setSuccess('Notificaciones desactivadas. Puedes volver a activarlas cuando quieras.')
+    } catch (err) {
+      setError('Error al desactivar las notificaciones')
+    } finally {
+      setSavingNotif(false)
+    }
+  }
+
   const getInitials = (nombre) =>
     nombre ? nombre.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'
 
@@ -190,12 +192,12 @@ export default function PerfilPage() {
 
       {/* ── Título ── */}
       <div className="flex items-center gap-2 px-4 py-3 rounded-lg"
-           style={{ backgroundColor: '#2d7a4f' }}>
+        style={{ backgroundColor: '#2d7a4f' }}>
         <User className="w-5 h-5 text-white" />
         <h1 className="text-xl font-bold text-white">Mi Perfil</h1>
       </div>
 
-      {error   && <Alert variant="destructive">{error}</Alert>}
+      {error && <Alert variant="destructive">{error}</Alert>}
       {success && <Alert>{success}</Alert>}
 
       {/* ── Foto ── */}
@@ -225,7 +227,7 @@ export default function PerfilPage() {
             </div>
             <Label htmlFor="photo" className="cursor-pointer">
               <Button disabled={savingPhoto} asChild size="sm"
-                      style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
+                style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
                 <span>
                   <Camera className="w-4 h-4 mr-2" />
                   {savingPhoto ? 'Subiendo...' : 'Cambiar Foto'}
@@ -312,12 +314,24 @@ export default function PerfilPage() {
         </div>
         <div className="p-5" style={{ backgroundColor: '#f0f9f2' }}>
           {permission === 'granted' ? (
-            <div className="flex items-center gap-3">
-              <BellRing className="w-5 h-5" style={{ color: '#2d7a4f' }} />
-              <div>
-                <p className="text-sm font-semibold" style={{ color: '#2d7a4f' }}>Notificaciones activadas</p>
-                <p className="text-xs text-muted-foreground">Recibirás avisos del sindicato en tu dispositivo</p>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <BellRing className="w-5 h-5" style={{ color: '#2d7a4f' }} />
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: '#2d7a4f' }}>Notificaciones activadas</p>
+                  <p className="text-xs text-muted-foreground">Recibirás avisos del sindicato en tu dispositivo</p>
+                </div>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={savingNotif}
+                onClick={handleDesactivarNotificaciones}
+                className="text-red-500 border-red-300 hover:bg-red-50 shrink-0"
+              >
+                <BellOff className="w-4 h-4 mr-1" />
+                {savingNotif ? 'Desactivando...' : 'Desactivar'}
+              </Button>
             </div>
           ) : permission === 'denied' ? (
             <div className="flex items-center gap-3">
