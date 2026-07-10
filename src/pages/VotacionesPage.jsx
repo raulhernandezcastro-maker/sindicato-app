@@ -85,10 +85,8 @@ export default function VotacionesPage() {
     setConteos(c)
 
     // Total socios para quórum
-    const { count } = await supabase
-      .from('profiles').select('id', { count: 'exact', head: true })
-      .eq('estado', 'activo')
-    setTotalSocios(count || 0)
+    const { data: activosCount } = await supabase.rpc('count_socios_activos')
+    setTotalSocios(activosCount || 0)
 
     setLoading(false)
   }, [user])
