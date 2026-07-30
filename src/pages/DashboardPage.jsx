@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Users, UserCheck, FileText, FolderOpen, LayoutDashboard, TrendingUp, PieChart, UserX } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Spinner } from '../components/ui/spinner'
+import ResumenFeedbackAvisos from '../components/ResumenFeedbackAvisos'
 
 const StatCard = ({ title, value, icon: Icon, color, bg, loading }) => (
   <div className="rounded-lg border overflow-hidden shadow-sm">
@@ -138,6 +139,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-4">
         {cardsContenido.map(c => <StatCard key={c.title} {...c} loading={loading} />)}
       </div>
+
+      {/* Feedback de avisos */}
+      <ResumenFeedbackAvisos />
 
       {/* Resumen */}
       {!loading && (
