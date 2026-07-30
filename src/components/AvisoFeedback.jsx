@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ThumbsUp, ThumbsDown, Check } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Check, Pencil } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -18,6 +18,7 @@ export default function AvisoFeedback({ avisoId }) {
   const { user } = useAuth()
   const [esUtil, setEsUtil] = useState(null)   // null | true | false
   const [motivo, setMotivo] = useState(null)
+  const [editandoMotivo, setEditandoMotivo] = useState(false)
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
 
@@ -41,7 +42,8 @@ export default function AvisoFeedback({ avisoId }) {
     return () => { activo = false }
   }, [avisoId, user])
 
-  async function guardar(nuevoEsUtil, nuevoMotivo) {
+  // Guarda el voto SÍ/NO. Al marcar SÍ, limpia cualquier motivo previo.
+  async function guardarVoto(nuevoEsUtil) {
     if (!user) return
     setGuardando(true)
     const { error } = await supabase
@@ -51,18 +53,38 @@ export default function AvisoFeedback({ avisoId }) {
           aviso_id: avisoId,
           user_id: user.id,
           es_util: nuevoEsUtil,
-          motivo: nuevoEsUtil ? null : nuevoMotivo,
+          motivo: nuevoEsUtil ? null : motivo,
         },
         { onConflict: 'aviso_id,user_id' }
       )
     setGuardando(false)
     if (!error) {
       setEsUtil(nuevoEsUtil)
-      setMotivo(nuevoEsUtil ? null : nuevoMotivo)
+      if (nuevoEsUtil) { setMotivo(null); setEditandoMotivo(false) }
+    }
+  }
+
+  // Guarda el motivo elegido y colapsa la lista.
+  async function guardarMotivo(m) {
+    if (!user) return
+    setGuardando(true)
+    const { error } = await supabase
+      .from('avisos_feedback')
+      .upsert(
+        { aviso_id: avisoId, user_id: user.id, es_util: false, motivo: m },
+        { onConflict: 'aviso_id,user_id' }
+      )
+    setGuardando(false)
+    if (!error) {
+      setMotivo(m)
+      setEditandoMotivo(false)
     }
   }
 
   if (cargando || !user) return null
+
+  const listaVisible = esUtil === false && (motivo === null || editandoMotivo)
+  const motivoColapsado = esUtil === false && motivo !== null && !editandoMotivo
 
   return (
     <div className="mt-4 border-t pt-3">
@@ -71,7 +93,7 @@ export default function AvisoFeedback({ avisoId }) {
 
         <button
           type="button"
-          onClick={() => guardar(true, null)}
+          onClick={() => guardarVoto(true)}
           disabled={guardando}
           className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition disabled:opacity-60"
           style={
@@ -85,7 +107,7 @@ export default function AvisoFeedback({ avisoId }) {
 
         <button
           type="button"
-          onClick={() => guardar(false, motivo)}
+          onClick={() => guardarVoto(false)}
           disabled={guardando}
           className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition disabled:opacity-60"
           style={
@@ -98,7 +120,8 @@ export default function AvisoFeedback({ avisoId }) {
         </button>
       </div>
 
-      {esUtil === false && (
+      {/* Lista de motivos desplegada: al marcar No, o al pulsar "cambiar" */}
+      {listaVisible && (
         <div className="mt-3">
           <p className="mb-2 text-sm text-gray-600">¿Qué podríamos mejorar? (opcional)</p>
           <div className="flex flex-col gap-1.5">
@@ -106,7 +129,7 @@ export default function AvisoFeedback({ avisoId }) {
               <button
                 key={m}
                 type="button"
-                onClick={() => guardar(false, m)}
+                onClick={() => guardarMotivo(m)}
                 disabled={guardando}
                 className="inline-flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition disabled:opacity-60"
                 style={
@@ -120,6 +143,25 @@ export default function AvisoFeedback({ avisoId }) {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Motivo ya elegido: lista colapsada, solo el elegido + "cambiar" */}
+      {motivoColapsado && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm"
+            style={{ backgroundColor: '#e8f0ec', borderColor: VERDE_MEDIO, color: VERDE_OSCURO }}
+          >
+            <Check size={16} /> {motivo}
+          </span>
+          <button
+            type="button"
+            onClick={() => setEditandoMotivo(true)}
+            className="inline-flex items-center gap-1 text-xs text-gray-500 underline hover:text-gray-700"
+          >
+            <Pencil size={12} /> cambiar
+          </button>
         </div>
       )}
 
