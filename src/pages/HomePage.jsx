@@ -10,6 +10,7 @@ import { FileText, Gift, Handshake, HelpCircle, Users, Phone, Plus, Pencil, Tras
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import WhatsAppButton from '../components/ui/WhatsAppButton'
+import AvisoFeedback from '../components/AvisoFeedback'
 import ModalDiaTrabajador from '../components/ui/ModalDiaTrabajador'
 import ModalDiaMadre from '../components/ui/ModalDiaMadre'
 import ModalDiaPadre from '../components/ui/ModalDiaPadre'
@@ -142,6 +143,7 @@ export default function HomePage() {
                   <p className="text-xs text-muted-foreground mt-2">
                     {new Date(ultimoAviso.created_at).toLocaleDateString('es-CL')}
                   </p>
+                  {!isAdministrador && <AvisoFeedback avisoId={ultimoAviso.id} />}
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">No hay avisos publicados</p>
