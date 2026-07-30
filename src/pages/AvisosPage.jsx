@@ -10,6 +10,7 @@ import { Textarea } from '../components/ui/textarea'
 import { Spinner } from '../components/ui/spinner'
 import { Alert } from '../components/ui/alert'
 import WhatsAppButton from '../components/ui/WhatsAppButton'
+import AvisoFeedback from '../components/AvisoFeedback'
 import { APP_CONFIG } from '../config'
 
 function mezclarAvisos(lista) {
@@ -305,6 +306,7 @@ export default function AvisosPage() {
                     NUEVO
                   </span>
                 )}
+                {!canManage && <AvisoFeedback avisoId={a.id} />}
               </div>
             )
           })}
