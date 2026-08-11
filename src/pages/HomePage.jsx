@@ -15,9 +15,75 @@ import ModalDiaTrabajador from '../components/ui/ModalDiaTrabajador'
 import ModalDiaMadre from '../components/ui/ModalDiaMadre'
 import ModalDiaPadre from '../components/ui/ModalDiaPadre'
 
+/* ────────────────────────────────────────────────────────────────
+   Helpers de fecha (timezone-safe, Chile UTC-3)
+   Las columnas DATE ('YYYY-MM-DD') se parsean como fecha LOCAL para
+   evitar el corrimiento de un día que produce new Date('YYYY-MM-DD').
+   ──────────────────────────────────────────────────────────────── */
+
+// Parsea 'YYYY-MM-DD' (o timestamp) como fecha local a medianoche.
+const parseLocalDate = (str) => {
+  const [y, m, d] = String(str).split('T')[0].split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+// Medianoche local de un timestamp/Date cualquiera (ej: created_at).
+const dateOnlyLocal = (dt) => {
+  const d = new Date(dt)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+const addDays = (date, n) => {
+  const d = new Date(date)
+  d.setDate(d.getDate() + n)
+  return d
+}
+
+// Diferencia en días enteros entre dos medianoches locales.
+const diffDays = (a, b) => Math.round((b - a) / 86400000)
+
+/* ────────────────────────────────────────────────────────────────
+   Selección del "aviso del día"
+
+   Regla única: gana el aviso con la FECHA EFECTIVA más reciente.
+     · Normal              → fecha efectiva = created_at (fecha)
+     · Recurrente activo y
+       dentro de ventana   → fecha efectiva = último golpe de
+                             recurrencia ≤ hoy
+     · Recurrente fuera de
+       ventana / pausado   → se comporta como normal (created_at)
+
+   Empate (misma fecha efectiva): gana el created_at más nuevo, así
+   un aviso normal publicado hoy vence a un recurrente que solo tocó
+   su concurrencia hoy.
+   ──────────────────────────────────────────────────────────────── */
+
+const fechaEfectiva = (a, hoy) => {
+  if (a.es_recurrente && a.recurrente_activo && a.fecha_inicio && a.frecuencia_dias) {
+    const inicio = parseLocalDate(a.fecha_inicio)
+    const fin    = a.fecha_fin ? parseLocalDate(a.fecha_fin) : null
+    if (hoy >= inicio && (!fin || hoy <= fin)) {
+      const k = Math.floor(diffDays(inicio, hoy) / a.frecuencia_dias)
+      return addDays(inicio, k * a.frecuencia_dias) // último golpe ≤ hoy
+    }
+  }
+  return dateOnlyLocal(a.created_at)
+}
+
+const elegirAvisoDelDia = (lista) => {
+  if (!lista?.length) return null
+  const now = new Date()
+  const hoy = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const ganador = lista
+    .map(a => ({ a, ef: fechaEfectiva(a, hoy), created: new Date(a.created_at) }))
+    .sort((x, y) => (y.ef - x.ef) || (y.created - x.created))[0]
+  return { aviso: ganador.a, fecha: ganador.ef }
+}
+
 export default function HomePage() {
   const { isAdministrador } = useAuth()
   const [ultimoAviso, setUltimoAviso]   = useState(null)
+  const [avisoFecha, setAvisoFecha]     = useState(null)
   const [directores, setDirectores]     = useState([])
   const [loading, setLoading]           = useState(true)
 
@@ -33,10 +99,12 @@ export default function HomePage() {
     try {
       setLoading(true)
       const [{ data: avisos }, { data: dirs }] = await Promise.all([
-        supabase.from('avisos').select('*').or('es_recurrente.is.null,es_recurrente.eq.false,recurrente_activo.eq.true').order('created_at', { ascending: false }).limit(1),
+        supabase.from('avisos').select('*').or('es_recurrente.is.null,es_recurrente.eq.false,recurrente_activo.eq.true'),
         supabase.from('directivos').select('*').order('created_at', { ascending: true }),
       ])
-      setUltimoAviso(avisos?.[0] || null)
+      const elegido = elegirAvisoDelDia(avisos)
+      setUltimoAviso(elegido?.aviso || null)
+      setAvisoFecha(elegido?.fecha || null)
       setDirectores(dirs || [])
     } catch (err) {
       console.error('Error cargando inicio:', err)
@@ -141,7 +209,7 @@ export default function HomePage() {
                     {ultimoAviso.contenido}
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {new Date(ultimoAviso.created_at).toLocaleDateString('es-CL')}
+                    {(avisoFecha || dateOnlyLocal(ultimoAviso.created_at)).toLocaleDateString('es-CL')}
                   </p>
                   {!isAdministrador && <AvisoFeedback avisoId={ultimoAviso.id} />}
                 </>
