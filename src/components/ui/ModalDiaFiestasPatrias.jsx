@@ -127,12 +127,12 @@ export default function ModalDiaFiestasPatrias() {
         </h2>
 
         <p style={{ fontSize: 14.5, color: '#555', lineHeight: 1.65, margin: '0 0 0.8rem' }}>
-          Que estos días te encuentren con los tuyos, con buena mesa y descanso de verdad.
+          Que estos días te encuentres con los tuyos, con buena mesa y descanso de verdad.
           Te lo has ganado.
         </p>
 
         <p style={{ fontSize: 14.5, color: '#555', lineHeight: 1.65, margin: '0 0 1rem' }}>
-          Gracias por ser parte de este Sindicato. Y si sales a la ruta, cuídate y vuelve bien.
+          Gracias por ser parte de este Sindicato. Y si sales de viaje, cuídate y vuelve bien.
         </p>
 
         <p
