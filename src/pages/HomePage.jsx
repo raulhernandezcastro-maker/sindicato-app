@@ -14,6 +14,7 @@ import AvisoFeedback from '../components/AvisoFeedback'
 import ModalDiaTrabajador from '../components/ui/ModalDiaTrabajador'
 import ModalDiaMadre from '../components/ui/ModalDiaMadre'
 import ModalDiaPadre from '../components/ui/ModalDiaPadre'
+import ModalDiaFiestasPatrias from '../components/ui/ModalDiaFiestasPatrias'
 
 /* ────────────────────────────────────────────────────────────────
    Helpers de fecha (timezone-safe, Chile UTC-3)
@@ -182,6 +183,7 @@ export default function HomePage() {
       <ModalDiaTrabajador />
       <ModalDiaMadre />
       <ModalDiaPadre />
+      <ModalDiaFiestasPatrias />
 
       {/* ── Encabezado ── */}
       <div className="flex items-center gap-4">
