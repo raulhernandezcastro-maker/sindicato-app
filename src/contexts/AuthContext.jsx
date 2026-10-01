@@ -9,6 +9,21 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
+// Los aportantes no tienen acceso a la App: solo socios, directores y administradores
+export const MENSAJE_APORTANTE =
+  'Tu cuenta es de aportante y no tiene acceso a la App. Si deseas hacerte socio, contacta al sindicato.'
+
+const esSoloAportante = (roleNames = []) =>
+  roleNames.includes('aportante') &&
+  !roleNames.some(r => r === 'socio' || r === 'director' || r === 'administrador')
+
+const obtenerRoles = async (userId) => {
+  const { data, error } = await supabase
+    .from('roles').select('role_name').eq('user_id', userId)
+  if (error) throw error
+  return (data || []).map(r => r.role_name)
+}
+
 export const useAuth = () => {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
@@ -52,6 +67,16 @@ export const AuthProvider = ({ children }) => {
           return
         }
 
+        const roleNames = await obtenerRoles(userId)
+
+        // Si el usuario es solo aportante, cerrar sesión (no tiene acceso a la App)
+        if (esSoloAportante(roleNames)) {
+          console.warn('[AUTH] Usuario aportante, cerrando sesión')
+          await supabase.auth.signOut()
+          clearAuth()
+          return
+        }
+
         if (isMounted) setProfile(profileData)
 
         // Registrar último acceso (sin esperar respuesta para no bloquear)
@@ -61,11 +86,6 @@ export const AuthProvider = ({ children }) => {
           .then(() => {})
           .catch(() => {})
 
-        const { data: rolesData, error: rolesError } = await supabase
-          .from('roles').select('role_name').eq('user_id', userId)
-        if (rolesError) throw rolesError
-
-        const roleNames = (rolesData || []).map(r => r.role_name)
         if (isMounted) setRoles(roleNames)
       } catch (err) {
         console.error('[AUTH] Error loading profile/roles:', err)
@@ -130,6 +150,14 @@ export const AuthProvider = ({ children }) => {
             return
           }
 
+          // Aportantes: tampoco setear user (no tienen acceso a la App)
+          try {
+            if (esSoloAportante(await obtenerRoles(session.user.id))) return
+          } catch (err) {
+            console.error('[AUTH] Error verificando roles:', err)
+            return
+          }
+
           setUser(session.user)
           await loadUserData(session.user.id)
         } else {
@@ -164,6 +192,13 @@ export const AuthProvider = ({ children }) => {
       // porque el perfil está inactivo y no seteará user
       await supabase.auth.signOut()
       throw new Error('Tu cuenta ha sido dada de baja. Contacta al administrador del sindicato.')
+    }
+
+    // Verificar que no sea solo aportante
+    const roleNames = await obtenerRoles(data.user.id).catch(() => [])
+    if (esSoloAportante(roleNames)) {
+      await supabase.auth.signOut()
+      throw new Error(MENSAJE_APORTANTE)
     }
 
     return data
