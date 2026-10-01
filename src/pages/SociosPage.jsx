@@ -310,10 +310,18 @@ export default function SociosPage() {
       rut:      socio.rut      || '',
       telefono: socio.telefono || '',
       roles:    [...socio.roles],
+      rolesOriginales: [...socio.roles],
       newPassword: '',
+      accesoEmail: '',
+      accesoPassword: '',
     })
     setOpenEditar(true)
   }
+
+  // Al pasar de Aportante a Socio se deben crear credenciales reales de acceso
+  const pasaDeAportante =
+    (editForm.rolesOriginales || []).includes('aportante') &&
+    !(editForm.roles || []).includes('aportante')
 
   const toggleRoleEdit = (role) => {
     setEditForm(prev => {
@@ -335,8 +343,36 @@ export default function SociosPage() {
     if (!editForm.nombre.trim()) { setErrorEdit('El nombre es obligatorio'); return }
     if (!editForm.email.trim())  { setErrorEdit('El email es obligatorio'); return }
     if (editForm.newPassword && editForm.newPassword.length < 6) { setErrorEdit('La contraseña debe tener al menos 6 caracteres'); return }
+    if (pasaDeAportante) {
+      const em = (editForm.accesoEmail || '').trim().toLowerCase()
+      if (!em) { setErrorEdit('Para pasar a Socio debes ingresar su email real'); return }
+      if (em.endsWith('@sindicato.cl')) { setErrorEdit('Ingresa el email real del socio, no uno @sindicato.cl'); return }
+      if (!editForm.accesoPassword || editForm.accesoPassword.length < 6) { setErrorEdit('La contraseña inicial debe tener al menos 6 caracteres'); return }
+    }
     setSavingEdit(true)
     try {
+      // 0️⃣ Si pasa de Aportante a Socio: actualizar primero el acceso (email + contraseña)
+      let emailFinal = editForm.email
+      if (pasaDeAportante) {
+        const { data: { session } } = await supabase.auth.getSession()
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/actualizar-acceso-socio`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({
+            user_id:  editForm.id,
+            email:    editForm.accesoEmail.trim().toLowerCase(),
+            password: editForm.accesoPassword
+          })
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || `Error ${res.status} al actualizar el acceso`)
+        emailFinal = editForm.accesoEmail.trim().toLowerCase()
+      }
+
       const { error: profileErr } = await supabase
         .from('profiles')
         .update({ nombre: editForm.nombre, rut: normalizarRut(editForm.rut), telefono: editForm.telefono })
@@ -348,7 +384,7 @@ export default function SociosPage() {
       await supabase.from('roles').insert(rolesInsert)
 
       setSocios(prev => prev.map(s =>
-        s.id === editForm.id ? { ...s, nombre: editForm.nombre, rut: normalizarRut(editForm.rut), roles: editForm.roles } : s
+        s.id === editForm.id ? { ...s, nombre: editForm.nombre, email: emailFinal, rut: normalizarRut(editForm.rut), roles: editForm.roles } : s
       ))
       setOpenEditar(false)
     } catch (err) {
@@ -596,6 +632,16 @@ export default function SociosPage() {
                 ))}
               </div>
             </div>
+            {pasaDeAportante && (
+              <div className="space-y-2 rounded-lg p-3" style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <p className="text-sm font-semibold" style={{ color: '#1e3a2f' }}>Acceso a la App como Socio</p>
+                <p className="text-xs text-muted-foreground">
+                  Los aportantes no tienen acceso real. Ingresa el email y una contraseña inicial con los que esta persona entrará a la App.
+                </p>
+                <div><Label>Email real *</Label><Input type="email" value={editForm.accesoEmail || ''} onChange={e => setEditForm({ ...editForm, accesoEmail: e.target.value })} placeholder="correo@ejemplo.com" /></div>
+                <div><Label>Contraseña inicial *</Label><Input type="text" value={editForm.accesoPassword || ''} onChange={e => setEditForm({ ...editForm, accesoPassword: e.target.value })} placeholder="Mínimo 6 caracteres" /></div>
+              </div>
+            )}
             <Button onClick={handleGuardarEdicion} disabled={savingEdit} className="w-full" style={{ backgroundColor: '#2d7a4f', color: 'white' }}>
               {savingEdit ? 'Guardando…' : 'Guardar Cambios'}
             </Button>
