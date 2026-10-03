@@ -20,7 +20,9 @@ const ESTADO_COLOR = {
   cerrada:  { bg: '#f8d7da', text: '#721c24' },
 }
 
-const VISIBLE_PARA = { todos: 'Socios y Aportantes', socios: 'Solo Socios', aportantes: 'Solo Aportantes' }
+// Los aportantes no tienen acceso a la App: toda votación es solo para socios.
+// Se mantienen las claves antiguas solo para mostrar registros existentes.
+const VISIBLE_PARA = { todos: 'Solo Socios', socios: 'Solo Socios', aportantes: 'Solo Socios' }
 
 export default function VotacionesAdminPage() {
   const { user, isAdministrador, isDirector } = useAuth()
@@ -40,7 +42,7 @@ export default function VotacionesAdminPage() {
 
   const [form, setForm] = useState({
     titulo: '', descripcion: '', tipo: 'anonima',
-    visible_para: 'todos', quorum_requerido: 50,
+    visible_para: 'socios', quorum_requerido: 50,
     tipo_quorum: 'simple', // simple=50+1, absoluta=50%, calificada=67%, personalizado
     fecha_cierre: '', hora_cierre: '',
   })
@@ -88,7 +90,7 @@ export default function VotacionesAdminPage() {
     if (error) { setErrorForm(error.message); setGuardando(false); return }
     await load()
     setVistaActual('lista')
-    setForm({ titulo: '', descripcion: '', tipo: 'anonima', visible_para: 'todos', quorum_requerido: 50, fecha_cierre: '', hora_cierre: '' })
+    setForm({ titulo: '', descripcion: '', tipo: 'anonima', visible_para: 'socios', quorum_requerido: 50, fecha_cierre: '', hora_cierre: '' })
     setGuardando(false)
   }
 
@@ -107,7 +109,15 @@ export default function VotacionesAdminPage() {
 
     const { data: votos } = await supabase.from('votos').select('*').eq('votacion_id', vot.id)
     const { data: emitidas } = await supabase.from('votaciones_emitidas').select('id').eq('votacion_id', vot.id)
-    const { count: totalSocios } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('estado', 'activo')
+    // Padrón para quórum: socios y directores activos (sin aportantes, administrador ni cuenta invitado)
+    const [{ data: activos }, { data: rolesVotantes }] = await Promise.all([
+      supabase.from('profiles').select('id, email').eq('estado', 'activo'),
+      supabase.from('roles').select('user_id').in('role_name', ['socio', 'director']),
+    ])
+    const idsVotantes = new Set((rolesVotantes || []).map(r => r.user_id))
+    const totalSocios = (activos || []).filter(p =>
+      idsVotantes.has(p.id) && p.email !== 'invitado@sindicato.cl'
+    ).length
 
     const favor      = votos?.filter(v => v.voto === 'favor').length || 0
     const contra     = votos?.filter(v => v.voto === 'contra').length || 0
@@ -319,10 +329,9 @@ Resultado: ${res.quorumAlcanzado ? (aprobada ? '✅ APROBADA' : '❌ RECHAZADA')
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Visible para</label>
-            <select value={form.visible_para} onChange={e => setForm(f => ({ ...f, visible_para: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm mt-1" style={{ borderColor: '#ddd6cc' }}>
-              {Object.entries(VISIBLE_PARA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <div className="w-full border rounded-lg px-3 py-2 text-sm mt-1 bg-gray-50 text-muted-foreground" style={{ borderColor: '#ddd6cc' }}>
+              Solo Socios
+            </div>
           </div>
         </div>
 
@@ -409,7 +418,7 @@ Resultado: ${res.quorumAlcanzado ? (aprobada ? '✅ APROBADA' : '❌ RECHAZADA')
              style={{ borderColor: featureFlag ? '#a8d5b5' : '#ddd6cc', backgroundColor: featureFlag ? '#f0f8f3' : '#fafafa' }}>
           <div>
             <p className="font-semibold text-sm" style={{ color: '#1e3a2f' }}>Módulo de Votaciones</p>
-            <p className="text-xs text-muted-foreground">{featureFlag ? 'Visible para socios y aportantes' : 'Oculto — no visible en la App'}</p>
+            <p className="text-xs text-muted-foreground">{featureFlag ? 'Visible para socios' : 'Oculto — no visible en la App'}</p>
           </div>
           <button onClick={toggleFlag} disabled={togglingFlag}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all"

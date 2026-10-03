@@ -19,10 +19,12 @@ const TIPOS = {
   texto_libre:     'Texto libre',
 }
 
+// Los aportantes no tienen acceso a la App: toda encuesta es solo para socios.
+// Se mantienen las claves antiguas solo para mostrar registros existentes.
 const VISIBLE_PARA = {
-  todos:       'Socios y Aportantes',
+  todos:       'Solo Socios',
   socios:      'Solo Socios',
-  aportantes:  'Solo Aportantes',
+  aportantes:  'Solo Socios',
 }
 
 const ESTADO_COLOR = {
@@ -48,7 +50,7 @@ export default function EncuestasAdminPage() {
   // Form nueva encuesta
   const [form, setForm] = useState({
     titulo: '', descripcion: '', plantilla_base: 'personalizada',
-    visible_para: 'todos', fecha_inicio: '', fecha_fin: '',
+    visible_para: 'socios', fecha_inicio: '', fecha_fin: '',
   })
   const [preguntas, setPreguntas] = useState([])
   const [guardando, setGuardando] = useState(false)
@@ -122,7 +124,7 @@ export default function EncuestasAdminPage() {
 
     await load()
     setVistaActual('lista')
-    setForm({ titulo: '', descripcion: '', plantilla_base: 'personalizada', visible_para: 'todos', fecha_inicio: '', fecha_fin: '' })
+    setForm({ titulo: '', descripcion: '', plantilla_base: 'personalizada', visible_para: 'socios', fecha_inicio: '', fecha_fin: '' })
     setPreguntas([])
     setGuardando(false)
   }
@@ -309,10 +311,9 @@ export default function EncuestasAdminPage() {
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Visible para</label>
-            <select value={form.visible_para} onChange={e => setForm(f => ({ ...f, visible_para: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm mt-1" style={{ borderColor: '#ddd6cc' }}>
-              {Object.entries(VISIBLE_PARA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <div className="w-full border rounded-lg px-3 py-2 text-sm mt-1 bg-gray-50 text-muted-foreground" style={{ borderColor: '#ddd6cc' }}>
+              Solo Socios
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -412,7 +413,7 @@ export default function EncuestasAdminPage() {
         <div className="flex items-center justify-between p-4 rounded-xl border" style={{ borderColor: featureFlag ? '#a8d5b5' : '#ddd6cc', backgroundColor: featureFlag ? '#f0f8f3' : '#fafafa' }}>
           <div>
             <p className="font-semibold text-sm" style={{ color: '#1e3a2f' }}>Módulo de Encuestas</p>
-            <p className="text-xs text-muted-foreground">{featureFlag ? 'Visible para socios y aportantes' : 'Oculto — no visible en la App'}</p>
+            <p className="text-xs text-muted-foreground">{featureFlag ? 'Visible para socios' : 'Oculto — no visible en la App'}</p>
           </div>
           <button onClick={toggleFlag} disabled={togglingFlag}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all"
