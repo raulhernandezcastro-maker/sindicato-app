@@ -51,6 +51,12 @@ export default function DenunciasPage() {
     setLoading(false)
   }
 
+  const [errorAccion, setErrorAccion] = useState('')
+  const alertaError = (msg) => {
+    setErrorAccion(msg)
+    setTimeout(() => setErrorAccion(''), 6000)
+  }
+
   const cambiarEstado = async (id, nuevoEstado, denuncia) => {
     if (nuevoEstado === 'cerrada') {
       setModalCierre({ id, nombre: denuncia.nombre, email: denuncia.email })
@@ -58,7 +64,13 @@ export default function DenunciasPage() {
       return
     }
     setUpdatingId(id)
-    await supabase.from('denuncias').update({ estado: nuevoEstado }).eq('id', id)
+    const { data: actualizada, error: errUpd } = await supabase
+      .from('denuncias').update({ estado: nuevoEstado }).eq('id', id).select('id')
+    if (errUpd || !actualizada?.length) {
+      setUpdatingId(null)
+      alertaError('No se pudo cambiar el estado. Solo los directores pueden hacerlo.')
+      return
+    }
     setDenuncias(prev => prev.map(d => d.id === id ? { ...d, estado: nuevoEstado } : d))
     setUpdatingId(null)
     ;(async () => {
@@ -78,7 +90,13 @@ export default function DenunciasPage() {
     if (!resolucion.trim()) return
     const { id, nombre, email } = modalCierre
     setEnviandoCierre(true)
-    await supabase.from('denuncias').update({ estado: 'cerrada', resolucion }).eq('id', id)
+    const { data: cerrada, error: errCierre } = await supabase
+      .from('denuncias').update({ estado: 'cerrada', resolucion }).eq('id', id).select('id')
+    if (errCierre || !cerrada?.length) {
+      setEnviandoCierre(false)
+      alertaError('No se pudo cerrar la denuncia. Solo los directores pueden hacerlo.')
+      return
+    }
     setDenuncias(prev => prev.map(d => d.id === id ? { ...d, estado: 'cerrada', resolucion } : d))
     setModalCierre(null)
     setResolucion('')
@@ -140,6 +158,12 @@ export default function DenunciasPage() {
           {soloFlujo ? 'Solo seguimiento' : 'Confidencial'}
         </span>
       </div>
+
+      {errorAccion && (
+        <p className="text-sm p-3 rounded-lg" style={{ backgroundColor: '#fdecea', color: '#c0392b', border: '1px solid #f5c6cb' }}>
+          {errorAccion}
+        </p>
+      )}
 
       {soloFlujo && (
         <p className="text-xs text-muted-foreground px-1">
@@ -309,7 +333,7 @@ export default function DenunciasPage() {
                     </div>
 
                     {/* Cambiar estado */}
-                    {isAdministrador && (
+                    {isDirector && (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#2d7a4f' }}>Cambiar estado</p>
                         <div className="flex gap-2 flex-wrap">
