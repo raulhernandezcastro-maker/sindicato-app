@@ -57,6 +57,7 @@ export default function TablaCuotasConfirmadas() {
           .select("*")
           .eq("estado", "confirmado")
           .order("periodo", { ascending: false })
+          .order("id", { ascending: true }) // desempate: sin esto, las páginas repiten y omiten filas
           .range(from, from + pageSize - 1)
         if (error) { console.error("Error cargando cuotas:", error); break }
         if (!data || data.length === 0) break
