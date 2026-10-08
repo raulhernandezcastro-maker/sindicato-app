@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Home, FileText, Scale, Gift, Handshake, User, Users,
-  DollarSign, LayoutDashboard, LogOut, HelpCircle, Menu, X, ShieldAlert, ClipboardList, ThumbsUp
+  DollarSign, CreditCard, LayoutDashboard, LogOut, HelpCircle, Menu, X, ShieldAlert, ClipboardList, ThumbsUp
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
@@ -27,6 +27,7 @@ export function MobileNav() {
     ...socioLinks.filter(l => l.to !== '/encuestas' && l.to !== '/votaciones'),
     { to: '/dashboard',       icon: LayoutDashboard, label: 'Panel' },
     { to: '/cuotas',          icon: DollarSign,      label: 'Cuotas' },
+    { to: '/giftcards',       icon: CreditCard,      label: 'GiftCards' },
     { to: '/socios',          icon: Users,           label: 'Socios' },
     { to: '/denuncias',       icon: ShieldAlert,     label: 'Denuncias' },
     { to: '/encuestas',       icon: ClipboardList,   label: 'Encuestas' },
