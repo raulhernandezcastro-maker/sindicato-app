@@ -19,6 +19,7 @@ import VotacionesPage from './pages/VotacionesPage'
 import VotacionesAdminPage from './pages/VotacionesAdminPage'
 import LoginPage from './pages/LoginPage'
 import FAQPage from './pages/FAQPage'
+import GiftCardsPage from './pages/GiftCardsPage'
 
 export default function App() {
   return (
@@ -42,6 +43,7 @@ export default function App() {
           {/* Director y Administrador */}
           <Route path="/dashboard" element={<ProtectedRoute allowDirector><DashboardPage /></ProtectedRoute>} />
           <Route path="/cuotas" element={<ProtectedRoute allowDirector><CuotasPage /></ProtectedRoute>} />
+          <Route path="/giftcards" element={<ProtectedRoute allowDirector><GiftCardsPage /></ProtectedRoute>} />
           <Route path="/socios" element={<ProtectedRoute allowDirector><SociosPage /></ProtectedRoute>} />
           <Route path="/denuncias" element={<ProtectedRoute allowDirector><DenunciasPage /></ProtectedRoute>} />
           <Route path="/encuestas" element={<ProtectedRoute><EncuestasPage /></ProtectedRoute>} />
