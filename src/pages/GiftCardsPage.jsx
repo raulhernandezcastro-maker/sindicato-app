@@ -552,12 +552,12 @@ export default function GiftCardsPage() {
                            value={form.dominio_correo} onChange={e => setForm({ ...form, dominio_correo: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Envío anunciado desde</Label>
+                    <Label>Envío a socios: desde</Label>
                     <input type="date" className={inputCls} style={{ borderColor: '#2d7a4f' }} disabled={!isAdministrador}
                            value={form.envio_desde} onChange={e => setForm({ ...form, envio_desde: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Envío anunciado hasta</Label>
+                    <Label>Envío a socios: hasta</Label>
                     <input type="date" className={inputCls} style={{ borderColor: '#2d7a4f' }} disabled={!isAdministrador}
                            value={form.envio_hasta} onChange={e => setForm({ ...form, envio_hasta: e.target.value })} />
                   </div>
@@ -568,6 +568,11 @@ export default function GiftCardsPage() {
                   </div>
                 </div>
               )}
+
+              <p className="text-xs" style={{ color: '#2d7a4f' }}>
+                Las fechas de "Envío a socios" son las que se informarán a los socios en el correo de aviso.
+                Pueden quedar vacías hasta que CENCOSUD confirme su fecha de entrega.
+              </p>
 
               {form?.ultimo_mes_real && form?.periodo_hasta && form.ultimo_mes_real < form.periodo_hasta && (
                 <p className="text-xs" style={{ color: '#2d7a4f' }}>
